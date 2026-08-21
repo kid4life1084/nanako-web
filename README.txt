@@ -1,11 +1,8 @@
-NANAKO GITHUB PAGES - SUBFOLDER BUILD
+NANAKO GITHUB PAGES - IDLE ANIMATION V1
 
-IMPORTANT:
-Fully EXTRACT this ZIP first on Windows.
+Fully extract this ZIP before uploading to GitHub.
 
-Then open the extracted folder and drag the actual files/folders into the GitHub repo root.
-
-Correct GitHub structure:
+Correct repository structure:
 
 index.html
 manifest.webmanifest
@@ -17,7 +14,18 @@ static/
   characters/
     nanako/
       nanako_master.png
+      idle/
+        idle_open.png
+        idle_half.png
+        idle_closed.png
 
-Do NOT drag files directly out of the ZIP window.
-Do NOT flatten the static folder.
-Do NOT upload backend/app.py to GitHub Pages.
+Implemented:
+- original user-provided Nanako open/half/closed eye frames
+- natural open -> half -> closed -> half -> open blink
+- randomized blink every ~2.7 to 7 seconds
+- occasional double blink
+- subtle breathing animation
+- tiny slow body sway
+- no changes to voice, VAD, barge-in, TTS, JLPT, history, or chat behavior
+
+Upload ONLY this frontend package to GitHub Pages.
