@@ -2,7 +2,7 @@
 "use strict";
 
 // ============================================================
-// NANAKO LAYERED FACE RENDERER v7
+// NANAKO LAYERED FACE RENDERER v7.2 SAFETY BUILD
 // One static 627x627 base + one eye overlay + one mouth overlay.
 // Eyes and mouth animate independently. No full portrait swapping.
 // ============================================================
@@ -24,7 +24,7 @@ const LAYERS = {
 let nanakoEyes=null,nanakoMouth=null,nanakoMotion=null;
 const layerCache=new Map();
 let blinkTimer=0,blinkToken=0,blinkEnabled=true;
-let idleMouthTimer=0,idleMouthToken=0,idleMouthEnabled=true;
+let idleMouthTimer=0,idleMouthToken=0,idleMouthEnabled=false;
 let lipRaf=0,lipRunning=false,lipEnvelope=null,lastLipFrame="closed",lastLipUpdate=0;
 
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
@@ -142,11 +142,11 @@ function scheduleIdleMouth(first=false){
 
 function startIdleLoop(first=false){
   blinkEnabled=true;
-  idleMouthEnabled=true;
+  idleMouthEnabled=false;
+  cancelIdleMouth();
   if(!lipRunning)setMouth("closed");
   if(nanakoMotion)nanakoMotion.classList.remove("talking");
   scheduleBlink(first);
-  scheduleIdleMouth(first);
 }
 
 function stopIdleLoop(){
@@ -154,6 +154,7 @@ function stopIdleLoop(){
   idleMouthEnabled=false;
   cancelBlink();
   cancelIdleMouth();
+  setMouth("closed");
 }
 
 function bytesFromAudioSource(b){let s=String(b||"");if(!s)return null;if(s.startsWith("data:"))s=s.slice(s.indexOf(",")+1);try{const bin=atob(s);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer;}catch{return null;}}
@@ -171,7 +172,7 @@ function startTalkingLoop(){
   setMouth("small");
   cancelAnimationFrame(lipRaf);
   lipRaf=requestAnimationFrame(lipTick);
-  console.log("[Nanako Layers] TALKING: lip sync active; blinking continues independently.");
+  console.log("[Nanako Layers] TALKING: lip sync active; idle mouth movement disabled in this safety build.");
 }
 
 function stopTalkingLoop(){
@@ -180,10 +181,10 @@ function stopTalkingLoop(){
   lipRaf=0;
   lipEnvelope=null;
   setMouth("closed");
-  idleMouthEnabled=true;
+  idleMouthEnabled=false;
+  cancelIdleMouth();
   if(nanakoMotion)nanakoMotion.classList.remove("talking");
-  if(blinkEnabled)scheduleIdleMouth(false);
-  console.log("[Nanako Layers] TALKING stopped; idle mouth behavior restored.");
+  console.log("[Nanako Layers] TALKING stopped; mouth returns to closed idle state.");
 }
 
 // ============================================================

@@ -19,3 +19,9 @@ NANAKO LAYERED FACE v7.1 FIX
 UPLOAD:
 Fully extract this ZIP and replace the existing GitHub Pages frontend with
 the extracted files/folders.
+
+
+Safety build update:
+- Idle mouth movement removed.
+- In idle/listening state Nanako keeps her mouth closed.
+- Blinking remains active.
