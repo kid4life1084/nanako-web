@@ -242,7 +242,7 @@ const VAD={
   continueNoiseMultiplier:1.15
 };
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,startingMode=false,currentAudio=null,currentAudioObjectUrl="",stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,startingMode=false,currentAudio=null,currentAudioObjectUrl="",stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;const unlockAudioProbe=new Audio();unlockAudioProbe.preload="auto";unlockAudioProbe.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -263,26 +263,29 @@ function revokeCurrentAudioObjectUrl(){if(currentAudioObjectUrl){try{URL.revokeO
 function primeAudioUnlock(){
   if(audioUnlocked) return;
   try{
-    // Prime Safari audio inside the first tap, but DO NOT wait for it before starting the mic.
-    ttsAudio.src=SILENT_WAV;
-    ttsAudio.volume=.01;
-    const p=ttsAudio.play();
+    // IMPORTANT: use a completely separate Audio element for Safari's first-tap
+    // media unlock. Never touch ttsAudio here. A delayed play() promise from the
+    // silent probe must not be able to pause/reset Ono Anna's real reply.
+    const a=unlockAudioProbe;
+    a.src=SILENT_WAV;
+    a.volume=.01;
+    const p=a.play();
+    const finishUnlock=()=>{
+      try{a.pause();a.currentTime=0;a.removeAttribute("src");a.load();a.volume=1;}catch{}
+      audioUnlocked=true;
+      console.log("[Nanako Audio] First-tap audio unlock primed on isolated probe.");
+    };
     if(p&&typeof p.then==="function"){
-      p.then(()=>{
-        try{ttsAudio.pause();ttsAudio.currentTime=0;ttsAudio.volume=1;}catch{}
-        audioUnlocked=true;
-        console.log("[Nanako Audio] First-tap audio unlock primed.");
-      }).catch(x=>{
+      p.then(finishUnlock).catch(x=>{
         console.warn("[Nanako Audio] unlock attempt deferred:",x);
-        try{ttsAudio.pause();ttsAudio.currentTime=0;ttsAudio.volume=1;}catch{}
+        try{a.pause();a.currentTime=0;a.removeAttribute("src");a.load();a.volume=1;}catch{}
       });
     }else{
-      try{ttsAudio.pause();ttsAudio.currentTime=0;ttsAudio.volume=1;}catch{}
-      audioUnlocked=true;
+      finishUnlock();
     }
   }catch(x){
     console.warn("[Nanako Audio] unlock attempt failed:",x);
-    try{ttsAudio.volume=1;}catch{}
+    try{unlockAudioProbe.pause();unlockAudioProbe.removeAttribute("src");unlockAudioProbe.load();}catch{}
   }
 }
 
@@ -484,7 +487,7 @@ async function boot(){
     setMouth("closed");
     if(nanakoAvatar){ requestAnimationFrame(()=>nanakoAvatar.classList.add("face-ready")); }
     startIdleLoop(true);
-    console.log("[Nanako] v10.0 FirstTapStart fix loaded.");
+    console.log("[Nanako] v10.2 IsolatedAudioUnlock fix loaded.");
   }catch(err){
     console.error("[Nanako Renderer] Failed to preload:", err);
     error("Nanako images failed to load.");
