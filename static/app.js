@@ -260,19 +260,23 @@ async function send(){let t=e.input.value.trim();if(!t||busy)return;busy=true;st
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
 function audioBlobUrlFromBase64(b,m){let v=String(b||"").trim();if(!v)return"";if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);const bin=atob(v);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:m||"audio/wav"}))}
 function revokeCurrentAudioObjectUrl(){if(currentAudioObjectUrl){try{URL.revokeObjectURL(currentAudioObjectUrl)}catch{}currentAudioObjectUrl=""}}
-async function unlockAudio(){
+function unlockAudio(){
   if(audioUnlocked) return;
   try{
-    // Unlock plain HTMLAudio inside the user's tap gesture.
-    // No Web Audio gain/compressor is used in this build.
+    // iOS Safari cold-start unlock. IMPORTANT: do not await, pause, or reset
+    // this element. Starting playback inside the user's tap is enough to
+    // grant media playback permission; the tiny silent WAV then ends by itself.
+    // The same ttsAudio element is later reused for Nanako's real voice.
     ttsAudio.src=SILENT_WAV;
     ttsAudio.volume=.01;
-    await ttsAudio.play();
-    ttsAudio.pause();
-    ttsAudio.currentTime=0;
-    ttsAudio.volume=1;
-    audioUnlocked=true;
-    console.log("[Nanako Audio] Plain iOS playback unlocked.");
+    ttsAudio.preload="auto";
+    const p=ttsAudio.play();
+    if(p&&typeof p.then==="function")p.then(()=>{
+      audioUnlocked=true;
+      console.log("[Nanako Audio] iOS playback primed on first tap.");
+    }).catch(x=>console.warn("[Nanako Audio] unlock attempt failed:",x));
+    // Restore normal volume after the silent clip has had time to finish.
+    setTimeout(()=>{if(!currentAudio)ttsAudio.volume=1;},180);
   }catch(x){
     console.warn("[Nanako Audio] unlock attempt failed:",x);
   }
@@ -396,28 +400,15 @@ async function begin(){if(!active||busy||currentAudio||rec?.state==="recording")
 async function startMode(){
   if(active)return;
   try{
-    // iOS Safari: invoke BOTH media actions inside the same user tap.
-    // Do not await the silent TTS unlock before requesting the microphone.
-    // This preserves the proven/stable audio playback path while removing the
-    // old first-tap delay that forced a second press.
-    const unlockPromise=unlockAudio();
+    // Both permission-sensitive actions are initiated by the SAME first tap.
+    // Audio priming is fire-and-forget; it never blocks microphone startup.
     active=true;
     convButton();
+    unlockAudio();
     status("Starting microphone...");
     await begin();
-    if(active&&rec?.state!=="recording"){
-      await sleep(140);
-      await begin();
-    }
-    if(active&&rec?.state==="recording")status("Listening...");
-    Promise.resolve(unlockPromise).catch(()=>{});
   }catch(x){
     console.error(x);
-    active=false;
-    cleanup();
-    release();
-    convButton();
-    status("Ready to chat");
     error("Please allow microphone access in Safari.");
   }
 }
@@ -458,7 +449,7 @@ async function boot(){
     setMouth("closed");
     if(nanakoAvatar){ requestAnimationFrame(()=>nanakoAvatar.classList.add("face-ready")); }
     startIdleLoop(true);
-    console.log("[Nanako] StableAudio FirstTap v10.4 loaded.");
+    console.log("[Nanako] v10.5 Stable Audio First-Tap loaded.");
   }catch(err){
     console.error("[Nanako Renderer] Failed to preload:", err);
     error("Nanako images failed to load.");
