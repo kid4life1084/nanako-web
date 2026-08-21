@@ -25,9 +25,7 @@ v8.4 Omni frontend audio fix:
 v8.5: Split Omni reasoning and speech into separate requests to prevent long audio generation from trapping the conversation in Thinking.
 
 
-v8.7 VAD reliability fix:
-- Prevents the user's first words from contaminating room-noise calibration.
-- Speech can trigger during calibration instead of being ignored.
-- Slightly lower normal-voice start/continue thresholds.
-- Faster no-speech mic reacquisition (8s).
-- Settings debug now shows live Room and Start threshold dB.
+v8.9 Stable-VAD Omni Hybrid:
+- Restores the exact microphone/VAD thresholds AND capture/restart lifecycle from the user-designated stable pre-Omni safety build.
+- Keeps qwen3.5-omni-flash API integration, /api/speak Ono Anna voice output, Voice Output toggle, Blob WAV playback, layered face, no idle mouth movement, and manual interrupt.
+- No Alibaba backend change required from the working v8.5/v8.3 Omni backend.
