@@ -1,18 +1,27 @@
-NANAKO NORMAL TALKING ANIMATION v1.2
-LAYERED MOUTH RENDERER FIX
+NANAKO 627x627 ANIMATION PERFORMANCE TEST
 
-WHAT CHANGED
-- Talking animation no longer swaps the main image src every ~0.1 sec.
-- Instead, the 5 talking frames are preloaded and placed as stacked image layers in the DOM.
-- During speech, the app only toggles which talk layer is visible.
-- This is much lighter for iPhone Safari and should make Nanako's mouth animation visibly run while she speaks.
+Purpose:
+Test whether reducing the full-frame idle/talking PNGs from 1254x1254 to 627x627
+improves animation smoothness in iPhone Safari when opened from GitHub Pages.
 
-PRESERVED
-- Existing idle blink animation
-- Existing sway/breathing motion
-- Existing barge-in
-- Existing manual interrupt
-- Existing microphone / VAD tuning
+This package keeps the existing layered talking-animation renderer and app logic.
+The main change is the animation artwork resolution.
 
-UPLOAD
-Extract this ZIP first, then upload the extracted frontend files/folders to GitHub Pages, replacing the current frontend.
+Included user-supplied transparent PNGs:
+- idle_open.png   627x627 RGBA
+- idle_half.png   627x627 RGBA
+- idle_closed.png 627x627 RGBA
+- talk_0.png      627x627 RGBA
+- talk_1.png      627x627 RGBA
+- talk_2.png      627x627 RGBA
+- talk_3.png      627x627 RGBA
+- talk_4.png      627x627 RGBA
+
+Service-worker cache was bumped so Safari should fetch the new images/code.
+
+UPLOAD:
+1. Fully extract this ZIP.
+2. Upload the extracted files/folders to the GitHub Pages repo, replacing the current frontend.
+3. Wait for GitHub Pages to deploy.
+4. On iPhone Safari, close the old tab and reopen the GitHub Pages URL.
+5. If Safari still shows old assets, clear website data for the GitHub Pages site or use a fresh private tab for the test.
