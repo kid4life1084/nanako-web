@@ -59,7 +59,7 @@ const LAYERS = {
   }
 };
 
-let nanakoEyes=null,nanakoMouth=null,nanakoMotion=null;
+let nanakoEyes=null,nanakoMouth=null,nanakoMotion=null,nanakoAvatar=null;
 const layerCache=new Map();
 let blinkTimer=0,blinkToken=0,blinkEnabled=true;
 let idleMouthTimer=0,idleMouthToken=0,idleMouthEnabled=false;
@@ -423,13 +423,15 @@ document.addEventListener("visibilitychange",()=>{
 
 
 async function boot(){
-  setScore(0);quick();convButton();renderHistory();nanakoEyes=document.getElementById("nanakoEyes");nanakoMouth=document.getElementById("nanakoMouth");nanakoMotion=document.querySelector(".nanako-motion");
+  setScore(0);quick();convButton();renderHistory();nanakoAvatar=document.getElementById("nanakoAvatar");nanakoEyes=document.getElementById("nanakoEyes");nanakoMouth=document.getElementById("nanakoMouth");nanakoMotion=document.querySelector(".nanako-motion");
+  if(nanakoAvatar)nanakoAvatar.classList.remove("face-ready");
   try{
     await preloadFaceLayers();
     setEyes("open");
     setMouth("closed");
+    if(nanakoAvatar){ requestAnimationFrame(()=>nanakoAvatar.classList.add("face-ready")); }
     startIdleLoop(true);
-    console.log("[Nanako] Stable VAD + Omni inline-audio v9.0 loaded.");
+    console.log("[Nanako] StartupVisual v9.9 loaded.");
   }catch(err){
     console.error("[Nanako Renderer] Failed to preload:", err);
     error("Nanako images failed to load.");
