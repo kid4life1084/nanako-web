@@ -67,12 +67,6 @@
 <button data-level="auto" class="level-choice active">Auto</button><button data-level="n5" class="level-choice">N5</button><button data-level="n4" class="level-choice">N4</button><button data-level="n3" class="level-choice">N3</button><button data-level="n2" class="level-choice">N2</button><button data-level="n1" class="level-choice">N1</button>
 </div></div>
 <div class="settings-block"><div class="settings-row"><span>Conversation score</span><strong id="settingsScore">0 / 100</strong></div><div class="settings-progress"><div id="settingsScoreFill"></div></div></div>
-<div class="settings-block voice-output-block">
-  <div class="settings-row">
-    <span><strong>Voice output</strong><small class="settings-hint">Qwen3.5 Omni speech</small></span>
-    <button id="voiceOutputButton" class="voice-output-toggle active" type="button" aria-pressed="true">ON</button>
-  </div>
-</div>
 <div class="settings-block"><div class="settings-label">Voice debug</div><div id="debugMic">Mic: —</div><div id="debugRoom">Room: —</div><div id="debugSpeech">Speech: Waiting</div><div id="debugTurn">Turn: 0.0 sec</div></div>
 <button id="resetButton" class="reset-button">Reset conversation</button>
 </section></div>
@@ -82,5 +76,5 @@
 <div id="historyEmpty" class="history-empty">No conversation yet.</div><div id="historyList" class="history-list"></div>
 </section></div>
 
-<script src="./static/app.js?v=9.2" defer></script>
+<script src="./static/app.js?v=9.3-audio-always-on" defer></script>
 </body></html>

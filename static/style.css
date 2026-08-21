@@ -26,7 +26,7 @@
 
 
 /* ==========================================================
-   QWEN3.5 OMNI — VOICE OUTPUT TOGGLE
+   QWEN3.5 OMNI — AUDIO ALWAYS ON (toggle removed)
    Highlighted = ON. Dark = OFF.
    ========================================================== */
 .voice-output-block .settings-row{align-items:center;gap:16px}
