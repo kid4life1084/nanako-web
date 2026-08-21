@@ -1,5 +1,26 @@
 (()=>{
 "use strict";
+
+// v9.4: permanently remove stale Nanako service workers/caches during Omni stabilization.
+(async()=>{
+  try{
+    if("serviceWorker" in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      for(const reg of regs) await reg.unregister();
+    }
+    if("caches" in window){
+      const keys=await caches.keys();
+      for(const key of keys) await caches.delete(key);
+    }
+    try{
+      localStorage.removeItem("nanakoVoiceOutput");
+      localStorage.removeItem("nanako_voice_output");
+      localStorage.removeItem("voiceOutput");
+      localStorage.removeItem("voice_output");
+    }catch{}
+    console.log("[Nanako v9.4] stale service workers/caches/voice-output state purged");
+  }catch(err){ console.warn("[Nanako v9.4] purge warning",err); }
+})();
 console.log("[Nanako Frontend] v9.3 AUDIO ALWAYS ON");
 // v9.1 SAFETY: purge legacy service workers/caches from pre-Omni frontend builds.
 // The app intentionally runs without a service worker during Omni stabilization.
@@ -207,7 +228,7 @@ function stopTalkingLoop(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v9.2 voice-output state fix / inline-audio / stable-VAD");
+console.log("[Nanako Build] v9.4 FORCE AUDIO ON / NO VOICE OUTPUT TOGGLE");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VOICE=`${API}/api/voice`,RESET=`${API}/api/reset`;
 const VAD={
   calibrationMs:350,

@@ -29,9 +29,7 @@
    QWEN3.5 OMNI — AUDIO ALWAYS ON (toggle removed)
    Highlighted = ON. Dark = OFF.
    ========================================================== */
-.voice-output-block .settings-row{align-items:center;gap:16px}
-.voice-output-block .settings-row>span{display:flex;flex-direction:column;gap:4px}
+
 .settings-hint{display:block;font-size:12px;font-weight:500;color:#8f8798}
-.voice-output-toggle{min-width:78px;height:44px;border-radius:24px;border:1px solid #45394c;background:#17131c;color:#9e96a6;font-size:14px;font-weight:800;letter-spacing:.04em;transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease}
-.voice-output-toggle.active{background:#7d35a2;border-color:#bd55e3;color:#fff;box-shadow:0 0 0 1px rgba(203,82,232,.16),0 0 18px rgba(184,63,221,.18)}
-.voice-output-toggle:active{transform:scale(.98)}
+
+
