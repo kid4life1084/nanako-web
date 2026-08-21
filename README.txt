@@ -32,3 +32,6 @@ v8.9 Stable-VAD Omni Hybrid:
 
 
 v9.1: service worker caching disabled and legacy caches purged to prevent stale v8.x frontend from calling /api/speak.
+
+
+v9.2: Voice Output is now ON by default on every page load and is no longer restored from stale localStorage. The Voice Output setting alone controls whether Omni audio is requested; the speaker mute button only controls local playback. Added per-turn console logging of the requested voice_output value.
