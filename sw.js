@@ -1,4 +1,4 @@
-const CACHE_NAME = "nanako-shell-v9-layered-talking";
+const CACHE_NAME = "nanako-shell-v11-manual-interrupt-single-img";
 
 const APP_SHELL = [
   "./",

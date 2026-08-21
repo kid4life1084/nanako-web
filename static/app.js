@@ -2,9 +2,9 @@
 "use strict";
 
 // ============================================================
-// NANAKO CHARACTER RENDERER
-// Single canvas renderer. Only one frame is drawn at any moment.
-// This avoids stacked idle/talk layers, black underlays, and Safari lag.
+// NANAKO CHARACTER RENDERER v6
+// One visible <img> only. No canvas. No stacked portrait layers.
+// Idle and talking are mutually exclusive animation states.
 // ============================================================
 const NANAKO_FRAMES = {
   idle: {
@@ -21,181 +21,149 @@ const NANAKO_FRAMES = {
   ]
 };
 
-const NANAKO_RENDER_SIZE = 627;
 const frameCache = new Map();
+let nanakoImage = null;
+let nanakoMotion = null;
 let rendererReady = false;
-let rendererCanvas = null;
-let rendererCtx = null;
-let currentFrameKey = "idle:open";
 let characterMode = "idle"; // idle | talking
-let blinkTimer = 0;
-let blinkRunToken = 0;
-let talkTimer = 0;
-let talkCycle = 0;
 let idleEnabled = false;
+let blinkTimer = 0;
+let blinkToken = 0;
+let talkTimer = 0;
+let talkStep = 0;
 
 function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
 
-function rendererKeyToSrc(key){
-  if(key.startsWith("idle:")) return NANAKO_FRAMES.idle[key.split(":")[1]];
-  if(key.startsWith("talk:")) return NANAKO_FRAMES.talk[Number(key.split(":")[1])];
-  return "";
-}
-
-function loadImage(src){
+function loadFrame(key, src){
   return new Promise((resolve, reject)=>{
     const img = new Image();
-    img.onload = ()=>resolve(img);
-    img.onerror = ()=>reject(new Error(`Could not load ${src}`));
     img.decoding = "async";
+    img.onload = async ()=>{
+      try{ if(img.decode) await img.decode(); }catch{}
+      frameCache.set(key, img);
+      resolve();
+    };
+    img.onerror = ()=>reject(new Error(`Could not load ${src}`));
     img.src = src;
   });
 }
 
 async function preloadAllFrames(){
-  const entries = [
-    ["idle:open", NANAKO_FRAMES.idle.open],
-    ["idle:half", NANAKO_FRAMES.idle.half],
-    ["idle:closed", NANAKO_FRAMES.idle.closed],
-    ...NANAKO_FRAMES.talk.map((src, i)=>[`talk:${i}`, src])
+  const jobs = [
+    loadFrame("idle:open", NANAKO_FRAMES.idle.open),
+    loadFrame("idle:half", NANAKO_FRAMES.idle.half),
+    loadFrame("idle:closed", NANAKO_FRAMES.idle.closed),
+    ...NANAKO_FRAMES.talk.map((src,i)=>loadFrame(`talk:${i}`, src))
   ];
-
-  for(const [key, src] of entries){
-    const img = await loadImage(src);
-    frameCache.set(key, img);
-  }
-
+  await Promise.all(jobs);
   rendererReady = true;
-  console.log("[Nanako Renderer] All idle/talk frames preloaded.");
+  console.log("[Nanako Renderer] 8 frames loaded and decoded.");
 }
 
-function initRenderer(){
-  rendererCanvas = document.getElementById("nanakoCanvas");
-  rendererCtx = rendererCanvas?.getContext("2d", { alpha: true, desynchronized: true });
-  if(rendererCtx){
-    rendererCtx.imageSmoothingEnabled = true;
+function frameSrc(key){
+  const cached = frameCache.get(key);
+  return cached?.src || "";
+}
+
+function showFrame(key){
+  if(!nanakoImage) return;
+  const src = frameSrc(key);
+  if(src && nanakoImage.src !== src){
+    nanakoImage.src = src;
   }
 }
 
-function drawFrame(key){
-  if(!rendererCtx || !rendererCanvas || !frameCache.has(key)) return;
-  const img = frameCache.get(key);
-  rendererCtx.clearRect(0, 0, NANAKO_RENDER_SIZE, NANAKO_RENDER_SIZE);
-  rendererCtx.drawImage(img, 0, 0, NANAKO_RENDER_SIZE, NANAKO_RENDER_SIZE);
-  currentFrameKey = key;
-}
+function showIdle(name="open"){ showFrame(`idle:${name}`); }
+function showTalk(index=0){ showFrame(`talk:${index}`); }
 
-function renderIdle(name = "open"){
-  drawFrame(`idle:${name}`);
-}
-
-function renderTalk(index = 0){
-  drawFrame(`talk:${index}`);
-}
-
-function stopBlinkLoop(){
+function cancelBlink(){
   clearTimeout(blinkTimer);
   blinkTimer = 0;
-  blinkRunToken += 1;
+  blinkToken += 1;
 }
 
-async function performBlink(doubleBlink = false){
-  const token = ++blinkRunToken;
+async function blinkOnce(doubleBlink=false){
+  const token = ++blinkToken;
   if(characterMode !== "idle" || !idleEnabled) return;
 
-  renderIdle("half");
-  await sleep(70);
-  if(token !== blinkRunToken || characterMode !== "idle") return;
-
-  renderIdle("closed");
-  await sleep(95);
-  if(token !== blinkRunToken || characterMode !== "idle") return;
-
-  renderIdle("half");
-  await sleep(60);
-  if(token !== blinkRunToken || characterMode !== "idle") return;
-
-  renderIdle("open");
+  showIdle("half");
+  await sleep(72);
+  if(token!==blinkToken || characterMode!=="idle") return;
+  showIdle("closed");
+  await sleep(98);
+  if(token!==blinkToken || characterMode!=="idle") return;
+  showIdle("half");
+  await sleep(64);
+  if(token!==blinkToken || characterMode!=="idle") return;
+  showIdle("open");
 
   if(doubleBlink){
     await sleep(150);
-    if(token !== blinkRunToken || characterMode !== "idle") return;
-    renderIdle("half");
+    if(token!==blinkToken || characterMode!=="idle") return;
+    showIdle("half");
+    await sleep(58);
+    if(token!==blinkToken || characterMode!=="idle") return;
+    showIdle("closed");
+    await sleep(86);
+    if(token!==blinkToken || characterMode!=="idle") return;
+    showIdle("half");
     await sleep(55);
-    if(token !== blinkRunToken || characterMode !== "idle") return;
-    renderIdle("closed");
-    await sleep(85);
-    if(token !== blinkRunToken || characterMode !== "idle") return;
-    renderIdle("half");
-    await sleep(55);
-    if(token !== blinkRunToken || characterMode !== "idle") return;
-    renderIdle("open");
+    if(token!==blinkToken || characterMode!=="idle") return;
+    showIdle("open");
   }
 }
 
-function scheduleNextBlink(first = false){
-  stopBlinkLoop();
-  if(!idleEnabled || characterMode !== "idle") return;
-
-  const delay = first ? 1200 : 3200 + Math.random() * 4200;
-  blinkTimer = window.setTimeout(async ()=>{
-    await performBlink(Math.random() < 0.14);
-    scheduleNextBlink(false);
+function scheduleBlink(first=false){
+  cancelBlink();
+  if(characterMode !== "idle" || !idleEnabled) return;
+  const delay = first ? 1200 : 3200 + Math.random()*4200;
+  blinkTimer = setTimeout(async()=>{
+    await blinkOnce(Math.random()<0.14);
+    scheduleBlink(false);
   }, delay);
 }
 
-function startIdleLoop(forceSoon = false){
-  characterMode = "idle";
-  idleEnabled = true;
+function startIdleLoop(first=false){
   clearTimeout(talkTimer);
   talkTimer = 0;
-  renderIdle("open");
-  scheduleNextBlink(forceSoon);
+  talkStep = 0;
+  characterMode = "idle";
+  idleEnabled = true;
+  if(nanakoMotion) nanakoMotion.classList.remove("talking");
+  showIdle("open");
+  scheduleBlink(first);
 }
 
 function stopIdleLoop(){
   idleEnabled = false;
-  stopBlinkLoop();
-  renderIdle("open");
+  cancelBlink();
 }
 
-function nextTalkFrame(){
-  // Small/medium mouth shapes dominate. Wide/open-round are accents.
-  const patterns = [
-    [1,2,1,3,2,1,0],
-    [1,2,3,2,1,4,2,1,0],
-    [2,1,2,3,2,1,0],
-    [1,1,2,1,3,2,1,0]
-  ];
-  const pattern = patterns[talkCycle % patterns.length];
-  const index = pattern.shift();
-  pattern.push(index);
-  patterns[talkCycle % patterns.length] = pattern;
-  talkCycle += 1;
-  return index;
-}
-
+const TALK_SEQUENCE = [1,2,1,3,2,1,0,1,2,4,2,1,0,2,1,3,2,1];
 function runTalkLoop(){
   if(characterMode !== "talking") return;
-  renderTalk(nextTalkFrame());
-  talkTimer = window.setTimeout(runTalkLoop, 92 + Math.random() * 36);
+  showTalk(TALK_SEQUENCE[talkStep % TALK_SEQUENCE.length]);
+  talkStep += 1;
+  // Anime-style discrete mouth changes; no opacity transitions.
+  talkTimer = setTimeout(runTalkLoop, 118 + Math.random()*34);
 }
 
 function startTalkingLoop(){
-  stopBlinkLoop();
+  stopIdleLoop();
   characterMode = "talking";
+  talkStep = 0;
+  if(nanakoMotion) nanakoMotion.classList.add("talking");
+  showTalk(1);
   clearTimeout(talkTimer);
-  talkCycle = 0;
-  renderTalk(1);
-  talkTimer = window.setTimeout(runTalkLoop, 70);
-  console.log("[Nanako Renderer] Talking loop started.");
+  talkTimer = setTimeout(runTalkLoop, 90);
+  console.log("[Nanako Renderer] TALKING state active.");
 }
 
 function stopTalkingLoop(){
   clearTimeout(talkTimer);
   talkTimer = 0;
   startIdleLoop(false);
-  console.log("[Nanako Renderer] Returned to idle loop.");
+  console.log("[Nanako Renderer] IDLE state active.");
 }
 
 // ============================================================
@@ -203,19 +171,18 @@ function stopTalkingLoop(){
 // ============================================================
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VOICE=`${API}/api/voice`,RESET=`${API}/api/reset`;
 const VAD={
-  calibrationMs:220,
-  minSpeechMs:160,
-  silenceToEndMs:1000,
+  calibrationMs:350,
+  minSpeechMs:220,
+  silenceToEndMs:1500,
   noSpeechRestartMs:12000,
-  maxTurnMs:25000,
-  startFloor:.0042,
-  continueFloor:.0030,
-  startNoiseMultiplier:1.28,
-  continueNoiseMultiplier:1.06
+  maxTurnMs:30000,
+  startFloor:.007,
+  continueFloor:.0045,
+  startNoiseMultiplier:1.5,
+  continueNoiseMultiplier:1.15
 };
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false,bargeCtx=null,bargeAnalyser=null,bargeData=null,bargeRaf=0,bargeCandidate=0,ttsStartedAt=0,bargeBusy=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
-let ttsBoostCtx=null,ttsBoostSource=null,ttsBoostGain=null,ttsBoostCompressor=null,ttsBoostReady=false;
+let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -231,16 +198,115 @@ async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw ne
 async function apply(d,user){e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";if(b&&!muted)await play(b,m);else if(active)setTimeout(begin,20)}
 async function send(){let t=e.input.value.trim();if(!t||busy)return;busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
-async function ensureNanakoTtsBoost(){if(ttsBoostReady){try{if(ttsBoostCtx?.state==="suspended")await ttsBoostCtx.resume()}catch{}return true}const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass){console.warn("[Nanako Audio] Web Audio unavailable; using normal volume.");return false}try{ttsBoostCtx=new AudioContextClass();ttsBoostSource=ttsBoostCtx.createMediaElementSource(ttsAudio);ttsBoostGain=ttsBoostCtx.createGain();ttsBoostCompressor=ttsBoostCtx.createDynamicsCompressor();ttsBoostGain.gain.value=1.35;ttsBoostCompressor.threshold.value=-16;ttsBoostCompressor.knee.value=12;ttsBoostCompressor.ratio.value=3;ttsBoostCompressor.attack.value=.004;ttsBoostCompressor.release.value=.18;ttsBoostSource.connect(ttsBoostGain);ttsBoostGain.connect(ttsBoostCompressor);ttsBoostCompressor.connect(ttsBoostCtx.destination);if(ttsBoostCtx.state==="suspended")await ttsBoostCtx.resume();ttsBoostReady=true;return true}catch(error){console.warn("[Nanako Audio] Speaker boost unavailable; direct audio remains active.",error);ttsBoostReady=false;return false}}
-async function unlockAudio(){if(audioUnlocked){await ensureNanakoTtsBoost();return}try{await ensureNanakoTtsBoost();ttsAudio.src=SILENT_WAV;ttsAudio.volume=.01;await ttsAudio.play();ttsAudio.pause();ttsAudio.currentTime=0;ttsAudio.volume=1;audioUnlocked=true;console.log("[Nanako Audio] iOS playback unlocked.")}catch(x){console.warn("[Nanako Audio] unlock attempt failed:",x)}}
-async function stopAudio(resume=false){stopTalkingLoop();if(currentAudio){try{currentAudio.pause();currentAudio.src="";currentAudio.load()}catch{}currentAudio=null}convButton();if(resume&&active){status("Listening...");setTimeout(begin,20)}}
-async function play(b,m){if(!b||muted){if(active)setTimeout(begin,20);return false}await stopAudio(false);let a=ttsAudio;a.src=normalizeAudioSource(b,m);a.preload="auto";a.volume=1;a.playbackRate=.9;a.defaultPlaybackRate=.9;currentAudio=a;if(ttsBoostCtx?.state==="suspended"){ttsBoostCtx.resume().catch(()=>{})}convButton();let finish=()=>{stopTalkingLoop();if(currentAudio===a)currentAudio=null;convButton();if(active){status("Listening...");setTimeout(begin,20)}else status("Ready to chat")};a.onplaying=()=>{if(currentAudio!==a)return;ttsStartedAt=performance.now();bargeCandidate=0;startTalkingLoop();status("Nanako is speaking...");convButton();console.log("[Nanako Audio] Playback started.")};a.onended=()=>{console.log("[Nanako Audio] Finished speaking.");finish()};a.onerror=()=>{console.error("[Nanako Audio] Playback error.");finish()};try{await a.play();if(currentAudio===a&&characterMode!=="talking")startTalkingLoop();return true}catch(x){console.error("[Nanako TTS] Playback failed:",x);error("Nanako's voice could not play. Tap Start Conversation once more to unlock audio.");finish();return false}}
+async function unlockAudio(){
+  if(audioUnlocked) return;
+  try{
+    // Unlock plain HTMLAudio inside the user's tap gesture.
+    // No Web Audio gain/compressor is used in this build.
+    ttsAudio.src=SILENT_WAV;
+    ttsAudio.volume=.01;
+    await ttsAudio.play();
+    ttsAudio.pause();
+    ttsAudio.currentTime=0;
+    ttsAudio.volume=1;
+    audioUnlocked=true;
+    console.log("[Nanako Audio] Plain iOS playback unlocked.");
+  }catch(x){
+    console.warn("[Nanako Audio] unlock attempt failed:",x);
+  }
+}
+
+async function stopAudio(resume=false){
+  if(currentAudio){
+    try{
+      currentAudio.onplaying=null;
+      currentAudio.onended=null;
+      currentAudio.onerror=null;
+      currentAudio.pause();
+      currentAudio.src="";
+      currentAudio.load();
+    }catch{}
+    currentAudio=null;
+  }
+  stopTalkingLoop();
+  convButton();
+  if(resume&&active){
+    status("Listening...");
+    setTimeout(begin,40);
+  }
+}
+
+async function play(b,m){
+  if(!b||muted){
+    if(active)setTimeout(begin,40);
+    return false;
+  }
+
+  await stopAudio(false);
+
+  // Critical Safari simplification:
+  // completely release microphone capture while Nanako is speaking.
+  // There is NO voice barge-in detection in this build.
+  cleanup();
+  release();
+
+  const a=ttsAudio;
+  a.src=normalizeAudioSource(b,m);
+  a.preload="auto";
+  a.volume=1;
+  a.playbackRate=.86;
+  a.defaultPlaybackRate=.86;
+  currentAudio=a;
+  convButton();
+
+  let finished=false;
+  const finish=()=>{
+    if(finished)return;
+    finished=true;
+    stopTalkingLoop();
+    if(currentAudio===a)currentAudio=null;
+    convButton();
+    if(active){
+      status("Listening...");
+      // Reacquire mic only AFTER TTS is completely finished or interrupted.
+      setTimeout(begin,50);
+    }else{
+      status("Ready to chat");
+    }
+  };
+
+  a.onplaying=()=>{
+    if(currentAudio!==a)return;
+    startTalkingLoop();
+    status("Nanako is speaking...");
+    convButton();
+    console.log("[Nanako Audio] Playback started. Mic is OFF during TTS.");
+  };
+  a.onended=()=>{
+    console.log("[Nanako Audio] Finished speaking.");
+    finish();
+  };
+  a.onerror=()=>{
+    console.error("[Nanako Audio] Playback error.");
+    finish();
+  };
+
+  try{
+    await a.play();
+    if(currentAudio===a&&characterMode!=="talking")startTalkingLoop();
+    return true;
+  }catch(x){
+    console.error("[Nanako TTS] Playback failed:",x);
+    error("Nanako's voice could not play. Tap Start Conversation once more to unlock audio.");
+    finish();
+    return false;
+  }
+}
+
 async function mic(){if(stream&&stream.getTracks().some(t=>t.readyState==="live"))return stream;if(!navigator.mediaDevices?.getUserMedia)throw new Error("Microphone access requires HTTPS.");stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});return stream}
 function release(){stream?.getTracks().forEach(t=>t.stop());stream=null}
 function mime(){let c=["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"];return c.find(t=>MediaRecorder.isTypeSupported?.(t))||""}
 function rms(a){let s=0;for(let v of a)s+=v*v;return Math.sqrt(s/a.length)}
-function stopBargeMonitor(){if(bargeRaf)cancelAnimationFrame(bargeRaf);bargeRaf=0;try{bargeCtx?.close()}catch{}bargeCtx=bargeAnalyser=bargeData=null;bargeCandidate=0;bargeBusy=false}
-async function startBargeMonitor(){if(!active||!stream||bargeAnalyser)return;let AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;try{bargeCtx=new AC();if(bargeCtx.state==="suspended")await bargeCtx.resume();let src=bargeCtx.createMediaStreamSource(stream);bargeAnalyser=bargeCtx.createAnalyser();bargeAnalyser.fftSize=1024;bargeAnalyser.smoothingTimeConstant=.1;bargeData=new Float32Array(bargeAnalyser.fftSize);src.connect(bargeAnalyser);const tick=()=>{if(!active||!bargeAnalyser||!bargeData)return;bargeAnalyser.getFloatTimeDomainData(bargeData);let r=rms(bargeData),now=performance.now();if(currentAudio&&!bargeBusy&&now-ttsStartedAt>320){let base=hasGoodNoiseFloor?lastGoodNoiseFloor:noiseFloor;let threshold=Math.max(.0105,base*2.1);if(r>=threshold){if(!bargeCandidate)bargeCandidate=now;if(now-bargeCandidate>=170){bargeBusy=true;bargeCandidate=0;console.log("[Nanako Barge-in] User speech detected. Interrupting TTS.");stopAudio(false);status("Listening...");setTimeout(async()=>{bargeBusy=false;await begin()},15)}}else{bargeCandidate=0}}else if(!currentAudio){bargeCandidate=0}bargeRaf=requestAnimationFrame(tick)};bargeRaf=requestAnimationFrame(tick);console.log("[Nanako Barge-in] Enabled.")}catch(x){console.warn("[Nanako Barge-in] Could not start:",x);stopBargeMonitor()}}
 function cleanup(){if(raf)cancelAnimationFrame(raf);raf=0;try{ctx?.close()}catch{}ctx=analyser=data=null}
 function monitor(){if(!active||!rec||rec.state!=="recording"||!analyser||!data)return;analyser.getFloatTimeDomainData(data);let r=rms(data),now=performance.now(),age=now-turnStart;let db=r>0?20*Math.log10(r):-120,room=noiseFloor>0?20*Math.log10(noiseFloor):-120;e.debugMic.textContent=`Mic: ${db.toFixed(1)} dB`;e.debugRoom.textContent=`Room: ${room.toFixed(1)} dB`;e.debugSpeech.textContent=`Speech: ${speech?"Detected":"Waiting"}`;e.debugTurn.textContent=`Turn: ${(age/1000).toFixed(1)} sec`;
 if(!hasGoodNoiseFloor&&age<VAD.calibrationMs){noiseSamples.push(r);if(noiseSamples.length){let sorted=[...noiseSamples].sort((a,b)=>a-b);noiseFloor=sorted[Math.floor(sorted.length*.5)]||noiseFloor}raf=requestAnimationFrame(monitor);return}
@@ -252,15 +318,15 @@ async function startRec(){if(!active||busy||currentAudio||rec?.state==="recordin
 function stopRec(upload=true){if(!rec)return;if(raf)cancelAnimationFrame(raf);raf=0;uploadThisRecording=upload;if(rec.state!=="inactive")rec.stop()}
 async function uploadVoice(b){if(!active)return;busy=true;status("Nanako is thinking...");try{let f=new FormData(),type=b.type||"audio/mp4",ext=type.includes("mp4")?"m4a":type.includes("ogg")?"ogg":"webm";f.append("audio",b,`nanako_voice.${ext}`);f.append("level",level);let r=await fetch(VOICE,{method:"POST",body:f}),d=await jsonResp(r);if(d?.ignored){if(active){status("Listening...");setTimeout(begin,60)}return}let t=String(d?.transcript||"");console.log("[Nanako Web Voice] Transcript:",t);transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Voice turn failed");if(active)setTimeout(begin,500)}finally{busy=false}}
 async function begin(){if(!active||busy||currentAudio||rec?.state==="recording")return;await startRec()}
-async function startMode(){if(active)return;try{await unlockAudio();await mic();active=true;await startBargeMonitor();convButton();status("Listening...");await begin()}catch(x){error("Please allow microphone access in Safari.")}}
-async function stopMode(){active=false;if(rec?.state==="recording")stopRec(false);cleanup();stopBargeMonitor();release();await stopAudio(false);convButton();status("Ready to chat")}
+async function startMode(){if(active)return;try{await unlockAudio();active=true;convButton();status("Listening...");await begin()}catch(x){console.error(x);error("Please allow microphone access in Safari.")}}
+async function stopMode(){active=false;if(rec?.state==="recording")stopRec(false);cleanup();release();await stopAudio(false);convButton();status("Ready to chat")}
 async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;renderHistory();setScore(0);e.jp.textContent="こんにちは！ななこです。今日も気楽に話そう。";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{if(currentAudio&&active){console.log("[Nanako] Manual interruption.");stopAudio(true);return}active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
-window.addEventListener("beforeunload",()=>{stopTalkingLoop();stopIdleLoop();active=false;try{if(rec?.state==="recording")rec.stop()}catch{}cleanup();stopBargeMonitor();release();currentAudio?.pause()});if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));
+window.addEventListener("beforeunload",()=>{stopTalkingLoop();stopIdleLoop();active=false;try{if(rec?.state==="recording")rec.stop()}catch{}cleanup();release();currentAudio?.pause()});if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));
 
 async function boot(){
-  setScore(0);quick();convButton();renderHistory();initRenderer();
+  setScore(0);quick();convButton();renderHistory();nanakoImage=document.getElementById("nanakoImage");nanakoMotion=document.querySelector(".nanako-motion");
   try{
     await preloadAllFrames();
     startIdleLoop(true);
