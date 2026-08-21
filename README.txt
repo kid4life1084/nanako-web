@@ -12,3 +12,11 @@ Changes:
 Backend requirement:
 Deploy the matching alibaba_backend/app.py from the full bundle.
 The frontend alone cannot switch the AI provider.
+
+
+v8.4 Omni frontend audio fix:
+- Voice Output ON now converts returned base64 WAV into a Blob URL before HTMLAudio playback.
+- This avoids large data: URL playback issues in iOS Safari.
+- Direct HTMLAudio remains in use; no GainNode/compressor processing.
+- Added playback diagnostics and media error reporting.
+- Service worker cache bumped to force Safari/GitHub Pages to fetch the updated JS.

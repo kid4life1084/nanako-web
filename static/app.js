@@ -2,7 +2,7 @@
 "use strict";
 
 // ============================================================
-// NANAKO LAYERED FACE RENDERER v7.2 SAFETY BUILD
+// NANAKO LAYERED FACE RENDERER v8.4 OMNI FRONTEND AUDIO FIX.2 SAFETY BUILD
 // One static 627x627 base + one eye overlay + one mouth overlay.
 // Eyes and mouth animate independently. No full portrait swapping.
 // ============================================================
@@ -203,7 +203,7 @@ const VAD={
   continueNoiseMultiplier:1.15
 };
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn"),voiceOutput:$("voiceOutputButton")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,voiceOutput=localStorage.getItem("nanako_voice_output")!=="false",active=false,busy=false,currentAudio=null,stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+let level="auto",score=0,showRO=false,showEN=false,muted=false,voiceOutput=localStorage.getItem("nanako_voice_output")!=="false",active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -221,6 +221,19 @@ async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw ne
 async function apply(d,user){e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";if(b&&!muted)await play(b,m);else if(active)setTimeout(begin,20)}
 async function send(){let t=e.input.value.trim();if(!t||busy)return;busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:(voiceOutput&&!muted)})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
+function audioBlobUrlFromBase64(b,m){
+  let v=String(b||"").trim();
+  if(!v)return"";
+  if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);
+  const bin=atob(v);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const blob=new Blob([bytes],{type:m||"audio/wav"});
+  return URL.createObjectURL(blob);
+}
+function revokeCurrentAudioObjectUrl(){
+  if(currentAudioObjectUrl){try{URL.revokeObjectURL(currentAudioObjectUrl)}catch{}currentAudioObjectUrl="";}
+}
 async function unlockAudio(){
   if(audioUnlocked) return;
   try{
@@ -248,6 +261,7 @@ async function stopAudio(resume=false){
       currentAudio.pause();
       currentAudio.src="";
       currentAudio.load();
+      revokeCurrentAudioObjectUrl();
     }catch{}
     currentAudio=null;
   }
@@ -278,12 +292,21 @@ async function play(b,m){
   lipEnvelope=null;
 
   const a=ttsAudio;
-  a.src=normalizeAudioSource(b,m);
+  revokeCurrentAudioObjectUrl();
+  try{
+    currentAudioObjectUrl=audioBlobUrlFromBase64(b,m);
+    a.src=currentAudioObjectUrl;
+    console.log(`[Nanako Audio] Omni WAV prepared as Blob URL (${String(b).length} base64 chars, mime=${m||"audio/wav"}).`);
+  }catch(blobErr){
+    console.warn("[Nanako Audio] Blob conversion failed; falling back to data URL.",blobErr);
+    a.src=normalizeAudioSource(b,m);
+  }
   a.preload="auto";
   a.volume=1;
   a.playbackRate=.86;
   a.defaultPlaybackRate=.86;
   currentAudio=a;
+  try{a.load();}catch{}
 
   buildLipEnvelope(b)
     .then(env=>{if(currentAudio===a)lipEnvelope=env;})
@@ -319,7 +342,9 @@ async function play(b,m){
     finish();
   };
   a.onerror=()=>{
-    console.error("[Nanako Audio] Playback error.");
+    const me=a.error;
+    console.error("[Nanako Audio] Playback error.",me?{code:me.code,message:me.message}:"unknown media error");
+    error(`Nanako audio playback error${me?.code?` (code ${me.code})`:""}.`);
     finish();
   };
 
