@@ -20,3 +20,6 @@ v8.4 Omni frontend audio fix:
 - Direct HTMLAudio remains in use; no GainNode/compressor processing.
 - Added playback diagnostics and media error reporting.
 - Service worker cache bumped to force Safari/GitHub Pages to fetch the updated JS.
+
+
+v8.5: Split Omni reasoning and speech into separate requests to prevent long audio generation from trapping the conversation in Thinking.
