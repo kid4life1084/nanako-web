@@ -1,8 +1,12 @@
-NANAKO GITHUB PAGES - IDLE ANIMATION V1
+NANAKO GITHUB PAGES - IDLE ANIMATION V1.1 FIX
 
-Fully extract this ZIP before uploading to GitHub.
+This fixes the broken image loading caused by incorrect service-worker paths.
 
-Correct repository structure:
+IMPORTANT:
+Fully extract this ZIP first.
+Upload the extracted files/folders to the repository root.
+
+Correct structure:
 
 index.html
 manifest.webmanifest
@@ -19,13 +23,9 @@ static/
         idle_half.png
         idle_closed.png
 
-Implemented:
-- original user-provided Nanako open/half/closed eye frames
-- natural open -> half -> closed -> half -> open blink
-- randomized blink every ~2.7 to 7 seconds
-- occasional double blink
-- subtle breathing animation
-- tiny slow body sway
-- no changes to voice, VAD, barge-in, TTS, JLPT, history, or chat behavior
-
-Upload ONLY this frontend package to GitHub Pages.
+This build:
+- fixes service-worker asset paths
+- removes old broken caches automatically
+- keeps blink + breathing + sway
+- adds fallback to nanako_master.png if any idle frame is missing
+- preserves voice/VAD/barge-in behavior

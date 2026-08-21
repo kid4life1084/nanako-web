@@ -26,8 +26,20 @@ function preloadNanakoIdleFrames(){
 function setNanakoEyeFrame(name){
   const image = document.getElementById("nanakoImage");
   if(!image || !NANAKO_IDLE_FRAMES[name]) return;
-  image.src = NANAKO_IDLE_FRAMES[name];
-  image.dataset.eyeFrame = name;
+
+  const target = NANAKO_IDLE_FRAMES[name];
+
+  const probe = new Image();
+  probe.onload = () => {
+    image.src = target;
+    image.dataset.eyeFrame = name;
+  };
+  probe.onerror = () => {
+    console.warn("[Nanako Idle] Missing frame:", target);
+    image.src = "./static/characters/nanako/nanako_master.png";
+    image.dataset.eyeFrame = "fallback";
+  };
+  probe.src = target;
 }
 
 function sleepIdle(ms){
