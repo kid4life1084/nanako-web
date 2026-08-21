@@ -1,33 +1,18 @@
-NANAKO NORMAL TALKING ANIMATION v1.1
-TALKING FIX + LOUDER VOICE
+NANAKO NORMAL TALKING ANIMATION v1.2
+LAYERED MOUTH RENDERER FIX
 
-Fully extract this ZIP before uploading it to GitHub.
-
-FIX 1 - TALKING ANIMATION
-- Talking no longer waits for an async preload success flag.
-- All 5 mouth images are explicitly preloaded by index.html.
-- The first talk frame is shown immediately when TTS begins.
-- A second fallback start occurs immediately after audio.play() succeeds.
-- Mouth frames then update every ~86-144 ms.
-- Manual interrupt and hands-free barge-in still stop the mouth instantly.
-- Idle open/blink animation resumes when speaking ends.
-
-FIX 2 - NANAKO VOICE TOO SOFT
-- HTML audio was already at its maximum volume=1.
-- This build adds a Web Audio GainNode at 1.65x.
-- A gentle compressor reduces clipping on loud syllables.
-- The boost is initialized from the user's Start Conversation tap for iOS Safari.
-- If Web Audio boost is unavailable, Nanako falls back to normal audio automatically.
+WHAT CHANGED
+- Talking animation no longer swaps the main image src every ~0.1 sec.
+- Instead, the 5 talking frames are preloaded and placed as stacked image layers in the DOM.
+- During speech, the app only toggles which talk layer is visible.
+- This is much lighter for iPhone Safari and should make Nanako's mouth animation visibly run while she speaks.
 
 PRESERVED
-- VAD/microphone tuning
-- 1500 ms end-of-turn silence
-- fast listening restart
-- slower 0.86x Nanako TTS playback
-- hands-free barge-in
-- manual Interrupt Nanako
-- idle blinking/breathing/sway
+- Existing idle blink animation
+- Existing sway/breathing motion
+- Existing barge-in
+- Existing manual interrupt
+- Existing microphone / VAD tuning
 
 UPLOAD
-Upload ONLY the extracted frontend files/folders to GitHub Pages.
-No Alibaba backend changes are included.
+Extract this ZIP first, then upload the extracted frontend files/folders to GitHub Pages, replacing the current frontend.

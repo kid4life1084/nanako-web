@@ -12,12 +12,17 @@ transform-origin:50% 91%;
 animation:nanakoIdleBreath 5.8s ease-in-out infinite,nanakoIdleSway 9.6s ease-in-out infinite;
 will-change:transform
 }
+.nanako-avatar{position:relative;width:100%;height:100%}
 .nanako-image{
 width:100%;height:100%;object-fit:contain;object-position:center bottom;
 user-select:none;-webkit-user-drag:none;
 transform:translateZ(0);
 will-change:opacity
 }
+.nanako-layer{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .045s linear}
+.nanako-layer.active{opacity:1}
+.talk-layer{z-index:2}
+#nanakoImage{z-index:1}
 .nanako-image.blink-frame{animation:none}
 @keyframes nanakoIdleBreath{
 0%,100%{transform:translateY(0) scale(1)}

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<!-- Nanako Normal Talking Animation v1.1 talk-fix + audio-boost build -->
+<!-- Nanako Normal Talking Animation v1.2 layered-mouth-renderer build -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0910">
@@ -26,7 +26,16 @@
 </header>
 <div class="score-row"><div class="score-track"><div id="scoreFill" class="score-fill"></div></div><span id="scoreText">0</span></div>
 <section class="character-stage">
-<div class="nanako-motion"><img id="nanakoImage" class="nanako-image" src="./static/characters/nanako/idle/idle_open.png" alt="Nanako" onerror="this.onerror=null;this.src='./static/characters/nanako/nanako_master.png';"></div>
+<div class="nanako-motion">
+  <div id="nanakoAvatar" class="nanako-avatar">
+    <img id="nanakoImage" class="nanako-image nanako-layer active" src="./static/characters/nanako/idle/idle_open.png" alt="Nanako" onerror="this.onerror=null;this.src='./static/characters/nanako/nanako_master.png';">
+    <img id="nanakoTalk0" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_0.png" alt="Nanako talking frame 0">
+    <img id="nanakoTalk1" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_1.png" alt="Nanako talking frame 1">
+    <img id="nanakoTalk2" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_2.png" alt="Nanako talking frame 2">
+    <img id="nanakoTalk3" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_3.png" alt="Nanako talking frame 3">
+    <img id="nanakoTalk4" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_4.png" alt="Nanako talking frame 4">
+  </div>
+</div>
 <div id="userTranscript" class="user-transcript" hidden><strong>You</strong><span id="userTranscriptText"></span></div>
 </section>
 <section class="nanako-row">

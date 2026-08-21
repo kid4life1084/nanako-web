@@ -50,10 +50,12 @@ function setNanakoEyeFrame(name){
 
   if(!image || !src) return;
 
-  // Frames have already been preloaded, so switch them directly.
-  // Avoiding a new Image() probe here prevents async frame-order races.
   image.src = src;
   image.dataset.eyeFrame = name;
+
+  if(!nanakoTalking){
+    image.classList.add("active");
+  }
 }
 
 async function runNanakoBlink(doubleBlink=false){
@@ -114,6 +116,7 @@ function scheduleNanakoBlink(first=false){
 
 async function startNanakoIdleAnimation(){
   nanakoIdleStopped = false;
+  showNanakoIdleLayer();
   setNanakoEyeFrame("open");
 
   const loaded = await preloadNanakoIdleFrames();
@@ -137,6 +140,7 @@ function stopNanakoIdleAnimation(){
   nanakoIdleStopped = true;
   clearTimeout(nanakoBlinkTimer);
   setNanakoEyeFrame("open");
+  showNanakoIdleLayer();
 }
 
 // ============================================================
@@ -155,6 +159,29 @@ let nanakoTalkTimer = 0;
 let nanakoTalking = false;
 let nanakoTalkReady = false;
 let nanakoLastTalkFrame = 0;
+const NANAKO_TALK_LAYER_IDS = ["nanakoTalk0","nanakoTalk1","nanakoTalk2","nanakoTalk3","nanakoTalk4"];
+
+function getNanakoIdleLayer(){
+  return document.getElementById("nanakoImage");
+}
+
+function getNanakoTalkLayers(){
+  return NANAKO_TALK_LAYER_IDS.map(id => document.getElementById(id)).filter(Boolean);
+}
+
+function showNanakoIdleLayer(){
+  const idle = getNanakoIdleLayer();
+  const talkLayers = getNanakoTalkLayers();
+  if(idle) idle.classList.add("active");
+  talkLayers.forEach(layer => layer.classList.remove("active"));
+}
+
+function showNanakoTalkLayer(index){
+  const idle = getNanakoIdleLayer();
+  const talkLayers = getNanakoTalkLayers();
+  if(idle) idle.classList.remove("active");
+  talkLayers.forEach((layer, i) => layer.classList.toggle("active", i === index));
+}
 
 async function preloadNanakoTalkFrames(){
   try{
@@ -172,19 +199,9 @@ async function preloadNanakoTalkFrames(){
 }
 
 function setNanakoTalkFrame(index){
-  const image = document.getElementById("nanakoImage");
   const src = NANAKO_TALK_FRAMES[index];
-
-  if(!image || !src) return;
-
-  image.onerror = () => {
-    console.warn("[Nanako Talk] Could not load:", src);
-    image.onerror = null;
-    image.src = NANAKO_IDLE_FRAMES.open;
-  };
-
-  image.src = src;
-  image.dataset.talkFrame = String(index);
+  if(!src) return;
+  showNanakoTalkLayer(index);
 }
 
 function chooseNextNanakoTalkFrame(){
@@ -217,14 +234,9 @@ function scheduleNanakoTalkFrame(){
 function startNanakoTalkingAnimation(){
   nanakoTalking = true;
 
-  // Suspend idle blinking while the full-frame mouth portraits are active.
   clearTimeout(nanakoBlinkTimer);
   nanakoBlinking = false;
 
-  // IMPORTANT:
-  // Do not block animation on an async preload flag. The browser can display
-  // already cached/preloaded frames immediately, and can fetch any missing
-  // frame on demand. This makes the mouth loop robust on iPhone Safari.
   nanakoLastTalkFrame = 0;
   setNanakoTalkFrame(1);
 
@@ -234,7 +246,7 @@ function startNanakoTalkingAnimation(){
     70
   );
 
-  console.log("[Nanako Talk] Talking animation STARTED.");
+  console.log("[Nanako Talk] Layered talking animation STARTED.");
 }
 
 function stopNanakoTalkingAnimation(){
@@ -243,6 +255,7 @@ function stopNanakoTalkingAnimation(){
   nanakoTalkTimer = 0;
 
   setNanakoEyeFrame("open");
+  showNanakoIdleLayer();
 
   if(!nanakoIdleStopped && nanakoIdleReady){
     scheduleNanakoBlink(false);

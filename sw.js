@@ -1,4 +1,4 @@
-const CACHE_NAME = "nanako-shell-v8-talk-fix-audio-boost";
+const CACHE_NAME = "nanako-shell-v9-layered-talking";
 
 const APP_SHELL = [
   "./",
