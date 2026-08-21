@@ -404,20 +404,45 @@ async function begin(){if(!active||busy||currentAudio||rec?.state==="recording")
 async function startMode(){
   if(active||startingMode)return;
   startingMode=true;
-  // First tap immediately enters conversation mode. Audio unlock must never block microphone startup.
   active=true;
   convButton();
   status("Starting microphone...");
-  primeAudioUnlock();
   try{
+    // IMPORTANT FOR IOS SAFARI:
+    // Begin getUserMedia FIRST inside the tap gesture. In older builds we primed
+    // HTMLAudio before requesting the mic; on a cold page load Safari could let
+    // that media action consume the first interaction and the mic would only
+    // really start after a second tap.
+    const micPromise=mic();
+    // Prime future TTS playback only after the microphone request has already
+    // been synchronously initiated. Do not await the audio unlock.
+    primeAudioUnlock();
+    await micPromise;
     await startRec();
-    if(active&&rec?.state==="recording")status("Listening...");
+
+    // Cold-start watchdog: if Safari granted the stream but MediaRecorder did
+    // not enter recording state on the first attempt, retry internally once.
+    // This replaces the second manual tap the user previously had to make.
+    if(active&&rec?.state!=="recording"){
+      console.warn("[Nanako Start] First MediaRecorder start did not latch; retrying once.");
+      await sleep(180);
+      await startRec();
+    }
+
+    if(active&&rec?.state==="recording"){
+      status("Listening...");
+      console.log("[Nanako Start] Conversation started on first tap.");
+    }else if(active){
+      throw new Error("Microphone did not start recording.");
+    }
   }catch(x){
-    console.error(x);
+    console.error("[Nanako Start]",x);
     active=false;
+    cleanup();
+    release();
     convButton();
     status("Ready to chat");
-    error("Please allow microphone access in Safari.");
+    error("Microphone could not start. Please check Safari microphone permission.");
   }finally{
     startingMode=false;
   }
