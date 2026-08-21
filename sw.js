@@ -1,5 +1,4 @@
-const CACHE_NAME = "nanako-omni-v8-9-stable-vad";
-const APP_SHELL=["./", "./index.html", "./manifest.webmanifest", "./static/style.css?v=8.6", "./static/app.js?v=8.6", "./static/characters/nanako/layers/base/base.png", "./static/characters/nanako/layers/eyes/open.png", "./static/characters/nanako/layers/eyes/half.png", "./static/characters/nanako/layers/eyes/closed.png", "./static/characters/nanako/layers/mouth/closed.png", "./static/characters/nanako/layers/mouth/small.png", "./static/characters/nanako/layers/mouth/medium.png", "./static/characters/nanako/layers/mouth/wide.png", "./static/characters/nanako/layers/mouth/round.png"];
-self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(APP_SHELL)));self.skipWaiting();});
-self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
-self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE_NAME).then(c=>c.put(e.request,copy));return r;}).catch(()=>caches.match(e.request)));});
+const CACHE_NAME="nanako-v9-1-disabled";
+self.addEventListener("install",e=>{self.skipWaiting();});
+self.addEventListener("activate",e=>{e.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));await self.clients.claim();try{await self.registration.unregister();}catch{}})());});
+self.addEventListener("fetch",()=>{});

@@ -29,3 +29,6 @@ v8.9 Stable-VAD Omni Hybrid:
 - Restores the exact microphone/VAD thresholds AND capture/restart lifecycle from the user-designated stable pre-Omni safety build.
 - Keeps qwen3.5-omni-flash API integration, /api/speak Ono Anna voice output, Voice Output toggle, Blob WAV playback, layered face, no idle mouth movement, and manual interrupt.
 - No Alibaba backend change required from the working v8.5/v8.3 Omni backend.
+
+
+v9.1: service worker caching disabled and legacy caches purged to prevent stale v8.x frontend from calling /api/speak.

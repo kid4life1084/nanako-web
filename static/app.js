@@ -1,5 +1,21 @@
 (()=>{
 "use strict";
+// v9.1 SAFETY: purge legacy service workers/caches from pre-Omni frontend builds.
+// The app intentionally runs without a service worker during Omni stabilization.
+(async()=>{
+  try{
+    if("serviceWorker" in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if("caches" in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+    console.log("[Nanako v9.1] Legacy service workers/caches purged. Inline Omni audio frontend active.");
+  }catch(err){console.warn("[Nanako v9.1] Cache purge warning:",err);}
+})();
+
 
 // ============================================================
 // NANAKO LAYERED FACE RENDERER v7.2 SAFETY BUILD
@@ -190,6 +206,7 @@ function stopTalkingLoop(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
+console.log("[Nanako Build] v9.1 inline-audio / stable-VAD / no separate speak fetch");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VOICE=`${API}/api/voice`,RESET=`${API}/api/reset`;
 const VAD={
   calibrationMs:350,
@@ -381,9 +398,7 @@ document.addEventListener("visibilitychange",()=>{
   }
 });
 
-if("serviceWorker"in navigator){
-  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));
-}
+
 
 async function boot(){
   setScore(0);quick();convButton();renderHistory();nanakoEyes=document.getElementById("nanakoEyes");nanakoMouth=document.getElementById("nanakoMouth");nanakoMotion=document.querySelector(".nanako-motion");
