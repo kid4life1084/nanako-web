@@ -242,7 +242,7 @@ const VAD={
   continueNoiseMultiplier:1.15
 };
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,startingMode=false,currentAudio=null,currentAudioObjectUrl="",stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;const unlockAudioProbe=new Audio();unlockAudioProbe.preload="auto";unlockAudioProbe.playsInline=true;
+let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,startingMode=false,currentAudio=null,currentAudioObjectUrl="",stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false,audioUnlockPromise=null;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -261,31 +261,38 @@ function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.start
 function audioBlobUrlFromBase64(b,m){let v=String(b||"").trim();if(!v)return"";if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);const bin=atob(v);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:m||"audio/wav"}))}
 function revokeCurrentAudioObjectUrl(){if(currentAudioObjectUrl){try{URL.revokeObjectURL(currentAudioObjectUrl)}catch{}currentAudioObjectUrl=""}}
 function primeAudioUnlock(){
-  if(audioUnlocked) return;
+  if(audioUnlocked||audioUnlockPromise)return audioUnlockPromise;
   try{
-    // IMPORTANT: use a completely separate Audio element for Safari's first-tap
-    // media unlock. Never touch ttsAudio here. A delayed play() promise from the
-    // silent probe must not be able to pause/reset Ono Anna's real reply.
-    const a=unlockAudioProbe;
+    // Safari reliably grants playback permission to the media element that was
+    // actually played from the user's tap. Prime the REAL Nanako TTS element,
+    // but track the whole operation so a later real reply cannot race with it.
+    const a=ttsAudio;
     a.src=SILENT_WAV;
     a.volume=.01;
+    a.playbackRate=1;
+    a.defaultPlaybackRate=1;
+
     const p=a.play();
-    const finishUnlock=()=>{
-      try{a.pause();a.currentTime=0;a.removeAttribute("src");a.load();a.volume=1;}catch{}
+    audioUnlockPromise=Promise.resolve(p).then(()=>{
+      // Only clean up if this element is still playing the silent unlock clip.
+      // If a future code path has already replaced the source, never touch it.
+      if(a.src && (a.src===SILENT_WAV || a.src.startsWith("data:audio/wav;base64,UklGRiQAAABXQVZF"))){
+        try{a.pause();a.currentTime=0;a.removeAttribute("src");a.load();}catch{}
+      }
+      a.volume=1;
       audioUnlocked=true;
-      console.log("[Nanako Audio] First-tap audio unlock primed on isolated probe.");
-    };
-    if(p&&typeof p.then==="function"){
-      p.then(finishUnlock).catch(x=>{
-        console.warn("[Nanako Audio] unlock attempt deferred:",x);
-        try{a.pause();a.currentTime=0;a.removeAttribute("src");a.load();a.volume=1;}catch{}
-      });
-    }else{
-      finishUnlock();
-    }
+      console.log("[Nanako Audio] Real TTS element unlocked on first tap.");
+      return true;
+    }).catch(x=>{
+      console.warn("[Nanako Audio] first-tap unlock failed/deferred:",x);
+      audioUnlockPromise=null;
+      return false;
+    });
+    return audioUnlockPromise;
   }catch(x){
     console.warn("[Nanako Audio] unlock attempt failed:",x);
-    try{unlockAudioProbe.pause();unlockAudioProbe.removeAttribute("src");unlockAudioProbe.load();}catch{}
+    audioUnlockPromise=null;
+    return null;
   }
 }
 
@@ -314,6 +321,12 @@ async function play(b,m){
   if(!b||muted){
     if(active)setTimeout(begin,40);
     return false;
+  }
+
+  // If the first-tap Safari unlock is still settling, let it finish before
+  // replacing the same media element with Ono Anna's real WAV.
+  if(audioUnlockPromise){
+    try{await audioUnlockPromise;}catch{}
   }
 
   await stopAudio(false);
@@ -381,7 +394,7 @@ async function play(b,m){
     return true;
   }catch(x){
     console.error("[Nanako TTS] Playback failed:",x);
-    error("Nanako's voice could not play. Tap Start Conversation once more to unlock audio.");
+    error("Nanako's voice could not play. Please try the voice turn again.");
     finish();
     return false;
   }
@@ -487,7 +500,7 @@ async function boot(){
     setMouth("closed");
     if(nanakoAvatar){ requestAnimationFrame(()=>nanakoAvatar.classList.add("face-ready")); }
     startIdleLoop(true);
-    console.log("[Nanako] v10.2 IsolatedAudioUnlock fix loaded.");
+    console.log("[Nanako] v10.3 IsolatedAudioUnlock fix loaded.");
   }catch(err){
     console.error("[Nanako Renderer] Failed to preload:", err);
     error("Nanako images failed to load.");
