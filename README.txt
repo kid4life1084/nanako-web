@@ -1,33 +1,21 @@
-NANAKO LAYERED FACE v7
+NANAKO LAYERED FACE v7.1 FIX
 
-Production-style 2D face renderer test for iPhone Safari / GitHub Pages.
+- Uses the user's corrected 627x627 transparent base portrait with nose.
+- Fixes an undefined JavaScript variable that could let voice begin playing,
+  then immediately trigger a false playback error and stop lip animation.
+- Talking animation now starts reliably when TTS playback starts.
+- Eye blinking remains independent while Nanako speaks.
+- Idle eye animation is more natural: variable timing, occasional double blink,
+  and occasional slower half-lidded glance.
+- Added subtle idle mouth behavior: roughly every 6.5-15 seconds Nanako may
+  briefly open her mouth slightly and close it again. Occasionally it opens
+  a little more for a very short moment.
+- Idle mouth movement automatically stops while she is speaking.
+- Manual interrupt remains the only speech interruption method.
+- Direct HTMLAudio playback remains; no gain/compressor processing.
+- Adds Safari tab-resume handling so idle animation restarts cleanly after the
+  page has been backgrounded for a long time.
 
-ASSET STRUCTURE
-static/characters/nanako/layers/
-  base/base.png              627x627 blank-face body/head
-  eyes/open.png              cropped eye+eyebrow sprite
-  eyes/half.png              cropped eye+eyebrow sprite
-  eyes/closed.png            cropped eye+eyebrow sprite
-  mouth/closed.png           cropped mouth sprite
-  mouth/small.png            cropped mouth sprite
-  mouth/medium.png           cropped mouth sprite
-  mouth/wide.png             cropped mouth sprite
-  mouth/round.png            cropped mouth sprite
-  placements.json            build-time placement reference
-
-HOW IT WORKS
-- Base portrait never changes.
-- Exactly one eye overlay is displayed and can blink independently.
-- Exactly one mouth overlay is displayed and changes while TTS plays.
-- No full-portrait image swapping.
-- No stacked full talking/idle portraits.
-- No canvas clear/redraw.
-- No automatic spoken barge-in. Manual Interrupt Nanako button only.
-- Microphone is released while Nanako speaks and reacquired after speech/interrupt.
-- TTS audio remains plain HTMLAudio; no gain/compressor processing.
-- A separate decoded copy of the TTS is analysed for amplitude only. That analysis does not touch speaker playback.
-- Mouth opens/closes in sync with the TTS amplitude and closes on pauses.
-- Eye blinking continues independently during speech.
-
-UPLOAD
-Fully extract this ZIP, then upload the extracted contents to the GitHub Pages repo with folders intact.
+UPLOAD:
+Fully extract this ZIP and replace the existing GitHub Pages frontend with
+the extracted files/folders.

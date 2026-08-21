@@ -24,6 +24,7 @@ const LAYERS = {
 let nanakoEyes=null,nanakoMouth=null,nanakoMotion=null;
 const layerCache=new Map();
 let blinkTimer=0,blinkToken=0,blinkEnabled=true;
+let idleMouthTimer=0,idleMouthToken=0,idleMouthEnabled=true;
 let lipRaf=0,lipRunning=false,lipEnvelope=null,lastLipFrame="closed",lastLipUpdate=0;
 
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
@@ -33,18 +34,157 @@ function placePart(el,def){if(!el||!def)return;el.style.left=`${def.x/627*100}%`
 function setEyes(name){const def=LAYERS.eyes[name];const im=layerCache.get(`eyes:${name}`);if(!def||!im||!nanakoEyes)return;placePart(nanakoEyes,def);if(nanakoEyes.src!==im.src)nanakoEyes.src=im.src;}
 function setMouth(name){const def=LAYERS.mouth[name];const im=layerCache.get(`mouth:${name}`);if(!def||!im||!nanakoMouth)return;placePart(nanakoMouth,def);if(lastLipFrame!==name||nanakoMouth.src!==im.src){nanakoMouth.src=im.src;lastLipFrame=name;}}
 function cancelBlink(){clearTimeout(blinkTimer);blinkTimer=0;blinkToken+=1;}
-async function blinkOnce(doubleBlink=false){const token=++blinkToken;if(!blinkEnabled)return;setEyes("half");await sleep(65);if(token!==blinkToken||!blinkEnabled)return;setEyes("closed");await sleep(92);if(token!==blinkToken||!blinkEnabled)return;setEyes("half");await sleep(58);if(token!==blinkToken||!blinkEnabled)return;setEyes("open");if(doubleBlink){await sleep(145);if(token!==blinkToken||!blinkEnabled)return;setEyes("half");await sleep(55);if(token!==blinkToken||!blinkEnabled)return;setEyes("closed");await sleep(82);if(token!==blinkToken||!blinkEnabled)return;setEyes("half");await sleep(52);if(token!==blinkToken||!blinkEnabled)return;setEyes("open");}}
-function scheduleBlink(first=false){cancelBlink();if(!blinkEnabled)return;blinkTimer=setTimeout(async()=>{await blinkOnce(Math.random()<.12);scheduleBlink(false);},first?1200:3000+Math.random()*4000);}
-function startIdleLoop(first=false){blinkEnabled=true;setMouth("closed");if(nanakoMotion)nanakoMotion.classList.remove("talking");scheduleBlink(first);}
-function stopIdleLoop(){blinkEnabled=false;cancelBlink();}
+
+async function blinkOnce(doubleBlink=false){
+  const token=++blinkToken;
+  if(!blinkEnabled)return;
+
+  setEyes("half");
+  await sleep(72);
+  if(token!==blinkToken||!blinkEnabled)return;
+
+  setEyes("closed");
+  await sleep(96);
+  if(token!==blinkToken||!blinkEnabled)return;
+
+  setEyes("half");
+  await sleep(62);
+  if(token!==blinkToken||!blinkEnabled)return;
+
+  setEyes("open");
+
+  if(doubleBlink){
+    await sleep(135+Math.random()*55);
+    if(token!==blinkToken||!blinkEnabled)return;
+
+    setEyes("half");
+    await sleep(56);
+    if(token!==blinkToken||!blinkEnabled)return;
+
+    setEyes("closed");
+    await sleep(82);
+    if(token!==blinkToken||!blinkEnabled)return;
+
+    setEyes("half");
+    await sleep(52);
+    if(token!==blinkToken||!blinkEnabled)return;
+
+    setEyes("open");
+  }
+}
+
+async function sleepyHalfBlink(){
+  const token=++blinkToken;
+  if(!blinkEnabled)return;
+
+  setEyes("half");
+  await sleep(180+Math.random()*170);
+  if(token!==blinkToken||!blinkEnabled)return;
+  setEyes("open");
+}
+
+function scheduleBlink(first=false){
+  cancelBlink();
+  if(!blinkEnabled)return;
+
+  const delay=first ? 1100 : 2600+Math.random()*4300;
+
+  blinkTimer=setTimeout(async()=>{
+    const r=Math.random();
+    if(r<.10){
+      await blinkOnce(true);
+    }else if(r<.18){
+      await sleepyHalfBlink();
+    }else{
+      await blinkOnce(false);
+    }
+    scheduleBlink(false);
+  },delay);
+}
+
+function cancelIdleMouth(){
+  clearTimeout(idleMouthTimer);
+  idleMouthTimer=0;
+  idleMouthToken+=1;
+}
+
+async function idleMouthMoment(){
+  const token=++idleMouthToken;
+  if(!idleMouthEnabled||lipRunning||currentAudio)return;
+
+  setMouth("small");
+  await sleep(110+Math.random()*90);
+
+  if(token!==idleMouthToken||!idleMouthEnabled||lipRunning||currentAudio)return;
+
+  if(Math.random()<.16){
+    setMouth("medium");
+    await sleep(80+Math.random()*70);
+    if(token!==idleMouthToken||!idleMouthEnabled||lipRunning||currentAudio)return;
+  }
+
+  setMouth("closed");
+}
+
+function scheduleIdleMouth(first=false){
+  cancelIdleMouth();
+  if(!idleMouthEnabled||lipRunning)return;
+
+  const delay=first
+    ? 5200+Math.random()*3000
+    : 6500+Math.random()*8500;
+
+  idleMouthTimer=setTimeout(async()=>{
+    await idleMouthMoment();
+    scheduleIdleMouth(false);
+  },delay);
+}
+
+function startIdleLoop(first=false){
+  blinkEnabled=true;
+  idleMouthEnabled=true;
+  if(!lipRunning)setMouth("closed");
+  if(nanakoMotion)nanakoMotion.classList.remove("talking");
+  scheduleBlink(first);
+  scheduleIdleMouth(first);
+}
+
+function stopIdleLoop(){
+  blinkEnabled=false;
+  idleMouthEnabled=false;
+  cancelBlink();
+  cancelIdleMouth();
+}
 
 function bytesFromAudioSource(b){let s=String(b||"");if(!s)return null;if(s.startsWith("data:"))s=s.slice(s.indexOf(",")+1);try{const bin=atob(s);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer;}catch{return null;}}
 async function buildLipEnvelope(b){const ab=bytesFromAudioSource(b);if(!ab)return null;const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;const AC=window.AudioContext||window.webkitAudioContext;if(!OAC&&!AC)return null;let ac=null;let offline=true;try{if(OAC){ac=new OAC(1,1,44100);}else{ac=new AC();offline=false;}const buf=await ac.decodeAudioData(ab.slice(0));const sr=buf.sampleRate,binSec=.04,bin=Math.max(1,Math.round(sr*binSec)),len=Math.ceil(buf.length/bin),vals=new Float32Array(len);for(let i=0;i<len;i++){let sum=0,count=0;const start=i*bin,end=Math.min(buf.length,start+bin);for(let c=0;c<buf.numberOfChannels;c++){const d=buf.getChannelData(c);for(let j=start;j<end;j+=2){const v=d[j];sum+=v*v;count++;}}vals[i]=count?Math.sqrt(sum/count):0;}const sorted=Array.from(vals).filter(v=>v>0).sort((a,b)=>a-b);const pct=p=>sorted.length?sorted[Math.min(sorted.length-1,Math.floor((sorted.length-1)*p))]:0;const floor=pct(.18),peak=Math.max(pct(.9),floor+.0001);const norm=new Float32Array(vals.length);let sm=0;for(let i=0;i<vals.length;i++){let n=Math.max(0,Math.min(1,(vals[i]-floor)/(peak-floor)));sm=sm*.46+n*.54;norm[i]=sm;}return{binSec,values:norm};}catch(err){console.warn("[Nanako LipSync] Audio analysis unavailable; rhythmic fallback will be used.",err);return null;}finally{if(!offline){try{await ac?.close();}catch{}}}}
 function fallbackMouth(t){const seq=["small","medium","small","wide","medium","small","closed","medium","round","medium","small"];return seq[Math.floor(t*9)%seq.length];}
 function envelopeMouth(t){if(!lipEnvelope)return fallbackMouth(t);const i=Math.max(0,Math.min(lipEnvelope.values.length-1,Math.floor(t/lipEnvelope.binSec)));const v=lipEnvelope.values[i]||0;if(v<.075)return "closed";if(v<.27)return "small";if(v<.57)return "medium";const phase=Math.floor(t*7);if(v<.8&&phase%9===0)return "round";return "wide";}
 function lipTick(now){if(!lipRunning||!currentAudio)return;if(now-lastLipUpdate>=70){lastLipUpdate=now;setMouth(envelopeMouth(currentAudio.currentTime||0));}lipRaf=requestAnimationFrame(lipTick);}
-function startTalkingLoop(){lipRunning=true;lastLipUpdate=0;if(nanakoMotion)nanakoMotion.classList.add("talking");setMouth("small");cancelAnimationFrame(lipRaf);lipRaf=requestAnimationFrame(lipTick);console.log("[Nanako Layers] TALKING: mouth sync active; blinking remains independent.");}
-function stopTalkingLoop(){lipRunning=false;cancelAnimationFrame(lipRaf);lipRaf=0;lipEnvelope=null;setMouth("closed");if(nanakoMotion)nanakoMotion.classList.remove("talking");console.log("[Nanako Layers] TALKING stopped; mouth closed.");}
+function startTalkingLoop(){
+  if(lipRunning)return;
+  lipRunning=true;
+  idleMouthEnabled=false;
+  cancelIdleMouth();
+  lastLipUpdate=0;
+  if(nanakoMotion)nanakoMotion.classList.add("talking");
+  setMouth("small");
+  cancelAnimationFrame(lipRaf);
+  lipRaf=requestAnimationFrame(lipTick);
+  console.log("[Nanako Layers] TALKING: lip sync active; blinking continues independently.");
+}
+
+function stopTalkingLoop(){
+  lipRunning=false;
+  cancelAnimationFrame(lipRaf);
+  lipRaf=0;
+  lipEnvelope=null;
+  setMouth("closed");
+  idleMouthEnabled=true;
+  if(nanakoMotion)nanakoMotion.classList.remove("talking");
+  if(blinkEnabled)scheduleIdleMouth(false);
+  console.log("[Nanako Layers] TALKING stopped; idle mouth behavior restored.");
+}
 
 // ============================================================
 // APP / VOICE LOGIC
@@ -124,16 +264,15 @@ async function play(b,m){
 
   await stopAudio(false);
 
-  // Critical Safari simplification:
+  // Safari simplification:
   // completely release microphone capture while Nanako is speaking.
-  // There is NO voice barge-in detection in this build.
+  // Interruption is manual via the on-screen button.
   cleanup();
   release();
 
-  // Analyse a separate copy of the returned TTS for mouth amplitude only.
-  // This does NOT route or modify Nanako's actual speaker audio.
+  // Reset old lip-sync analysis. The analysis uses a separate copy and
+  // never modifies the actual HTMLAudio playback.
   lipEnvelope=null;
-  const lipPromise=buildLipEnvelope(b).then(env=>{lipEnvelope=env;return env;});
 
   const a=ttsAudio;
   a.src=normalizeAudioSource(b,m);
@@ -142,6 +281,11 @@ async function play(b,m){
   a.playbackRate=.86;
   a.defaultPlaybackRate=.86;
   currentAudio=a;
+
+  buildLipEnvelope(b)
+    .then(env=>{if(currentAudio===a)lipEnvelope=env;})
+    .catch(()=>{});
+
   convButton();
 
   let finished=false;
@@ -178,7 +322,7 @@ async function play(b,m){
 
   try{
     await a.play();
-    if(currentAudio===a&&characterMode!=="talking")startTalkingLoop();
+    if(currentAudio===a&&!lipRunning)startTalkingLoop();
     return true;
   }catch(x){
     console.error("[Nanako TTS] Playback failed:",x);
@@ -208,7 +352,31 @@ async function stopMode(){active=false;if(rec?.state==="recording")stopRec(false
 async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;renderHistory();setScore(0);e.jp.textContent="こんにちは！ななこです。今日も気楽に話そう。";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{if(currentAudio&&active){console.log("[Nanako] Manual interruption.");stopAudio(true);return}active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
-window.addEventListener("beforeunload",()=>{stopTalkingLoop();stopIdleLoop();active=false;try{if(rec?.state==="recording")rec.stop()}catch{}cleanup();release();currentAudio?.pause()});if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));
+window.addEventListener("beforeunload",()=>{
+  stopTalkingLoop();
+  stopIdleLoop();
+  active=false;
+  try{if(rec?.state==="recording")rec.stop()}catch{}
+  cleanup();
+  release();
+  currentAudio?.pause();
+});
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState!=="visible")return;
+
+  // Safari can suspend animation timers when a tab is backgrounded.
+  // Re-establish the idle face cleanly after returning.
+  if(!currentAudio){
+    setEyes("open");
+    setMouth("closed");
+    startIdleLoop(false);
+  }
+});
+
+if("serviceWorker"in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));
+}
 
 async function boot(){
   setScore(0);quick();convButton();renderHistory();nanakoEyes=document.getElementById("nanakoEyes");nanakoMouth=document.getElementById("nanakoMouth");nanakoMotion=document.querySelector(".nanako-motion");
@@ -217,7 +385,7 @@ async function boot(){
     setEyes("open");
     setMouth("closed");
     startIdleLoop(true);
-    console.log("[Nanako] Layered-face renderer v7 loaded.");
+    console.log("[Nanako] Layered-face renderer v7.1 FIX loaded.");
   }catch(err){
     console.error("[Nanako Renderer] Failed to preload:", err);
     error("Nanako images failed to load.");
