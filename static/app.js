@@ -242,7 +242,7 @@ const VAD={
   continueNoiseMultiplier:1.15
 };
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,startingMode=false,currentAudio=null,currentAudioObjectUrl="",stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -260,21 +260,29 @@ async function send(){let t=e.input.value.trim();if(!t||busy)return;busy=true;st
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
 function audioBlobUrlFromBase64(b,m){let v=String(b||"").trim();if(!v)return"";if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);const bin=atob(v);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:m||"audio/wav"}))}
 function revokeCurrentAudioObjectUrl(){if(currentAudioObjectUrl){try{URL.revokeObjectURL(currentAudioObjectUrl)}catch{}currentAudioObjectUrl=""}}
-async function unlockAudio(){
+function primeAudioUnlock(){
   if(audioUnlocked) return;
   try{
-    // Unlock plain HTMLAudio inside the user's tap gesture.
-    // No Web Audio gain/compressor is used in this build.
+    // Prime Safari audio inside the first tap, but DO NOT wait for it before starting the mic.
     ttsAudio.src=SILENT_WAV;
     ttsAudio.volume=.01;
-    await ttsAudio.play();
-    ttsAudio.pause();
-    ttsAudio.currentTime=0;
-    ttsAudio.volume=1;
-    audioUnlocked=true;
-    console.log("[Nanako Audio] Plain iOS playback unlocked.");
+    const p=ttsAudio.play();
+    if(p&&typeof p.then==="function"){
+      p.then(()=>{
+        try{ttsAudio.pause();ttsAudio.currentTime=0;ttsAudio.volume=1;}catch{}
+        audioUnlocked=true;
+        console.log("[Nanako Audio] First-tap audio unlock primed.");
+      }).catch(x=>{
+        console.warn("[Nanako Audio] unlock attempt deferred:",x);
+        try{ttsAudio.pause();ttsAudio.currentTime=0;ttsAudio.volume=1;}catch{}
+      });
+    }else{
+      try{ttsAudio.pause();ttsAudio.currentTime=0;ttsAudio.volume=1;}catch{}
+      audioUnlocked=true;
+    }
   }catch(x){
     console.warn("[Nanako Audio] unlock attempt failed:",x);
+    try{ttsAudio.volume=1;}catch{}
   }
 }
 
@@ -393,8 +401,28 @@ async function uploadVoice(b){if(!active)return;busy=true;status("Nanako is thin
   f.append("voice_output", "true");
   console.log(`[Nanako Voice Request] voice_output=FORCED_TRUE muted=${muted}`);let r=await fetch(VOICE,{method:"POST",body:f}),d=await jsonResp(r);if(d?.ignored){if(active){status("Listening...");setTimeout(begin,60)}return}let t=String(d?.transcript||"");console.log("[Nanako Web Voice] Transcript:",t);transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Voice turn failed");if(active)setTimeout(begin,500)}finally{busy=false}}
 async function begin(){if(!active||busy||currentAudio||rec?.state==="recording")return;await startRec()}
-async function startMode(){if(active)return;try{await unlockAudio();active=true;convButton();status("Listening...");await begin()}catch(x){console.error(x);error("Please allow microphone access in Safari.")}}
-async function stopMode(){active=false;if(rec?.state==="recording")stopRec(false);cleanup();release();await stopAudio(false);convButton();status("Ready to chat")}
+async function startMode(){
+  if(active||startingMode)return;
+  startingMode=true;
+  // First tap immediately enters conversation mode. Audio unlock must never block microphone startup.
+  active=true;
+  convButton();
+  status("Starting microphone...");
+  primeAudioUnlock();
+  try{
+    await startRec();
+    if(active&&rec?.state==="recording")status("Listening...");
+  }catch(x){
+    console.error(x);
+    active=false;
+    convButton();
+    status("Ready to chat");
+    error("Please allow microphone access in Safari.");
+  }finally{
+    startingMode=false;
+  }
+}
+async function stopMode(){startingMode=false;active=false;if(rec?.state==="recording")stopRec(false);cleanup();release();await stopAudio(false);convButton();status("Ready to chat")}
 async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;renderHistory();setScore(0);e.jp.textContent="こんにちは！ななこです。今日も気楽に話そう。";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{if(currentAudio&&active){console.log("[Nanako] Manual interruption.");stopAudio(true);return}active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
@@ -431,7 +459,7 @@ async function boot(){
     setMouth("closed");
     if(nanakoAvatar){ requestAnimationFrame(()=>nanakoAvatar.classList.add("face-ready")); }
     startIdleLoop(true);
-    console.log("[Nanako] StartupVisual v9.9 loaded.");
+    console.log("[Nanako] v10.0 FirstTapStart fix loaded.");
   }catch(err){
     console.error("[Nanako Renderer] Failed to preload:", err);
     error("Nanako images failed to load.");
