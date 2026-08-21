@@ -23,3 +23,15 @@
 .history-empty{padding:30px 0;color:#908793;text-align:center}.history-bubble{margin-bottom:9px;padding:13px;border:1px solid #302936;border-radius:16px;background:#100e14}.history-bubble.user{border-color:#4d305c;background:#211429}.history-role{color:#c45ddd;font-size:9px;font-weight:900}.history-text{margin-top:4px;font-size:14px;line-height:20px}.history-correction{margin-top:10px;padding-top:9px;border-top:1px solid #3a3040}.history-wrong{color:#9c949f;text-decoration:line-through}.history-correct{margin-top:4px;color:#ff727c;font-weight:800}
 @media(max-height:700px){.character-stage{min-height:190px}.reply-card{height:112px}}
 @media (prefers-reduced-motion:reduce){.nanako-motion{animation:none!important}}
+
+
+/* ==========================================================
+   QWEN3.5 OMNI — VOICE OUTPUT TOGGLE
+   Highlighted = ON. Dark = OFF.
+   ========================================================== */
+.voice-output-block .settings-row{align-items:center;gap:16px}
+.voice-output-block .settings-row>span{display:flex;flex-direction:column;gap:4px}
+.settings-hint{display:block;font-size:12px;font-weight:500;color:#8f8798}
+.voice-output-toggle{min-width:78px;height:44px;border-radius:24px;border:1px solid #45394c;background:#17131c;color:#9e96a6;font-size:14px;font-weight:800;letter-spacing:.04em;transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease}
+.voice-output-toggle.active{background:#7d35a2;border-color:#bd55e3;color:#fff;box-shadow:0 0 0 1px rgba(203,82,232,.16),0 0 18px rgba(184,63,221,.18)}
+.voice-output-toggle:active{transform:scale(.98)}
