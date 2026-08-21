@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="en">
 <head>
-<!-- Nanako 627x627 Animation Performance Test build -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0910">
@@ -11,12 +10,14 @@
 <title>Nanako</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="stylesheet" href="./static/style.css">
+<link rel="preload" as="image" href="./static/characters/nanako/idle/idle_open.png">
+<link rel="preload" as="image" href="./static/characters/nanako/idle/idle_half.png">
+<link rel="preload" as="image" href="./static/characters/nanako/idle/idle_closed.png">
 <link rel="preload" as="image" href="./static/characters/nanako/talk/talk_0.png">
 <link rel="preload" as="image" href="./static/characters/nanako/talk/talk_1.png">
 <link rel="preload" as="image" href="./static/characters/nanako/talk/talk_2.png">
 <link rel="preload" as="image" href="./static/characters/nanako/talk/talk_3.png">
 <link rel="preload" as="image" href="./static/characters/nanako/talk/talk_4.png">
-
 </head>
 <body>
 <main class="app-shell"><section class="nanako-app">
@@ -25,19 +26,16 @@
 <div class="top-actions"><span id="levelBadge" class="level-badge">Auto</span><button id="menuButton" class="round-button">•••</button></div>
 </header>
 <div class="score-row"><div class="score-track"><div id="scoreFill" class="score-fill"></div></div><span id="scoreText">0</span></div>
+
 <section class="character-stage">
-<div class="nanako-motion">
-  <div id="nanakoAvatar" class="nanako-avatar">
-    <img id="nanakoImage" class="nanako-image nanako-layer active" src="./static/characters/nanako/idle/idle_open.png" alt="Nanako" onerror="this.onerror=null;this.src='./static/characters/nanako/nanako_master.png';">
-    <img id="nanakoTalk0" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_0.png" alt="Nanako talking frame 0">
-    <img id="nanakoTalk1" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_1.png" alt="Nanako talking frame 1">
-    <img id="nanakoTalk2" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_2.png" alt="Nanako talking frame 2">
-    <img id="nanakoTalk3" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_3.png" alt="Nanako talking frame 3">
-    <img id="nanakoTalk4" class="nanako-image nanako-layer talk-layer" src="./static/characters/nanako/talk/talk_4.png" alt="Nanako talking frame 4">
+  <div class="nanako-motion">
+    <div id="nanakoAvatar" class="nanako-avatar">
+      <canvas id="nanakoCanvas" class="nanako-canvas" width="627" height="627" aria-label="Nanako" role="img"></canvas>
+    </div>
   </div>
-</div>
-<div id="userTranscript" class="user-transcript" hidden><strong>You</strong><span id="userTranscriptText"></span></div>
+  <div id="userTranscript" class="user-transcript" hidden><strong>You</strong><span id="userTranscriptText"></span></div>
 </section>
+
 <section class="nanako-row">
 <div class="avatar">N</div>
 <div class="nanako-copy"><strong>Nanako</strong><span id="statusText">Ready to chat</span></div>
@@ -45,11 +43,13 @@
 <button id="englishButton" class="quick-button">EN</button>
 <button id="muteButton" class="quick-button">🔊</button>
 </section>
+
 <section class="reply-card">
 <div id="japaneseReply" class="japanese-reply">こんにちは！ななこです。今日も気楽に話そう。</div>
 <div id="romajiSection" class="helper-section" hidden><div class="helper-label">ROMAJI</div><div id="romajiReply" class="helper-text"></div></div>
 <div id="englishSection" class="helper-section" hidden><div class="helper-label">ENGLISH</div><div id="englishReply" class="helper-text"></div></div>
 </section>
+
 <section class="input-row"><input id="messageInput" placeholder="Type in Japanese or English..."><button id="sendButton" class="send-button">➤</button></section>
 <button id="conversationButton" class="conversation-button">🎤 Start Conversation</button>
 <div id="correctionToast" class="correction-toast" hidden><strong>Correction</strong><div id="wrongText" class="wrong-text"></div><div id="correctText" class="correct-text"></div></div>

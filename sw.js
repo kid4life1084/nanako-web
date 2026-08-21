@@ -1,4 +1,4 @@
-const CACHE_NAME = "nanako-shell-v10-627-animation-test";
+const CACHE_NAME = "nanako-shell-v9-layered-talking";
 
 const APP_SHELL = [
   "./",
