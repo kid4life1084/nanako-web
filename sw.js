@@ -1,46 +1,5 @@
-const CACHE_NAME = "nanako-shell-v11-manual-interrupt-single-img";
-
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./manifest.webmanifest",
-  "./static/style.css",
-  "./static/app.js",
-  "./static/characters/nanako/nanako_master.png",
-  "./static/characters/nanako/idle/idle_open.png",
-  "./static/characters/nanako/idle/idle_half.png",
-  "./static/characters/nanako/idle/idle_closed.png",
-  "./static/characters/nanako/talk/talk_0.png",
-  "./static/characters/nanako/talk/talk_1.png",
-  "./static/characters/nanako/talk/talk_2.png",
-  "./static/characters/nanako/talk/talk_3.png",
-  "./static/characters/nanako/talk/talk_4.png"
-];
-
-self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      )
-    ).then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch", event => {
-  if(event.request.method !== "GET") return;
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
-});
+const CACHE_NAME="nanako-shell-v11-layered-face";
+const APP_SHELL=["./", "./index.html", "./manifest.webmanifest", "./static/style.css", "./static/app.js", "./static/characters/nanako/layers/base/base.png", "./static/characters/nanako/layers/eyes/open.png", "./static/characters/nanako/layers/eyes/half.png", "./static/characters/nanako/layers/eyes/closed.png", "./static/characters/nanako/layers/mouth/closed.png", "./static/characters/nanako/layers/mouth/small.png", "./static/characters/nanako/layers/mouth/medium.png", "./static/characters/nanako/layers/mouth/wide.png", "./static/characters/nanako/layers/mouth/round.png"];
+self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(APP_SHELL)));self.skipWaiting();});
+self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE_NAME).then(c=>c.put(e.request,copy));return r;}).catch(()=>caches.match(e.request)));});

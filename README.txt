@@ -1,46 +1,33 @@
-NANAKO v6 - MANUAL INTERRUPT + SINGLE IMAGE RENDERER
+NANAKO LAYERED FACE v7
 
-PURPOSE
-This build removes the browser workload that was causing the previous Safari tests to become choppy.
+Production-style 2D face renderer test for iPhone Safari / GitHub Pages.
 
-ANIMATION
-- Uses ONE visible <img> element for Nanako.
-- There are NO stacked idle/talking portrait layers.
-- There is NO canvas clear/redraw cycle.
-- There is NO opacity crossfade between frames.
-- There is NO black PNG/background layer behind the talking frames.
-- All 8 user-supplied 627x627 transparent PNGs are preloaded and decoded before animation begins.
-- IDLE state: only idle_open / idle_half / idle_closed are used.
-- TALKING state: idle timer is cancelled completely and only talk_0..talk_4 are used.
-- When TTS finishes or is manually interrupted, talking stops and the idle loop restarts.
-- Breathing/sway animation is disabled while Nanako talks, then resumes during idle.
+ASSET STRUCTURE
+static/characters/nanako/layers/
+  base/base.png              627x627 blank-face body/head
+  eyes/open.png              cropped eye+eyebrow sprite
+  eyes/half.png              cropped eye+eyebrow sprite
+  eyes/closed.png            cropped eye+eyebrow sprite
+  mouth/closed.png           cropped mouth sprite
+  mouth/small.png            cropped mouth sprite
+  mouth/medium.png           cropped mouth sprite
+  mouth/wide.png             cropped mouth sprite
+  mouth/round.png            cropped mouth sprite
+  placements.json            build-time placement reference
 
-VOICE / INTERRUPT
-- Hands-free voice barge-in detection has been COMPLETELY REMOVED.
-- There is no microphone analyser running while Nanako speaks.
-- The microphone stream is fully released before TTS playback begins.
-- The microphone is reacquired only after Nanako finishes speaking or you press the Interrupt Nanako button.
-- Manual Interrupt Nanako remains available while she is speaking.
-- Experimental Web Audio gain/compressor processing has been removed.
-- Nanako TTS uses plain HTMLAudio playback again at 0.86x.
-
-LISTENING
-- Restored the previously stable browser VAD settings:
-  calibration 350 ms
-  minimum speech 220 ms
-  end-of-turn silence 1500 ms
-  start floor 0.007
-  continue floor 0.0045
-  start multiplier 1.5
-  continue multiplier 1.15
-
-ASSETS
-Idle: 3 x 627x627 transparent PNG
-Talking: 5 x 627x627 transparent PNG
+HOW IT WORKS
+- Base portrait never changes.
+- Exactly one eye overlay is displayed and can blink independently.
+- Exactly one mouth overlay is displayed and changes while TTS plays.
+- No full-portrait image swapping.
+- No stacked full talking/idle portraits.
+- No canvas clear/redraw.
+- No automatic spoken barge-in. Manual Interrupt Nanako button only.
+- Microphone is released while Nanako speaks and reacquired after speech/interrupt.
+- TTS audio remains plain HTMLAudio; no gain/compressor processing.
+- A separate decoded copy of the TTS is analysed for amplitude only. That analysis does not touch speaker playback.
+- Mouth opens/closes in sync with the TTS amplitude and closes on pauses.
+- Eye blinking continues independently during speech.
 
 UPLOAD
-1. Fully extract this ZIP.
-2. Upload the extracted files/folders to the GitHub Pages repo, replacing the previous frontend.
-3. Keep the folder structure intact.
-4. Wait for GitHub Pages deployment.
-5. Reopen the page in Safari. A private tab is useful for the first test if Safari caches the old service worker.
+Fully extract this ZIP, then upload the extracted contents to the GitHub Pages repo with folders intact.

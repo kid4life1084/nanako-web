@@ -2,169 +2,49 @@
 "use strict";
 
 // ============================================================
-// NANAKO CHARACTER RENDERER v6
-// One visible <img> only. No canvas. No stacked portrait layers.
-// Idle and talking are mutually exclusive animation states.
+// NANAKO LAYERED FACE RENDERER v7
+// One static 627x627 base + one eye overlay + one mouth overlay.
+// Eyes and mouth animate independently. No full portrait swapping.
 // ============================================================
-const NANAKO_FRAMES = {
-  idle: {
-    open: "./static/characters/nanako/idle/idle_open.png",
-    half: "./static/characters/nanako/idle/idle_half.png",
-    closed: "./static/characters/nanako/idle/idle_closed.png"
+const LAYERS = {
+  eyes: {
+    open: {"x": 212, "y": 202, "w": 206, "h": 76, "file": "./static/characters/nanako/layers/eyes/open.png"},
+    half: {"x": 209, "y": 205, "w": 210, "h": 72, "file": "./static/characters/nanako/layers/eyes/half.png"},
+    closed: {"x": 208, "y": 258, "w": 215, "h": 30, "file": "./static/characters/nanako/layers/eyes/closed.png"}
   },
-  talk: [
-    "./static/characters/nanako/talk/talk_0.png",
-    "./static/characters/nanako/talk/talk_1.png",
-    "./static/characters/nanako/talk/talk_2.png",
-    "./static/characters/nanako/talk/talk_3.png",
-    "./static/characters/nanako/talk/talk_4.png"
-  ]
+  mouth: {
+    closed: {"x": 289, "y": 336, "w": 54, "h": 14, "file": "./static/characters/nanako/layers/mouth/closed.png"},
+    small: {"x": 288, "y": 333, "w": 55, "h": 23, "file": "./static/characters/nanako/layers/mouth/small.png"},
+    medium: {"x": 284, "y": 331, "w": 61, "h": 34, "file": "./static/characters/nanako/layers/mouth/medium.png"},
+    wide: {"x": 280, "y": 335, "w": 69, "h": 34, "file": "./static/characters/nanako/layers/mouth/wide.png"},
+    round: {"x": 298, "y": 329, "w": 30, "h": 45, "file": "./static/characters/nanako/layers/mouth/round.png"}
+  }
 };
 
-const frameCache = new Map();
-let nanakoImage = null;
-let nanakoMotion = null;
-let rendererReady = false;
-let characterMode = "idle"; // idle | talking
-let idleEnabled = false;
-let blinkTimer = 0;
-let blinkToken = 0;
-let talkTimer = 0;
-let talkStep = 0;
+let nanakoEyes=null,nanakoMouth=null,nanakoMotion=null;
+const layerCache=new Map();
+let blinkTimer=0,blinkToken=0,blinkEnabled=true;
+let lipRaf=0,lipRunning=false,lipEnvelope=null,lastLipFrame="closed",lastLipUpdate=0;
 
-function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function preloadLayer(key,def){return new Promise((resolve,reject)=>{const im=new Image();im.decoding="async";im.onload=async()=>{try{if(im.decode)await im.decode();}catch{}layerCache.set(key,im);resolve();};im.onerror=()=>reject(new Error(`Could not load ${def.file}`));im.src=def.file;});}
+async function preloadFaceLayers(){const jobs=[];for(const [k,v] of Object.entries(LAYERS.eyes))jobs.push(preloadLayer(`eyes:${k}`,v));for(const [k,v] of Object.entries(LAYERS.mouth))jobs.push(preloadLayer(`mouth:${k}`,v));await Promise.all(jobs);console.log("[Nanako Layers] All eye/mouth sprites loaded and decoded.");}
+function placePart(el,def){if(!el||!def)return;el.style.left=`${def.x/627*100}%`;el.style.top=`${def.y/627*100}%`;el.style.width=`${def.w/627*100}%`;el.style.height=`${def.h/627*100}%`;}
+function setEyes(name){const def=LAYERS.eyes[name];const im=layerCache.get(`eyes:${name}`);if(!def||!im||!nanakoEyes)return;placePart(nanakoEyes,def);if(nanakoEyes.src!==im.src)nanakoEyes.src=im.src;}
+function setMouth(name){const def=LAYERS.mouth[name];const im=layerCache.get(`mouth:${name}`);if(!def||!im||!nanakoMouth)return;placePart(nanakoMouth,def);if(lastLipFrame!==name||nanakoMouth.src!==im.src){nanakoMouth.src=im.src;lastLipFrame=name;}}
+function cancelBlink(){clearTimeout(blinkTimer);blinkTimer=0;blinkToken+=1;}
+async function blinkOnce(doubleBlink=false){const token=++blinkToken;if(!blinkEnabled)return;setEyes("half");await sleep(65);if(token!==blinkToken||!blinkEnabled)return;setEyes("closed");await sleep(92);if(token!==blinkToken||!blinkEnabled)return;setEyes("half");await sleep(58);if(token!==blinkToken||!blinkEnabled)return;setEyes("open");if(doubleBlink){await sleep(145);if(token!==blinkToken||!blinkEnabled)return;setEyes("half");await sleep(55);if(token!==blinkToken||!blinkEnabled)return;setEyes("closed");await sleep(82);if(token!==blinkToken||!blinkEnabled)return;setEyes("half");await sleep(52);if(token!==blinkToken||!blinkEnabled)return;setEyes("open");}}
+function scheduleBlink(first=false){cancelBlink();if(!blinkEnabled)return;blinkTimer=setTimeout(async()=>{await blinkOnce(Math.random()<.12);scheduleBlink(false);},first?1200:3000+Math.random()*4000);}
+function startIdleLoop(first=false){blinkEnabled=true;setMouth("closed");if(nanakoMotion)nanakoMotion.classList.remove("talking");scheduleBlink(first);}
+function stopIdleLoop(){blinkEnabled=false;cancelBlink();}
 
-function loadFrame(key, src){
-  return new Promise((resolve, reject)=>{
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = async ()=>{
-      try{ if(img.decode) await img.decode(); }catch{}
-      frameCache.set(key, img);
-      resolve();
-    };
-    img.onerror = ()=>reject(new Error(`Could not load ${src}`));
-    img.src = src;
-  });
-}
-
-async function preloadAllFrames(){
-  const jobs = [
-    loadFrame("idle:open", NANAKO_FRAMES.idle.open),
-    loadFrame("idle:half", NANAKO_FRAMES.idle.half),
-    loadFrame("idle:closed", NANAKO_FRAMES.idle.closed),
-    ...NANAKO_FRAMES.talk.map((src,i)=>loadFrame(`talk:${i}`, src))
-  ];
-  await Promise.all(jobs);
-  rendererReady = true;
-  console.log("[Nanako Renderer] 8 frames loaded and decoded.");
-}
-
-function frameSrc(key){
-  const cached = frameCache.get(key);
-  return cached?.src || "";
-}
-
-function showFrame(key){
-  if(!nanakoImage) return;
-  const src = frameSrc(key);
-  if(src && nanakoImage.src !== src){
-    nanakoImage.src = src;
-  }
-}
-
-function showIdle(name="open"){ showFrame(`idle:${name}`); }
-function showTalk(index=0){ showFrame(`talk:${index}`); }
-
-function cancelBlink(){
-  clearTimeout(blinkTimer);
-  blinkTimer = 0;
-  blinkToken += 1;
-}
-
-async function blinkOnce(doubleBlink=false){
-  const token = ++blinkToken;
-  if(characterMode !== "idle" || !idleEnabled) return;
-
-  showIdle("half");
-  await sleep(72);
-  if(token!==blinkToken || characterMode!=="idle") return;
-  showIdle("closed");
-  await sleep(98);
-  if(token!==blinkToken || characterMode!=="idle") return;
-  showIdle("half");
-  await sleep(64);
-  if(token!==blinkToken || characterMode!=="idle") return;
-  showIdle("open");
-
-  if(doubleBlink){
-    await sleep(150);
-    if(token!==blinkToken || characterMode!=="idle") return;
-    showIdle("half");
-    await sleep(58);
-    if(token!==blinkToken || characterMode!=="idle") return;
-    showIdle("closed");
-    await sleep(86);
-    if(token!==blinkToken || characterMode!=="idle") return;
-    showIdle("half");
-    await sleep(55);
-    if(token!==blinkToken || characterMode!=="idle") return;
-    showIdle("open");
-  }
-}
-
-function scheduleBlink(first=false){
-  cancelBlink();
-  if(characterMode !== "idle" || !idleEnabled) return;
-  const delay = first ? 1200 : 3200 + Math.random()*4200;
-  blinkTimer = setTimeout(async()=>{
-    await blinkOnce(Math.random()<0.14);
-    scheduleBlink(false);
-  }, delay);
-}
-
-function startIdleLoop(first=false){
-  clearTimeout(talkTimer);
-  talkTimer = 0;
-  talkStep = 0;
-  characterMode = "idle";
-  idleEnabled = true;
-  if(nanakoMotion) nanakoMotion.classList.remove("talking");
-  showIdle("open");
-  scheduleBlink(first);
-}
-
-function stopIdleLoop(){
-  idleEnabled = false;
-  cancelBlink();
-}
-
-const TALK_SEQUENCE = [1,2,1,3,2,1,0,1,2,4,2,1,0,2,1,3,2,1];
-function runTalkLoop(){
-  if(characterMode !== "talking") return;
-  showTalk(TALK_SEQUENCE[talkStep % TALK_SEQUENCE.length]);
-  talkStep += 1;
-  // Anime-style discrete mouth changes; no opacity transitions.
-  talkTimer = setTimeout(runTalkLoop, 118 + Math.random()*34);
-}
-
-function startTalkingLoop(){
-  stopIdleLoop();
-  characterMode = "talking";
-  talkStep = 0;
-  if(nanakoMotion) nanakoMotion.classList.add("talking");
-  showTalk(1);
-  clearTimeout(talkTimer);
-  talkTimer = setTimeout(runTalkLoop, 90);
-  console.log("[Nanako Renderer] TALKING state active.");
-}
-
-function stopTalkingLoop(){
-  clearTimeout(talkTimer);
-  talkTimer = 0;
-  startIdleLoop(false);
-  console.log("[Nanako Renderer] IDLE state active.");
-}
+function bytesFromAudioSource(b){let s=String(b||"");if(!s)return null;if(s.startsWith("data:"))s=s.slice(s.indexOf(",")+1);try{const bin=atob(s);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer;}catch{return null;}}
+async function buildLipEnvelope(b){const ab=bytesFromAudioSource(b);if(!ab)return null;const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;const AC=window.AudioContext||window.webkitAudioContext;if(!OAC&&!AC)return null;let ac=null;let offline=true;try{if(OAC){ac=new OAC(1,1,44100);}else{ac=new AC();offline=false;}const buf=await ac.decodeAudioData(ab.slice(0));const sr=buf.sampleRate,binSec=.04,bin=Math.max(1,Math.round(sr*binSec)),len=Math.ceil(buf.length/bin),vals=new Float32Array(len);for(let i=0;i<len;i++){let sum=0,count=0;const start=i*bin,end=Math.min(buf.length,start+bin);for(let c=0;c<buf.numberOfChannels;c++){const d=buf.getChannelData(c);for(let j=start;j<end;j+=2){const v=d[j];sum+=v*v;count++;}}vals[i]=count?Math.sqrt(sum/count):0;}const sorted=Array.from(vals).filter(v=>v>0).sort((a,b)=>a-b);const pct=p=>sorted.length?sorted[Math.min(sorted.length-1,Math.floor((sorted.length-1)*p))]:0;const floor=pct(.18),peak=Math.max(pct(.9),floor+.0001);const norm=new Float32Array(vals.length);let sm=0;for(let i=0;i<vals.length;i++){let n=Math.max(0,Math.min(1,(vals[i]-floor)/(peak-floor)));sm=sm*.46+n*.54;norm[i]=sm;}return{binSec,values:norm};}catch(err){console.warn("[Nanako LipSync] Audio analysis unavailable; rhythmic fallback will be used.",err);return null;}finally{if(!offline){try{await ac?.close();}catch{}}}}
+function fallbackMouth(t){const seq=["small","medium","small","wide","medium","small","closed","medium","round","medium","small"];return seq[Math.floor(t*9)%seq.length];}
+function envelopeMouth(t){if(!lipEnvelope)return fallbackMouth(t);const i=Math.max(0,Math.min(lipEnvelope.values.length-1,Math.floor(t/lipEnvelope.binSec)));const v=lipEnvelope.values[i]||0;if(v<.075)return "closed";if(v<.27)return "small";if(v<.57)return "medium";const phase=Math.floor(t*7);if(v<.8&&phase%9===0)return "round";return "wide";}
+function lipTick(now){if(!lipRunning||!currentAudio)return;if(now-lastLipUpdate>=70){lastLipUpdate=now;setMouth(envelopeMouth(currentAudio.currentTime||0));}lipRaf=requestAnimationFrame(lipTick);}
+function startTalkingLoop(){lipRunning=true;lastLipUpdate=0;if(nanakoMotion)nanakoMotion.classList.add("talking");setMouth("small");cancelAnimationFrame(lipRaf);lipRaf=requestAnimationFrame(lipTick);console.log("[Nanako Layers] TALKING: mouth sync active; blinking remains independent.");}
+function stopTalkingLoop(){lipRunning=false;cancelAnimationFrame(lipRaf);lipRaf=0;lipEnvelope=null;setMouth("closed");if(nanakoMotion)nanakoMotion.classList.remove("talking");console.log("[Nanako Layers] TALKING stopped; mouth closed.");}
 
 // ============================================================
 // APP / VOICE LOGIC
@@ -250,6 +130,11 @@ async function play(b,m){
   cleanup();
   release();
 
+  // Analyse a separate copy of the returned TTS for mouth amplitude only.
+  // This does NOT route or modify Nanako's actual speaker audio.
+  lipEnvelope=null;
+  const lipPromise=buildLipEnvelope(b).then(env=>{lipEnvelope=env;return env;});
+
   const a=ttsAudio;
   a.src=normalizeAudioSource(b,m);
   a.preload="auto";
@@ -326,11 +211,13 @@ e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault()
 window.addEventListener("beforeunload",()=>{stopTalkingLoop();stopIdleLoop();active=false;try{if(rec?.state==="recording")rec.stop()}catch{}cleanup();release();currentAudio?.pause()});if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));
 
 async function boot(){
-  setScore(0);quick();convButton();renderHistory();nanakoImage=document.getElementById("nanakoImage");nanakoMotion=document.querySelector(".nanako-motion");
+  setScore(0);quick();convButton();renderHistory();nanakoEyes=document.getElementById("nanakoEyes");nanakoMouth=document.getElementById("nanakoMouth");nanakoMotion=document.querySelector(".nanako-motion");
   try{
-    await preloadAllFrames();
+    await preloadFaceLayers();
+    setEyes("open");
+    setMouth("closed");
     startIdleLoop(true);
-    console.log("[Nanako] Single-renderer build loaded.");
+    console.log("[Nanako] Layered-face renderer v7 loaded.");
   }catch(err){
     console.error("[Nanako Renderer] Failed to preload:", err);
     error("Nanako images failed to load.");
