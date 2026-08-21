@@ -1,20 +1,33 @@
-NANAKO IDLE ANIMATION v1.2 - BLINK FIX
+NANAKO NORMAL TALKING ANIMATION v1.1
+TALKING FIX + LOUDER VOICE
 
-This fixes the blink not appearing.
+Fully extract this ZIP before uploading it to GitHub.
 
-Cause fixed:
-The previous build created a new asynchronous image-loader every time an eye
-frame changed. Those loaders could finish out of order, effectively hiding the
-blink.
+FIX 1 - TALKING ANIMATION
+- Talking no longer waits for an async preload success flag.
+- All 5 mouth images are explicitly preloaded by index.html.
+- The first talk frame is shown immediately when TTS begins.
+- A second fallback start occurs immediately after audio.play() succeeds.
+- Mouth frames then update every ~86-144 ms.
+- Manual interrupt and hands-free barge-in still stop the mouth instantly.
+- Idle open/blink animation resumes when speaking ends.
 
-v1.2 now:
-- preloads open / half / closed once
-- switches already-cached image frames directly
-- performs a visible test blink about 1.2 seconds after page load
-- then blinks naturally at random intervals of about 3–7 seconds
-- about 12% chance of a quick double blink
-- keeps breathing and subtle body sway
-- keeps voice, VAD, slower TTS and barge-in unchanged
+FIX 2 - NANAKO VOICE TOO SOFT
+- HTML audio was already at its maximum volume=1.
+- This build adds a Web Audio GainNode at 1.65x.
+- A gentle compressor reduces clipping on loud syllables.
+- The boost is initialized from the user's Start Conversation tap for iOS Safari.
+- If Web Audio boost is unavailable, Nanako falls back to normal audio automatically.
 
-Fully unzip this package before uploading it to GitHub.
-Upload the complete extracted folder structure over the current frontend.
+PRESERVED
+- VAD/microphone tuning
+- 1500 ms end-of-turn silence
+- fast listening restart
+- slower 0.86x Nanako TTS playback
+- hands-free barge-in
+- manual Interrupt Nanako
+- idle blinking/breathing/sway
+
+UPLOAD
+Upload ONLY the extracted frontend files/folders to GitHub Pages.
+No Alibaba backend changes are included.
