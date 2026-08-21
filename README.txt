@@ -23,3 +23,11 @@ v8.4 Omni frontend audio fix:
 
 
 v8.5: Split Omni reasoning and speech into separate requests to prevent long audio generation from trapping the conversation in Thinking.
+
+
+v8.7 VAD reliability fix:
+- Prevents the user's first words from contaminating room-noise calibration.
+- Speech can trigger during calibration instead of being ignored.
+- Slightly lower normal-voice start/continue thresholds.
+- Faster no-speech mic reacquisition (8s).
+- Settings debug now shows live Room and Start threshold dB.

@@ -192,15 +192,16 @@ function stopTalkingLoop(){
 // ============================================================
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VOICE=`${API}/api/voice`,SPEAK=`${API}/api/speak`,RESET=`${API}/api/reset`;
 const VAD={
-  calibrationMs:350,
-  minSpeechMs:220,
+  calibrationMs:300,
+  minSpeechMs:180,
   silenceToEndMs:1500,
-  noSpeechRestartMs:12000,
+  noSpeechRestartMs:8000,
   maxTurnMs:30000,
-  startFloor:.007,
-  continueFloor:.0045,
-  startNoiseMultiplier:1.5,
-  continueNoiseMultiplier:1.15
+  startFloor:.0048,
+  continueFloor:.0032,
+  startNoiseMultiplier:1.30,
+  continueNoiseMultiplier:1.08,
+  maxCalibrationNoise:.0065
 };
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn"),voiceOutput:$("voiceOutputButton")};
 let level="auto",score=0,showRO=false,showEN=false,muted=false,voiceOutput=localStorage.getItem("nanako_voice_output")!=="false",active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false,resumeTimer=0,turnSerial=0;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
@@ -426,13 +427,74 @@ async function mic(){if(stream&&stream.getTracks().some(t=>t.readyState==="live"
 function release(){stream?.getTracks().forEach(t=>t.stop());stream=null}
 function mime(){let c=["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"];return c.find(t=>MediaRecorder.isTypeSupported?.(t))||""}
 function rms(a){let s=0;for(let v of a)s+=v*v;return Math.sqrt(s/a.length)}
+function estimateNoise(samples,fallback=.003){
+  const vals=samples.filter(v=>Number.isFinite(v)&&v>0&&v<=VAD.maxCalibrationNoise).sort((a,b)=>a-b);
+  if(!vals.length)return fallback;
+  // Use the lower quartile, not the median. If the user starts talking immediately,
+  // speech energy is therefore not learned as permanent "room noise".
+  return vals[Math.min(vals.length-1,Math.floor(vals.length*.25))]||fallback;
+}
 function cleanup(){if(raf)cancelAnimationFrame(raf);raf=0;try{ctx?.close()}catch{}ctx=analyser=data=null}
-function monitor(){if(!active||!rec||rec.state!=="recording"||!analyser||!data)return;analyser.getFloatTimeDomainData(data);let r=rms(data),now=performance.now(),age=now-turnStart;let db=r>0?20*Math.log10(r):-120,room=noiseFloor>0?20*Math.log10(noiseFloor):-120;e.debugMic.textContent=`Mic: ${db.toFixed(1)} dB`;e.debugRoom.textContent=`Room: ${room.toFixed(1)} dB`;e.debugSpeech.textContent=`Speech: ${speech?"Detected":"Waiting"}`;e.debugTurn.textContent=`Turn: ${(age/1000).toFixed(1)} sec`;
-if(!hasGoodNoiseFloor&&age<VAD.calibrationMs){noiseSamples.push(r);if(noiseSamples.length){let sorted=[...noiseSamples].sort((a,b)=>a-b);noiseFloor=sorted[Math.floor(sorted.length*.5)]||noiseFloor}raf=requestAnimationFrame(monitor);return}
-if(!hasGoodNoiseFloor){if(noiseSamples.length){let sorted=[...noiseSamples].sort((a,b)=>a-b);noiseFloor=sorted[Math.floor(sorted.length*.5)]||noiseFloor}lastGoodNoiseFloor=noiseFloor;hasGoodNoiseFloor=true;console.log("[Nanako Web VAD] Room calibration saved:",noiseFloor.toFixed(5))}else{noiseFloor=lastGoodNoiseFloor}
-let st=Math.max(VAD.startFloor,noiseFloor*VAD.startNoiseMultiplier),ct=Math.max(VAD.continueFloor,noiseFloor*VAD.continueNoiseMultiplier);
-if(!speech){if(r>=st){if(!candidate)candidate=now;if(now-candidate>=VAD.minSpeechMs){speech=true;firstSpeech=now;lastSpeech=now;status("I'm listening...");console.log("[Nanako Web VAD] Speech started.")}}else{candidate=0}if(age>=VAD.noSpeechRestartMs){console.log("[Nanako Web VAD] No speech timeout.");stopRec(false);return}}else{if(r>=ct)lastSpeech=now;if(now-firstSpeech>=VAD.minSpeechMs&&now-lastSpeech>=VAD.silenceToEndMs){console.log("[Nanako Web VAD] End of speech:",Math.round(now-lastSpeech),"ms silence");stopRec(true);return}}
-if(age>=VAD.maxTurnMs){stopRec(speech);return}raf=requestAnimationFrame(monitor)}
+function monitor(){
+  if(!active||!rec||rec.state!=="recording"||!analyser||!data)return;
+  analyser.getFloatTimeDomainData(data);
+  let r=rms(data),now=performance.now(),age=now-turnStart;
+
+  // Calibrate only from quiet samples. Crucially, do NOT ignore speech during calibration.
+  // The previous implementation could learn the user's first words as the noise floor,
+  // making normal-volume speech impossible to trigger until the user shouted.
+  if(!hasGoodNoiseFloor){
+    if(r<=VAD.maxCalibrationNoise)noiseSamples.push(r);
+    noiseFloor=estimateNoise(noiseSamples,.003);
+  }else{
+    noiseFloor=lastGoodNoiseFloor;
+  }
+
+  let st=Math.max(VAD.startFloor,noiseFloor*VAD.startNoiseMultiplier);
+  let ct=Math.max(VAD.continueFloor,noiseFloor*VAD.continueNoiseMultiplier);
+  let db=r>0?20*Math.log10(r):-120,room=noiseFloor>0?20*Math.log10(noiseFloor):-120,startDb=20*Math.log10(st);
+  e.debugMic.textContent=`Mic: ${db.toFixed(1)} dB`;
+  e.debugRoom.textContent=`Room: ${room.toFixed(1)} dB | Start: ${startDb.toFixed(1)} dB`;
+  e.debugSpeech.textContent=`Speech: ${speech?"Detected":"Waiting"}`;
+  e.debugTurn.textContent=`Turn: ${(age/1000).toFixed(1)} sec`;
+
+  if(!speech){
+    if(r>=st){
+      if(!candidate)candidate=now;
+      if(now-candidate>=VAD.minSpeechMs){
+        speech=true;firstSpeech=now;lastSpeech=now;status("I'm listening...");
+        if(!hasGoodNoiseFloor){
+          lastGoodNoiseFloor=estimateNoise(noiseSamples,.003);
+          hasGoodNoiseFloor=true;
+          console.log(`[Nanako Web VAD] Early speech detected; safe room floor=${lastGoodNoiseFloor.toFixed(5)} start=${st.toFixed(5)}`);
+        }else{
+          console.log(`[Nanako Web VAD] Speech started. rms=${r.toFixed(5)} start=${st.toFixed(5)}`);
+        }
+      }
+    }else{candidate=0}
+
+    if(!hasGoodNoiseFloor&&age>=VAD.calibrationMs){
+      lastGoodNoiseFloor=estimateNoise(noiseSamples,.003);
+      noiseFloor=lastGoodNoiseFloor;
+      hasGoodNoiseFloor=true;
+      console.log(`[Nanako Web VAD] Room calibration saved: ${noiseFloor.toFixed(5)}`);
+    }
+
+    if(age>=VAD.noSpeechRestartMs){
+      console.log(`[Nanako Web VAD] No speech timeout. rms=${r.toFixed(5)} start=${st.toFixed(5)}; reacquiring mic.`);
+      stopRec(false);return;
+    }
+  }else{
+    if(r>=ct)lastSpeech=now;
+    if(now-firstSpeech>=VAD.minSpeechMs&&now-lastSpeech>=VAD.silenceToEndMs){
+      console.log("[Nanako Web VAD] End of speech:",Math.round(now-lastSpeech),"ms silence");
+      stopRec(true);return;
+    }
+  }
+
+  if(age>=VAD.maxTurnMs){stopRec(speech);return}
+  raf=requestAnimationFrame(monitor);
+}
 async function startRec(){
   if(!active||busy||currentAudio||rec?.state==="recording")return;
   cancelResume();
