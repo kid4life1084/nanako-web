@@ -1,31 +1,20 @@
-NANAKO GITHUB PAGES - IDLE ANIMATION V1.1 FIX
+NANAKO IDLE ANIMATION v1.2 - BLINK FIX
 
-This fixes the broken image loading caused by incorrect service-worker paths.
+This fixes the blink not appearing.
 
-IMPORTANT:
-Fully extract this ZIP first.
-Upload the extracted files/folders to the repository root.
+Cause fixed:
+The previous build created a new asynchronous image-loader every time an eye
+frame changed. Those loaders could finish out of order, effectively hiding the
+blink.
 
-Correct structure:
+v1.2 now:
+- preloads open / half / closed once
+- switches already-cached image frames directly
+- performs a visible test blink about 1.2 seconds after page load
+- then blinks naturally at random intervals of about 3–7 seconds
+- about 12% chance of a quick double blink
+- keeps breathing and subtle body sway
+- keeps voice, VAD, slower TTS and barge-in unchanged
 
-index.html
-manifest.webmanifest
-sw.js
-README.txt
-static/
-  app.js
-  style.css
-  characters/
-    nanako/
-      nanako_master.png
-      idle/
-        idle_open.png
-        idle_half.png
-        idle_closed.png
-
-This build:
-- fixes service-worker asset paths
-- removes old broken caches automatically
-- keeps blink + breathing + sway
-- adds fallback to nanako_master.png if any idle frame is missing
-- preserves voice/VAD/barge-in behavior
+Fully unzip this package before uploading it to GitHub.
+Upload the complete extracted folder structure over the current frontend.

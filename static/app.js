@@ -2,8 +2,8 @@
 (()=>{"use strict";
 
 // ============================================================
-// NANAKO IDLE ANIMATION
-// Three-frame eye blink using the user's original aligned assets.
+// NANAKO IDLE ANIMATION v1.2
+// Uses the user's three aligned eye frames.
 // ============================================================
 const NANAKO_IDLE_FRAMES = {
   open: "./static/characters/nanako/idle/idle_open.png",
@@ -14,89 +14,119 @@ const NANAKO_IDLE_FRAMES = {
 let nanakoBlinkTimer = 0;
 let nanakoBlinking = false;
 let nanakoIdleStopped = false;
+let nanakoIdleReady = false;
 
-function preloadNanakoIdleFrames(){
-  Object.values(NANAKO_IDLE_FRAMES).forEach(src=>{
+function sleepIdle(ms){
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function loadNanakoIdleFrame(src){
+  return new Promise((resolve, reject) => {
     const image = new Image();
-    image.decoding = "async";
+    image.onload = () => resolve(src);
+    image.onerror = () => reject(new Error(`Could not load ${src}`));
     image.src = src;
   });
 }
 
-function setNanakoEyeFrame(name){
-  const image = document.getElementById("nanakoImage");
-  if(!image || !NANAKO_IDLE_FRAMES[name]) return;
-
-  const target = NANAKO_IDLE_FRAMES[name];
-
-  const probe = new Image();
-  probe.onload = () => {
-    image.src = target;
-    image.dataset.eyeFrame = name;
-  };
-  probe.onerror = () => {
-    console.warn("[Nanako Idle] Missing frame:", target);
-    image.src = "./static/characters/nanako/nanako_master.png";
-    image.dataset.eyeFrame = "fallback";
-  };
-  probe.src = target;
+async function preloadNanakoIdleFrames(){
+  try{
+    await Promise.all(
+      Object.values(NANAKO_IDLE_FRAMES).map(loadNanakoIdleFrame)
+    );
+    nanakoIdleReady = true;
+    console.log("[Nanako Idle] All blink frames preloaded.");
+    return true;
+  }catch(error){
+    console.error("[Nanako Idle] Frame preload failed:", error);
+    nanakoIdleReady = false;
+    return false;
+  }
 }
 
-function sleepIdle(ms){
-  return new Promise(resolve=>setTimeout(resolve,ms));
+function setNanakoEyeFrame(name){
+  const image = document.getElementById("nanakoImage");
+  const src = NANAKO_IDLE_FRAMES[name];
+
+  if(!image || !src) return;
+
+  // Frames have already been preloaded, so switch them directly.
+  // Avoiding a new Image() probe here prevents async frame-order races.
+  image.src = src;
+  image.dataset.eyeFrame = name;
 }
 
 async function runNanakoBlink(doubleBlink=false){
-  if(nanakoBlinking || nanakoIdleStopped) return;
+  if(nanakoBlinking || nanakoIdleStopped || !nanakoIdleReady) return;
+
   nanakoBlinking = true;
 
   try{
-    // Close naturally: open -> half -> closed -> half -> open.
+    // Natural blink: open -> half -> closed -> half -> open
     setNanakoEyeFrame("half");
-    await sleepIdle(58);
+    await sleepIdle(72);
+
     setNanakoEyeFrame("closed");
-    await sleepIdle(92);
+    await sleepIdle(105);
+
     setNanakoEyeFrame("half");
-    await sleepIdle(55);
+    await sleepIdle(68);
+
     setNanakoEyeFrame("open");
 
-    // Occasional double blink makes the idle loop feel less mechanical.
+    // About 12% of blinks are a quick natural double blink.
     if(doubleBlink && !nanakoIdleStopped){
-      await sleepIdle(135);
+      await sleepIdle(145);
+
       setNanakoEyeFrame("half");
-      await sleepIdle(52);
+      await sleepIdle(62);
+
       setNanakoEyeFrame("closed");
-      await sleepIdle(78);
+      await sleepIdle(90);
+
       setNanakoEyeFrame("half");
-      await sleepIdle(50);
+      await sleepIdle(58);
+
       setNanakoEyeFrame("open");
     }
-  } finally {
+  }finally{
     nanakoBlinking = false;
   }
 }
 
 function scheduleNanakoBlink(first=false){
   clearTimeout(nanakoBlinkTimer);
-  if(nanakoIdleStopped) return;
 
-  // First blink happens fairly soon so the animation is obvious on load.
-  // Afterward the interval is randomized to avoid a robotic loop.
+  if(nanakoIdleStopped || !nanakoIdleReady) return;
+
+  // First blink is intentionally soon so you can immediately confirm it works.
+  // Normal idle blinks then happen irregularly, usually every 3–7 seconds.
   const delay = first
-    ? 1250 + Math.random()*900
-    : 2700 + Math.random()*4300;
+    ? 1200
+    : 3000 + Math.random() * 4000;
 
-  nanakoBlinkTimer = window.setTimeout(async()=>{
-    const doubleBlink = Math.random() < 0.17;
+  nanakoBlinkTimer = window.setTimeout(async () => {
+    const doubleBlink = Math.random() < 0.12;
     await runNanakoBlink(doubleBlink);
     scheduleNanakoBlink(false);
   }, delay);
 }
 
-function startNanakoIdleAnimation(){
+async function startNanakoIdleAnimation(){
   nanakoIdleStopped = false;
-  preloadNanakoIdleFrames();
   setNanakoEyeFrame("open");
+
+  const loaded = await preloadNanakoIdleFrames();
+
+  if(!loaded){
+    const image = document.getElementById("nanakoImage");
+    if(image){
+      image.src = "./static/characters/nanako/nanako_master.png";
+    }
+    return;
+  }
+
+  // Test blink ~1.2 seconds after page load, then normal randomized blinking.
   scheduleNanakoBlink(true);
 }
 

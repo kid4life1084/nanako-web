@@ -1,4 +1,4 @@
-const CACHE_NAME = "nanako-shell-v5-idle-animation-fix1";
+const CACHE_NAME = "nanako-shell-v6-idle-blink-fix";
 
 const APP_SHELL = [
   "./",
