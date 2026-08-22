@@ -21,7 +21,7 @@
     console.log("[Nanako v9.4] stale service workers/caches/voice-output state purged");
   }catch(err){ console.warn("[Nanako v9.4] purge warning",err); }
 })();
-console.log("[Nanako Frontend] v10.6 CONFUSED STATE + 627 EMOTION FRAMES");
+console.log("[Nanako Frontend] v10.7 CONFUSED STATE ART ALIGN FIX + 627 EMOTION FRAMES");
 // v9.1 SAFETY: purge legacy service workers/caches from pre-Omni frontend builds.
 // The app intentionally runs without a service worker during Omni stabilization.
 (async()=>{
@@ -248,7 +248,7 @@ function stopTalkingLoop(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v10.6 stable audio / first-tap fix / confused emotion state");
+console.log("[Nanako Build] v10.7 stable audio / first-tap fix / confused emotion state art align fix");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VOICE=`${API}/api/voice`,RESET=`${API}/api/reset`;
 const VAD={
   calibrationMs:350,
