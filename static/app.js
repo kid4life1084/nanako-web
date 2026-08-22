@@ -21,7 +21,7 @@
     console.log("[Nanako v9.4] stale service workers/caches/voice-output state purged");
   }catch(err){ console.warn("[Nanako v9.4] purge warning",err); }
 })();
-console.log("[Nanako Frontend] v9.3 AUDIO ALWAYS ON");
+console.log("[Nanako Frontend] v10.6 CONFUSED STATE + 627 EMOTION FRAMES");
 // v9.1 SAFETY: purge legacy service workers/caches from pre-Omni frontend builds.
 // The app intentionally runs without a service worker during Omni stabilization.
 (async()=>{
@@ -44,33 +44,53 @@ console.log("[Nanako Frontend] v9.3 AUDIO ALWAYS ON");
 // One static 627x627 base + one eye overlay + one mouth overlay.
 // Eyes and mouth animate independently. No full portrait swapping.
 // ============================================================
-const LAYERS = {
-  eyes: {
-    open: {"x": 212, "y": 202, "w": 206, "h": 76, "file": "./static/characters/nanako/layers/eyes/open.png"},
-    half: {"x": 209, "y": 205, "w": 210, "h": 72, "file": "./static/characters/nanako/layers/eyes/half.png"},
-    closed: {"x": 208, "y": 258, "w": 215, "h": 30, "file": "./static/characters/nanako/layers/eyes/closed.png"}
+const FACE_STATES = {
+  neutral: {
+    base: { file: "./static/characters/nanako/layers/base/base.png" },
+    eyes: {
+      open: {"x": 212, "y": 202, "w": 206, "h": 76, "file": "./static/characters/nanako/layers/eyes/open.png"},
+      half: {"x": 209, "y": 205, "w": 210, "h": 72, "file": "./static/characters/nanako/layers/eyes/half.png"},
+      closed: {"x": 208, "y": 258, "w": 215, "h": 30, "file": "./static/characters/nanako/layers/eyes/closed.png"}
+    },
+    mouth: {
+      closed: {"x": 289, "y": 336, "w": 54, "h": 14, "file": "./static/characters/nanako/layers/mouth/closed.png"},
+      small: {"x": 288, "y": 333, "w": 55, "h": 23, "file": "./static/characters/nanako/layers/mouth/small.png"},
+      medium: {"x": 284, "y": 331, "w": 61, "h": 34, "file": "./static/characters/nanako/layers/mouth/medium.png"},
+      wide: {"x": 280, "y": 335, "w": 69, "h": 34, "file": "./static/characters/nanako/layers/mouth/wide.png"},
+      round: {"x": 298, "y": 329, "w": 30, "h": 45, "file": "./static/characters/nanako/layers/mouth/round.png"}
+    }
   },
-  mouth: {
-    closed: {"x": 289, "y": 336, "w": 54, "h": 14, "file": "./static/characters/nanako/layers/mouth/closed.png"},
-    small: {"x": 288, "y": 333, "w": 55, "h": 23, "file": "./static/characters/nanako/layers/mouth/small.png"},
-    medium: {"x": 284, "y": 331, "w": 61, "h": 34, "file": "./static/characters/nanako/layers/mouth/medium.png"},
-    wide: {"x": 280, "y": 335, "w": 69, "h": 34, "file": "./static/characters/nanako/layers/mouth/wide.png"},
-    round: {"x": 298, "y": 329, "w": 30, "h": 45, "file": "./static/characters/nanako/layers/mouth/round.png"}
+  confused: {
+    base: { file: "./static/characters/nanako/states/confused/base/base.png" },
+    eyes: {
+      open: {"x": 0, "y": 0, "w": 627, "h": 627, "file": "./static/characters/nanako/states/confused/eyes/open.png"},
+      half: {"x": 0, "y": 0, "w": 627, "h": 627, "file": "./static/characters/nanako/states/confused/eyes/half.png"},
+      closed: {"x": 0, "y": 0, "w": 627, "h": 627, "file": "./static/characters/nanako/states/confused/eyes/closed.png"}
+    },
+    mouth: {
+      closed: {"x": 0, "y": 0, "w": 627, "h": 627, "file": "./static/characters/nanako/states/confused/mouth/closed.png"},
+      small: {"x": 0, "y": 0, "w": 627, "h": 627, "file": "./static/characters/nanako/states/confused/mouth/small.png"},
+      medium: {"x": 0, "y": 0, "w": 627, "h": 627, "file": "./static/characters/nanako/states/confused/mouth/medium.png"},
+      wide: {"x": 0, "y": 0, "w": 627, "h": 627, "file": "./static/characters/nanako/states/confused/mouth/wide.png"},
+      round: {"x": 0, "y": 0, "w": 627, "h": 627, "file": "./static/characters/nanako/states/confused/mouth/round.png"}
+    }
   }
 };
-
-let nanakoEyes=null,nanakoMouth=null,nanakoMotion=null,nanakoAvatar=null;
+let nanakoBase=null,nanakoEyes=null,nanakoMouth=null,nanakoMotion=null,nanakoAvatar=null;
 const layerCache=new Map();
+let currentFaceState="neutral", lastEyeFrame="open";
 let blinkTimer=0,blinkToken=0,blinkEnabled=true;
 let idleMouthTimer=0,idleMouthToken=0,idleMouthEnabled=false;
 let lipRaf=0,lipRunning=false,lipEnvelope=null,lastLipFrame="closed",lastLipUpdate=0;
 
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 function preloadLayer(key,def){return new Promise((resolve,reject)=>{const im=new Image();im.decoding="async";im.onload=async()=>{try{if(im.decode)await im.decode();}catch{}layerCache.set(key,im);resolve();};im.onerror=()=>reject(new Error(`Could not load ${def.file}`));im.src=def.file;});}
-async function preloadFaceLayers(){const jobs=[];for(const [k,v] of Object.entries(LAYERS.eyes))jobs.push(preloadLayer(`eyes:${k}`,v));for(const [k,v] of Object.entries(LAYERS.mouth))jobs.push(preloadLayer(`mouth:${k}`,v));await Promise.all(jobs);console.log("[Nanako Layers] All eye/mouth sprites loaded and decoded.");}
+async function preloadFaceLayers(){const jobs=[];for(const [stateName,stateDef] of Object.entries(FACE_STATES)){jobs.push(preloadLayer(`${stateName}:base`,stateDef.base));for(const [k,v] of Object.entries(stateDef.eyes))jobs.push(preloadLayer(`${stateName}:eyes:${k}`,v));for(const [k,v] of Object.entries(stateDef.mouth))jobs.push(preloadLayer(`${stateName}:mouth:${k}`,v));}await Promise.all(jobs);console.log("[Nanako Layers] All face state sprites loaded and decoded.");}
 function placePart(el,def){if(!el||!def)return;el.style.left=`${def.x/627*100}%`;el.style.top=`${def.y/627*100}%`;el.style.width=`${def.w/627*100}%`;el.style.height=`${def.h/627*100}%`;}
-function setEyes(name){const def=LAYERS.eyes[name];const im=layerCache.get(`eyes:${name}`);if(!def||!im||!nanakoEyes)return;placePart(nanakoEyes,def);if(nanakoEyes.src!==im.src)nanakoEyes.src=im.src;}
-function setMouth(name){const def=LAYERS.mouth[name];const im=layerCache.get(`mouth:${name}`);if(!def||!im||!nanakoMouth)return;placePart(nanakoMouth,def);if(lastLipFrame!==name||nanakoMouth.src!==im.src){nanakoMouth.src=im.src;lastLipFrame=name;}}
+function getFaceStateDef(stateName=currentFaceState){return FACE_STATES[stateName]||FACE_STATES.neutral;}
+function setFaceState(stateName){const next=FACE_STATES[stateName]?stateName:"neutral";currentFaceState=next;const stateDef=getFaceStateDef(next);const baseIm=layerCache.get(`${next}:base`);if(nanakoBase&&stateDef.base&&baseIm&&nanakoBase.src!==baseIm.src)nanakoBase.src=baseIm.src;if(nanakoEyes)setEyes(lastEyeFrame||"open");if(nanakoMouth)setMouth(lastLipFrame||"closed");if(nanakoAvatar)nanakoAvatar.dataset.state=next;}
+function setEyes(name){const stateDef=getFaceStateDef();const actualName=stateDef.eyes[name]?name:"open";const def=stateDef.eyes[actualName];const im=layerCache.get(`${currentFaceState}:eyes:${actualName}`);if(!def||!im||!nanakoEyes)return;placePart(nanakoEyes,def);if(nanakoEyes.src!==im.src)nanakoEyes.src=im.src;lastEyeFrame=actualName;}
+function setMouth(name){const stateDef=getFaceStateDef();const actualName=stateDef.mouth[name]?name:"closed";const def=stateDef.mouth[actualName];const im=layerCache.get(`${currentFaceState}:mouth:${actualName}`);if(!def||!im||!nanakoMouth)return;placePart(nanakoMouth,def);if(lastLipFrame!==actualName||nanakoMouth.src!==im.src){nanakoMouth.src=im.src;lastLipFrame=actualName;}}
 function cancelBlink(){clearTimeout(blinkTimer);blinkTimer=0;blinkToken+=1;}
 
 async function blinkOnce(doubleBlink=false){
@@ -228,7 +248,7 @@ function stopTalkingLoop(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v9.4 FORCE AUDIO ON / NO VOICE OUTPUT TOGGLE");
+console.log("[Nanako Build] v10.6 stable audio / first-tap fix / confused emotion state");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VOICE=`${API}/api/voice`,RESET=`${API}/api/reset`;
 const VAD={
   calibrationMs:350,
@@ -251,11 +271,21 @@ function transcript(t){clearTimeout(transcriptTimer);if(!t){e.userTranscript.hid
 function correction(d){let a=d?.analysis&&typeof d.analysis==="object"?d.analysis:{},o=String(a.wrong_text??a.original??a.original_text??a.user_text??"").trim(),c=String(a.correct_text??a.corrected??a.corrected_text??a.correction??"").trim(),n=a.needs_correction===true||a.correct===false||a.is_correct===false||!!(o&&c&&o!==c);return{n,o,c}}
 function showCorrection(x){clearTimeout(correctionTimer);if(!x.n||!x.o||!x.c){e.corr.hidden=true;return}e.wrong.textContent=x.o;e.correct.textContent=`→ ${x.c}`;e.corr.hidden=false;correctionTimer=setTimeout(()=>e.corr.hidden=true,7000)}
 function addHistory(role,text,x=null){history.push({role,text:String(text||""),wrong:x?.n?x.o:"",corrected:x?.n?x.c:""});renderHistory()}
+function detectFaceState(replyData){
+  const jp=String(replyData?.reply||"").toLowerCase();
+  const en=String(replyData?.english||"").toLowerCase();
+  const ro=String(replyData?.romaji||"").toLowerCase();
+  const confusedJP=["もう一度","もういちど","聞き取れ","聞こえ","よくわから","わからない","分からない","どういう意味","意味","くわしく","詳しく","説明して","教えて","ちょっと待って","えっと","うーん","ごめん","理解でき"];
+  const confusedEN=["repeat","say that again","didn't catch","did not catch","not sure","don't understand","do not understand","what do you mean","could you explain","i'm confused","im confused","a bit confused","didn't quite get"];
+  const hitJP=confusedJP.some(p=>jp.includes(p.toLowerCase())) || confusedJP.some(p=>ro.includes(p.toLowerCase()));
+  const hitEN=confusedEN.some(p=>en.includes(p));
+  return (hitJP||hitEN)?"confused":"neutral";
+}
 function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=history.length>0;history.forEach(h=>{let b=document.createElement("div");b.className=`history-bubble ${h.role==="user"?"user":""}`;let r=document.createElement("div");r.className="history-role";r.textContent=h.role==="user"?"YOU":"NANAKO";let t=document.createElement("div");t.className="history-text";t.textContent=h.text;b.append(r,t);if(h.wrong&&h.corrected){let c=document.createElement("div");c.className="history-correction";c.innerHTML=`<div class="history-wrong"></div><div class="history-correct"></div>`;c.children[0].textContent=h.wrong;c.children[1].textContent=h.corrected;b.append(c)}e.historyList.append(b)})}
 function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);if(currentAudio&&active){e.conv.classList.add("interrupt");e.conv.textContent="✋ Interrupt Nanako"}else{e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";if(b&&!muted)await play(b,m);else if(active)setTimeout(begin,20)}
+async function apply(d,user){const faceState=detectFaceState(d);setFaceState(faceState);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";if(b&&!muted)await play(b,m);else if(active)setTimeout(begin,20)}
 async function send(){let t=e.input.value.trim();if(!t||busy)return;busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:true})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
 function audioBlobUrlFromBase64(b,m){let v=String(b||"").trim();if(!v)return"";if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);const bin=atob(v);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:m||"audio/wav"}))}
@@ -413,7 +443,7 @@ async function startMode(){
   }
 }
 async function stopMode(){active=false;if(rec?.state==="recording")stopRec(false);cleanup();release();await stopAudio(false);convButton();status("Ready to chat")}
-async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;renderHistory();setScore(0);e.jp.textContent="こんにちは！ななこです。今日も気楽に話そう。";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true}
+async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;renderHistory();setScore(0);setFaceState("neutral");setEyes("open");setMouth("closed");e.jp.textContent="こんにちは！ななこです。今日も気楽に話そう。";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{if(currentAudio&&active){console.log("[Nanako] Manual interruption.");stopAudio(true);return}active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
 window.addEventListener("beforeunload",()=>{
@@ -441,15 +471,16 @@ document.addEventListener("visibilitychange",()=>{
 
 
 async function boot(){
-  setScore(0);quick();convButton();renderHistory();nanakoAvatar=document.getElementById("nanakoAvatar");nanakoEyes=document.getElementById("nanakoEyes");nanakoMouth=document.getElementById("nanakoMouth");nanakoMotion=document.querySelector(".nanako-motion");
+  setScore(0);quick();convButton();renderHistory();nanakoAvatar=document.getElementById("nanakoAvatar");nanakoBase=document.getElementById("nanakoBase");nanakoEyes=document.getElementById("nanakoEyes");nanakoMouth=document.getElementById("nanakoMouth");nanakoMotion=document.querySelector(".nanako-motion");
   if(nanakoAvatar)nanakoAvatar.classList.remove("face-ready");
   try{
     await preloadFaceLayers();
+    setFaceState("neutral");
     setEyes("open");
     setMouth("closed");
     if(nanakoAvatar){ requestAnimationFrame(()=>nanakoAvatar.classList.add("face-ready")); }
     startIdleLoop(true);
-    console.log("[Nanako] v10.5 Stable Audio First-Tap loaded.");
+    console.log("[Nanako] v10.6 Confused-state build loaded.");
   }catch(err){
     console.error("[Nanako Renderer] Failed to preload:", err);
     error("Nanako images failed to load.");
