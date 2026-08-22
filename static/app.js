@@ -21,7 +21,7 @@
     console.log("[Nanako v9.4] stale service workers/caches/voice-output state purged");
   }catch(err){ console.warn("[Nanako v9.4] purge warning",err); }
 })();
-console.log("[Nanako Frontend] v10.7 CONFUSED STATE ART ALIGN FIX + 627 EMOTION FRAMES");
+console.log("[Nanako Frontend] v10.8 CONFUSED STATE + CODE ALIGNMENT FIX");
 // v9.1 SAFETY: purge legacy service workers/caches from pre-Omni frontend builds.
 // The app intentionally runs without a service worker during Omni stabilization.
 (async()=>{
@@ -87,10 +87,12 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 function preloadLayer(key,def){return new Promise((resolve,reject)=>{const im=new Image();im.decoding="async";im.onload=async()=>{try{if(im.decode)await im.decode();}catch{}layerCache.set(key,im);resolve();};im.onerror=()=>reject(new Error(`Could not load ${def.file}`));im.src=def.file;});}
 async function preloadFaceLayers(){const jobs=[];for(const [stateName,stateDef] of Object.entries(FACE_STATES)){jobs.push(preloadLayer(`${stateName}:base`,stateDef.base));for(const [k,v] of Object.entries(stateDef.eyes))jobs.push(preloadLayer(`${stateName}:eyes:${k}`,v));for(const [k,v] of Object.entries(stateDef.mouth))jobs.push(preloadLayer(`${stateName}:mouth:${k}`,v));}await Promise.all(jobs);console.log("[Nanako Layers] All face state sprites loaded and decoded.");}
 function placePart(el,def){if(!el||!def)return;el.style.left=`${def.x/627*100}%`;el.style.top=`${def.y/627*100}%`;el.style.width=`${def.w/627*100}%`;el.style.height=`${def.h/627*100}%`;}
+const FACE_STATE_PART_ADJUSTMENTS={neutral:{eyes:{scale:1,translateX:0,translateY:0,rotate:0},mouth:{scale:1,translateX:0,translateY:0,rotate:0}},confused:{eyes:{scale:.84,translateX:0,translateY:4,rotate:0},mouth:{scale:1,translateX:-14,translateY:0,rotate:0}}};
+function applyPartAdjustment(el,partType){if(!el)return;const stateCfg=FACE_STATE_PART_ADJUSTMENTS[currentFaceState]||FACE_STATE_PART_ADJUSTMENTS.neutral;const cfg=stateCfg[partType]||FACE_STATE_PART_ADJUSTMENTS.neutral[partType];const scale=(cfg&&Number.isFinite(cfg.scale))?cfg.scale:1;const tx=(cfg&&Number.isFinite(cfg.translateX))?cfg.translateX:0;const ty=(cfg&&Number.isFinite(cfg.translateY))?cfg.translateY:0;const rotate=(cfg&&Number.isFinite(cfg.rotate))?cfg.rotate:0;el.style.transformOrigin='50% 50%';el.style.transform=`translate(${tx}px, ${ty}px) scale(${scale}) rotate(${rotate}deg)`;}
 function getFaceStateDef(stateName=currentFaceState){return FACE_STATES[stateName]||FACE_STATES.neutral;}
 function setFaceState(stateName){const next=FACE_STATES[stateName]?stateName:"neutral";currentFaceState=next;const stateDef=getFaceStateDef(next);const baseIm=layerCache.get(`${next}:base`);if(nanakoBase&&stateDef.base&&baseIm&&nanakoBase.src!==baseIm.src)nanakoBase.src=baseIm.src;if(nanakoEyes)setEyes(lastEyeFrame||"open");if(nanakoMouth)setMouth(lastLipFrame||"closed");if(nanakoAvatar)nanakoAvatar.dataset.state=next;}
-function setEyes(name){const stateDef=getFaceStateDef();const actualName=stateDef.eyes[name]?name:"open";const def=stateDef.eyes[actualName];const im=layerCache.get(`${currentFaceState}:eyes:${actualName}`);if(!def||!im||!nanakoEyes)return;placePart(nanakoEyes,def);if(nanakoEyes.src!==im.src)nanakoEyes.src=im.src;lastEyeFrame=actualName;}
-function setMouth(name){const stateDef=getFaceStateDef();const actualName=stateDef.mouth[name]?name:"closed";const def=stateDef.mouth[actualName];const im=layerCache.get(`${currentFaceState}:mouth:${actualName}`);if(!def||!im||!nanakoMouth)return;placePart(nanakoMouth,def);if(lastLipFrame!==actualName||nanakoMouth.src!==im.src){nanakoMouth.src=im.src;lastLipFrame=actualName;}}
+function setEyes(name){const stateDef=getFaceStateDef();const actualName=stateDef.eyes[name]?name:"open";const def=stateDef.eyes[actualName];const im=layerCache.get(`${currentFaceState}:eyes:${actualName}`);if(!def||!im||!nanakoEyes)return;placePart(nanakoEyes,def);applyPartAdjustment(nanakoEyes,'eyes');if(nanakoEyes.src!==im.src)nanakoEyes.src=im.src;lastEyeFrame=actualName;}
+function setMouth(name){const stateDef=getFaceStateDef();const actualName=stateDef.mouth[name]?name:"closed";const def=stateDef.mouth[actualName];const im=layerCache.get(`${currentFaceState}:mouth:${actualName}`);if(!def||!im||!nanakoMouth)return;placePart(nanakoMouth,def);applyPartAdjustment(nanakoMouth,'mouth');if(lastLipFrame!==actualName||nanakoMouth.src!==im.src){nanakoMouth.src=im.src;lastLipFrame=actualName;}}
 function cancelBlink(){clearTimeout(blinkTimer);blinkTimer=0;blinkToken+=1;}
 
 async function blinkOnce(doubleBlink=false){
@@ -248,7 +250,7 @@ function stopTalkingLoop(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v10.7 stable audio / first-tap fix / confused emotion state art align fix");
+console.log("[Nanako Build] v10.8 stable audio / confused state code alignment fix");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VOICE=`${API}/api/voice`,RESET=`${API}/api/reset`;
 const VAD={
   calibrationMs:350,
@@ -480,7 +482,7 @@ async function boot(){
     setMouth("closed");
     if(nanakoAvatar){ requestAnimationFrame(()=>nanakoAvatar.classList.add("face-ready")); }
     startIdleLoop(true);
-    console.log("[Nanako] v10.6 Confused-state build loaded.");
+    console.log("[Nanako] v10.8 Confused-state build loaded.");
   }catch(err){
     console.error("[Nanako Renderer] Failed to preload:", err);
     error("Nanako images failed to load.");
