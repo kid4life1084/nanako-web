@@ -41,7 +41,7 @@ console.log("[Nanako Frontend] v9.3 AUDIO ALWAYS ON");
 
 
 // ============================================================
-// NANAKO v11 STEP 1.2 — THIN ANIMATION RENDERER
+// NANAKO v11 STEP 1.3 — THIN PYTHON-CONTROLLED RENDERER
 //
 // IMPORTANT:
 // Python on Alibaba decides blink timing, mouth timing, emotion,
@@ -185,24 +185,15 @@ function returnToPythonIdle(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v9.4 FORCE AUDIO ON / NO VOICE OUTPUT TOGGLE");
-const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VOICE=`${API}/api/voice`,RESET=`${API}/api/reset`;
+console.log("[Nanako Build] v11 STEP 1.3 • PYTHON MIC/VAD + ANIMATION");
+const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`;
+const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
 async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const ok=!!(d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?"Python runtime: ONLINE • mic + animation loaded":"Python runtime: incomplete — check Alibaba deployment";console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
-const VAD={
-  calibrationMs:350,
-  minSpeechMs:220,
-  silenceToEndMs:1500,
-  noSpeechRestartMs:12000,
-  maxTurnMs:30000,
-  startFloor:.007,
-  continueFloor:.0045,
-  startNoiseMultiplier:1.5,
-  continueNoiseMultiplier:1.15
-};
+const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,rec=null,chunks=[],ctx=null,analyser=null,data=null,raf=0,noiseSamples=[],noiseFloor=.003,lastGoodNoiseFloor=.003,hasGoodNoiseFloor=false,speech=false,candidate=0,firstSpeech=0,lastSpeech=0,turnStart=0,transcriptTimer=0,correctionTimer=0,uploadThisRecording=false,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micSessionId="",micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,transcriptTimer=0,correctionTimer=0,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -255,6 +246,8 @@ async function stopAudio(resume=false){
     }catch{}
     currentAudio=null;
   }
+  await setServerNanakoSpeaking(false);
+  micCapturePaused=false;
   stopAnimationPlan();
   convButton();
   if(resume&&active){
@@ -271,11 +264,10 @@ async function play(b,m,animationPlan=null){
 
   await stopAudio(false);
 
-  // Safari simplification:
-  // completely release microphone capture while Nanako is speaking.
-  // Interruption is manual via the on-screen button.
-  cleanup();
-  release();
+  // Keep the hardware bridge alive during TTS. Python gates normal VAD while
+  // Nanako speaks and is the only component allowed to declare a barge-in.
+  micCapturePaused=false;
+  setServerNanakoSpeaking(true);
 
 
   const a=ttsAudio;
@@ -297,10 +289,11 @@ async function play(b,m,animationPlan=null){
     returnToPythonIdle();
     if(currentAudio===a)currentAudio=null;
     convButton();
+    setServerNanakoSpeaking(false);
     if(active){
+      micCapturePaused=false;
       status("Listening...");
-      // Reacquire mic only AFTER TTS is completely finished or interrupted.
-      setTimeout(begin,50);
+      setTimeout(begin,20);
     }else{
       status("Ready to chat");
     }
@@ -311,7 +304,7 @@ async function play(b,m,animationPlan=null){
     useTalkingAnimation(animationPlan);
     status("Nanako is speaking...");
     convButton();
-    console.log("[Nanako Audio] Playback started. Mic is OFF during TTS.");
+    console.log("[Nanako Audio] Playback started. Python barge-in gate active.");
   };
   a.onended=()=>{
     console.log("[Nanako Audio] Finished speaking.");
@@ -334,48 +327,193 @@ async function play(b,m,animationPlan=null){
   }
 }
 
-async function mic(){if(stream&&stream.getTracks().some(t=>t.readyState==="live"))return stream;if(!navigator.mediaDevices?.getUserMedia)throw new Error("Microphone access requires HTTPS.");stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});return stream}
-function release(){stream?.getTracks().forEach(t=>t.stop());stream=null}
-function mime(){let c=["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"];return c.find(t=>MediaRecorder.isTypeSupported?.(t))||""}
-function rms(a){let s=0;for(let v of a)s+=v*v;return Math.sqrt(s/a.length)}
-function cleanup(){if(raf)cancelAnimationFrame(raf);raf=0;try{ctx?.close()}catch{}ctx=analyser=data=null}
-function monitor(){if(!active||!rec||rec.state!=="recording"||!analyser||!data)return;analyser.getFloatTimeDomainData(data);let r=rms(data),now=performance.now(),age=now-turnStart;let db=r>0?20*Math.log10(r):-120,room=noiseFloor>0?20*Math.log10(noiseFloor):-120;e.debugMic.textContent=`Mic: ${db.toFixed(1)} dB`;e.debugRoom.textContent=`Room: ${room.toFixed(1)} dB`;e.debugSpeech.textContent=`Speech: ${speech?"Detected":"Waiting"}`;e.debugTurn.textContent=`Turn: ${(age/1000).toFixed(1)} sec`;
-if(!hasGoodNoiseFloor&&age<VAD.calibrationMs){noiseSamples.push(r);if(noiseSamples.length){let sorted=[...noiseSamples].sort((a,b)=>a-b);noiseFloor=sorted[Math.floor(sorted.length*.5)]||noiseFloor}raf=requestAnimationFrame(monitor);return}
-if(!hasGoodNoiseFloor){if(noiseSamples.length){let sorted=[...noiseSamples].sort((a,b)=>a-b);noiseFloor=sorted[Math.floor(sorted.length*.5)]||noiseFloor}lastGoodNoiseFloor=noiseFloor;hasGoodNoiseFloor=true;console.log("[Nanako Web VAD] Room calibration saved:",noiseFloor.toFixed(5))}else{noiseFloor=lastGoodNoiseFloor}
-let st=Math.max(VAD.startFloor,noiseFloor*VAD.startNoiseMultiplier),ct=Math.max(VAD.continueFloor,noiseFloor*VAD.continueNoiseMultiplier);
-if(!speech){if(r>=st){if(!candidate)candidate=now;if(now-candidate>=VAD.minSpeechMs){speech=true;firstSpeech=now;lastSpeech=now;status("I'm listening...");console.log("[Nanako Web VAD] Speech started.")}}else{candidate=0}if(age>=VAD.noSpeechRestartMs){console.log("[Nanako Web VAD] No speech timeout.");stopRec(false);return}}else{if(r>=ct)lastSpeech=now;if(now-firstSpeech>=VAD.minSpeechMs&&now-lastSpeech>=VAD.silenceToEndMs){console.log("[Nanako Web VAD] End of speech:",Math.round(now-lastSpeech),"ms silence");stopRec(true);return}}
-if(age>=VAD.maxTurnMs){stopRec(speech);return}raf=requestAnimationFrame(monitor)}
-async function startRec(){if(!active||busy||currentAudio||rec?.state==="recording")return;try{let s=await mic();if(!window.MediaRecorder)throw new Error("This browser does not support MediaRecorder.");cleanup();let AC=window.AudioContext||window.webkitAudioContext;if(AC){ctx=new AC();if(ctx.state==="suspended")await ctx.resume();let src=ctx.createMediaStreamSource(s);analyser=ctx.createAnalyser();analyser.fftSize=1024;data=new Float32Array(analyser.fftSize);src.connect(analyser)}chunks=[];noiseSamples=[];noiseFloor=hasGoodNoiseFloor?lastGoodNoiseFloor:.003;speech=false;candidate=0;firstSpeech=lastSpeech=0;uploadThisRecording=false;turnStart=performance.now();let mt=mime();rec=mt?new MediaRecorder(s,{mimeType:mt}):new MediaRecorder(s);let rr=rec;rr.ondataavailable=x=>{if(x.data?.size)chunks.push(x.data)};rr.onstop=async()=>{rec=null;cleanup();if(!uploadThisRecording||!chunks.length){chunks=[];if(active)setTimeout(begin,60);return}let type=rr.mimeType||chunks[0]?.type||"audio/mp4",b=new Blob(chunks,{type});chunks=[];await uploadVoice(b)};rr.start(160);status("Listening...");raf=requestAnimationFrame(monitor)}catch(x){console.error(x);error(x.message);status("Microphone unavailable");await stopMode()}}
-function stopRec(upload=true){if(!rec)return;if(raf)cancelAnimationFrame(raf);raf=0;uploadThisRecording=upload;if(rec.state!=="inactive")rec.stop()}
-async function uploadVoice(b){if(!active)return;busy=true;status("Nanako is thinking...");try{let f=new FormData(),type=b.type||"audio/mp4",ext=type.includes("mp4")?"m4a":type.includes("ogg")?"ogg":"webm";f.append("audio",b,`nanako_voice.${ext}`);f.append("level",level);const requestedVoiceOutput = true;
-  f.append("voice_output", "true");
-  console.log(`[Nanako Voice Request] voice_output=FORCED_TRUE muted=${muted}`);let r=await fetch(VOICE,{method:"POST",body:f}),d=await jsonResp(r);if(d?.ignored){if(active){status("Listening...");setTimeout(begin,60)}return}let t=String(d?.transcript||"");console.log("[Nanako Web Voice] Transcript:",t);transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Voice turn failed");if(active)setTimeout(begin,500)}finally{busy=false}}
-async function begin(){if(!active||busy||currentAudio||rec?.state==="recording")return;await startRec()}
+// ============================================================
+// v11 STEP 1.3 — ESSENTIAL BROWSER MIC BRIDGE ONLY
+//
+// Browser responsibilities:
+//   1) ask for microphone permission
+//   2) capture mono PCM
+//   3) resample to the server's 16 kHz transport format
+//   4) send PCM batches and obey Python decisions
+//
+// Python responsibilities:
+//   noise floor, VAD, speech start/end, pause cutoff, max turn,
+//   barge-in, completed-turn buffering and conversation processing.
+// ============================================================
+async function ensureMicHardware(){
+  if(stream&&stream.getTracks().some(t=>t.readyState==="live")&&ctx&&micProcessor)return;
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error("Microphone access requires HTTPS.");
+  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)throw new Error("Web Audio is not supported by this browser.");
+  ctx=new AC();
+  if(ctx.state==="suspended")await ctx.resume();
+  micSource=ctx.createMediaStreamSource(stream);
+  micProcessor=ctx.createScriptProcessor(2048,1,1);
+  micProcessor.onaudioprocess=ev=>{
+    try{ev.outputBuffer.getChannelData(0).fill(0)}catch{}
+    if(!active||micCapturePaused||!micSessionId)return;
+    const input=ev.inputBuffer.getChannelData(0);
+    const samples=resampleMono(input,ctx.sampleRate,MIC_TARGET_RATE);
+    for(let i=0;i<samples.length;i++)micBatch.push(samples[i]);
+    while(micBatch.length>=MIC_BATCH_SAMPLES){
+      const batch=micBatch.splice(0,MIC_BATCH_SAMPLES);
+      micQueue.push(floatToPcm16(batch));
+    }
+    if(micQueue.length>8)micQueue.splice(0,micQueue.length-8);
+    pumpMicQueue();
+  };
+  micSource.connect(micProcessor);
+  micProcessor.connect(ctx.destination);
+}
+
+function resampleMono(input,inputRate,targetRate){
+  if(inputRate===targetRate)return Float32Array.from(input);
+  const ratio=inputRate/targetRate;
+  const length=Math.max(1,Math.floor(input.length/ratio));
+  const out=new Float32Array(length);
+  if(ratio>=1){
+    for(let i=0;i<length;i++){
+      const a=Math.floor(i*ratio),b=Math.min(input.length,Math.max(a+1,Math.floor((i+1)*ratio)));
+      let sum=0;for(let j=a;j<b;j++)sum+=input[j];out[i]=sum/Math.max(1,b-a);
+    }
+  }else{
+    for(let i=0;i<length;i++){
+      const pos=i*ratio,a=Math.floor(pos),b=Math.min(input.length-1,a+1),mix=pos-a;
+      out[i]=(input[a]||0)*(1-mix)+(input[b]||0)*mix;
+    }
+  }
+  return out;
+}
+
+function floatToPcm16(samples){
+  const out=new Int16Array(samples.length);
+  for(let i=0;i<samples.length;i++){
+    const v=Math.max(-1,Math.min(1,Number(samples[i])||0));
+    out[i]=v<0?Math.round(v*32768):Math.round(v*32767);
+  }
+  return out;
+}
+
+async function startPythonMicSession(){
+  if(micSessionId)return micSessionId;
+  const r=await fetch(MIC_START,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+  const d=await jsonResp(r);
+  micSessionId=String(d.session_id||"");
+  if(!micSessionId)throw new Error("Python microphone session did not start.");
+  console.log("[Nanako Mic] Python session started",micSessionId);
+  return micSessionId;
+}
+
+async function setServerNanakoSpeaking(speaking){
+  if(!micSessionId)return;
+  try{
+    await fetch(MIC_SPEAKING,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:micSessionId,speaking:!!speaking})});
+  }catch(x){console.warn("[Nanako Mic] speaking-state sync failed",x)}
+}
+
+function updateServerMicDebug(m){
+  if(!m)return;
+  e.debugMic.textContent=`Mic: ${Number(m.rms_db??-120).toFixed(1)} dB`;
+  e.debugRoom.textContent=`Room: ${Number(m.noise_floor_db??-120).toFixed(1)} dB`;
+  e.debugSpeech.textContent=`Speech: ${m.state==="speech"||m.speech_started?"Detected":m.state==="nanako_speaking"?"Python barge-in gate":"Waiting"}`;
+  e.debugTurn.textContent=`Turn: ${(Number(m.turn_ms||0)/1000).toFixed(1)} sec • Python VAD`;
+}
+
+async function restartPythonMicSession(){
+  const old=micSessionId;micSessionId="";micQueue=[];micBatch=[];
+  if(old){try{await fetch(MIC_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:old})})}catch{}}
+  await startPythonMicSession();
+}
+
+async function pumpMicQueue(){
+  if(micPumpBusy||!active||!micSessionId)return;
+  micPumpBusy=true;
+  try{
+    while(active&&micSessionId&&micQueue.length){
+      const pcm=micQueue.shift();
+      const r=await fetch(`${MIC_FRAME}?session_id=${encodeURIComponent(micSessionId)}`,{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:pcm.buffer});
+      const d=await r.json();
+      if(!r.ok||d?.ok===false){
+        if(d?.restart_session){await restartPythonMicSession();continue}
+        throw new Error(d?.error||`Microphone frame failed (${r.status})`);
+      }
+      const m=d.mic||{};updateServerMicDebug(m);
+      if(m.barge_in&&currentAudio){
+        console.log("[Nanako Mic] Python confirmed barge-in.");
+        await stopAudio(true);
+      }
+      if(m.speech_started)status("I'm listening...");
+      if(m.turn_id){
+        micCapturePaused=true;micQueue=[];micBatch=[];
+        await processPythonMicTurn(m.turn_id);
+        break;
+      }
+    }
+  }catch(x){
+    console.error("[Nanako Mic bridge]",x);error(x.message);status("Microphone connection problem");
+  }finally{micPumpBusy=false;if(active&&!micCapturePaused&&micQueue.length)setTimeout(pumpMicQueue,0)}
+}
+
+async function processPythonMicTurn(turnId){
+  if(!active||!micSessionId)return;
+  busy=true;status("Nanako is thinking...");
+  try{
+    const r=await fetch(MIC_RESPOND,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:micSessionId,turn_id:turnId,level})});
+    const d=await jsonResp(r);
+    const t=String(d?.transcript||"");
+    console.log("[Nanako Python Mic] Transcript:",t);
+    transcript(t);
+    // Response generation is finished. Re-open raw capture before playback so
+    // Python can own barge-in while Nanako speaks.
+    micCapturePaused=false;
+    await apply(d,t);
+  }catch(x){
+    console.error(x);error(x.message);status("Voice turn failed");micCapturePaused=false;
+  }finally{busy=false;if(active&&!currentAudio){status("Listening...");setTimeout(begin,40)}}
+}
+
+async function begin(){
+  if(!active)return;
+  await startPythonMicSession();
+  await ensureMicHardware();
+  micCapturePaused=false;
+  status("Listening...");
+}
+
+async function stopMicBridge(){
+  micCapturePaused=true;micQueue=[];micBatch=[];
+  const sid=micSessionId;micSessionId="";
+  try{micProcessor?.disconnect()}catch{}
+  try{micSource?.disconnect()}catch{}
+  micProcessor=null;micSource=null;
+  try{await ctx?.close()}catch{}ctx=null;
+  try{stream?.getTracks().forEach(t=>t.stop())}catch{}stream=null;
+  if(sid){try{await fetch(MIC_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid})})}catch{}}
+}
+
 async function startMode(){
   if(active)return;
   try{
-    // Both permission-sensitive actions are initiated by the SAME first tap.
-    // Audio priming is fire-and-forget; it never blocks microphone startup.
-    active=true;
-    convButton();
-    unlockAudio();
-    status("Starting microphone...");
+    active=true;convButton();unlockAudio();status("Starting microphone...");
     await begin();
   }catch(x){
-    console.error(x);
-    error("Please allow microphone access in Safari.");
+    console.error(x);error("Please allow microphone access and check the Python runtime.");await stopMode();
   }
 }
-async function stopMode(){active=false;if(rec?.state==="recording")stopRec(false);cleanup();release();await stopAudio(false);convButton();status("Ready to chat")}
+
+async function stopMode(){
+  active=false;await setServerNanakoSpeaking(false);await stopMicBridge();await stopAudio(false);convButton();status("Ready to chat");
+}
 async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;renderHistory();setScore(0);e.jp.textContent="こんにちは！ななこです。今日も気楽に話そう。";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{if(currentAudio&&active){console.log("[Nanako] Manual interruption.");stopAudio(true);return}active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
 window.addEventListener("beforeunload",()=>{
   stopAnimationPlan();
-  active=false;
-  try{if(rec?.state==="recording")rec.stop()}catch{}
-  cleanup();
-  release();
+  active=false;micCapturePaused=true;
+  try{micProcessor?.disconnect()}catch{}
+  try{micSource?.disconnect()}catch{}
+  try{stream?.getTracks().forEach(t=>t.stop())}catch{}
   currentAudio?.pause();
 });
 
@@ -394,7 +532,7 @@ async function boot(){
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation();
-  console.log("[Nanako] v11 Step 1.2 Python animation protocol renderer loaded.");
+  console.log("[Nanako] v11 Step 1.3 thin frontend loaded: Python owns mic VAD + animation decisions.");
 }
 
 boot();
