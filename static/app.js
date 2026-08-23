@@ -190,6 +190,10 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
 function playPythonIdlePlan(plan){
   if(currentAudio||!plan?.frames?.length)return false;
   cachedPythonIdlePlan=plan;
+  // Paint Python's first idle snapshot immediately. requestAnimationFrame then
+  // continues the Python timeline. This guarantees a talking mouth cannot remain
+  // visible for even one extra network/render cycle after speech cleanup.
+  renderAnimationFrame(plan.frames[0]);
   playAnimationPlan(plan,{loop:false,onComplete:()=>requestIdleAnimation({preferCache:false})});
   return true;
 }
@@ -234,7 +238,7 @@ function returnToPythonIdle(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v11 STEP 1.8 • SAFARI END-OF-SPEECH + IMMEDIATE PYTHON IDLE RETURN");
+console.log("[Nanako Build] v11 STEP 1.9 • DEDICATED TTS + HARD NORMAL-VOICE IDLE RETURN");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
@@ -410,6 +414,19 @@ async function play(b,m,animationPlan=null){
 
       if(a.ended){
         console.log("[Nanako Audio] Native ended state observed.");
+        finish();
+        return;
+      }
+
+      // A complete local WAV should continuously advance its media clock while
+      // playing. If iOS freezes the decoder clock anywhere for >1.8 s, stop the
+      // stale talking state rather than preserving an open mouth forever. This
+      // is lifecycle recovery only; Python still decides all mouth frames.
+      const stalledAnywhere=(now-lastProgressAt)>=1800&&(now-playbackStartedAt)>=1200&&!a.paused;
+      if(stalledAnywhere){
+        console.warn("[Nanako Audio] Media clock stalled; forcing Python idle.",{
+          current,duration:knownDuration,paused:a.paused,ended:a.ended
+        });
         finish();
         return;
       }
@@ -642,7 +659,7 @@ async function startMode(){
 async function stopMode(){
   active=false;await setServerNanakoSpeaking(false);await stopMicBridge();await stopAudio(false);convButton();status("Ready to chat");
 }
-async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;renderHistory();setScore(0);e.jp.textContent="こんにちは！ななこです。今日も気楽に話そう。";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true}
+async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;renderHistory();setScore(0);e.jp.textContent="こんにちは！ななこです。はじめまして。気楽に話そう。";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{if(currentAudio&&active){console.log("[Nanako] Manual interruption.");stopAudio(true);return}active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
 window.addEventListener("beforeunload",()=>{
@@ -661,6 +678,7 @@ document.addEventListener("visibilitychange",()=>{
 
 async function boot(){
   setScore(0);quick();convButton();renderHistory();
+  if(e.jp)e.jp.textContent="こんにちは！ななこです。はじめまして。気楽に話そう。";
   nanakoAvatar=document.getElementById("nanakoAvatar");
   nanakoBase=document.getElementById("nanakoBase");
   nanakoEyes=document.getElementById("nanakoEyes");
@@ -669,7 +687,7 @@ async function boot(){
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation({preferCache:false});
-  console.log("[Nanako] v11 Step 1.8 thin frontend loaded: Safari audio-drain watchdog + immediate cached Python idle return active.");
+  console.log("[Nanako] v11 Step 1.9 thin frontend loaded: dedicated-TTS playback lifecycle + hard idle recovery active.");
 }
 
 boot();
