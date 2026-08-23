@@ -47,36 +47,39 @@ console.log("[Nanako Frontend] v9.3 AUDIO ALWAYS ON");
 // Python on Alibaba decides blink timing, mouth timing, emotion,
 // idle/talking state and breathing values.
 // This browser code ONLY displays the animation protocol it receives.
+// STEP 1.7 ALIGNMENT RULE: no JS per-emotion/per-layer x/y/scale/rotate controls.
+// Eye/mouth placement must come entirely from the prepared PNG artwork/CSS authored by Leo.
+// Character-art URLs are versioned only to defeat stale phone/browser image cache.
 // ============================================================
 const ANIMATION_ASSETS = {
   neutral: {
-    base: "./static/characters/nanako/states/neutral/base.png",
+    base: "./static/characters/nanako/states/neutral/base.png?v=step1_7_manual_alignment_lock",
     eyes: {
-      open: "./static/characters/nanako/states/neutral/eyes/open.png",
-      half: "./static/characters/nanako/states/neutral/eyes/half.png",
-      closed: "./static/characters/nanako/states/neutral/eyes/closed.png"
+      open: "./static/characters/nanako/states/neutral/eyes/open.png?v=step1_7_manual_alignment_lock",
+      half: "./static/characters/nanako/states/neutral/eyes/half.png?v=step1_7_manual_alignment_lock",
+      closed: "./static/characters/nanako/states/neutral/eyes/closed.png?v=step1_7_manual_alignment_lock"
     },
     mouth: {
-      closed: "./static/characters/nanako/states/neutral/mouth/closed.png",
-      small: "./static/characters/nanako/states/neutral/mouth/small.png",
-      medium: "./static/characters/nanako/states/neutral/mouth/medium.png",
-      wide: "./static/characters/nanako/states/neutral/mouth/wide.png",
-      round: "./static/characters/nanako/states/neutral/mouth/round.png"
+      closed: "./static/characters/nanako/states/neutral/mouth/closed.png?v=step1_7_manual_alignment_lock",
+      small: "./static/characters/nanako/states/neutral/mouth/small.png?v=step1_7_manual_alignment_lock",
+      medium: "./static/characters/nanako/states/neutral/mouth/medium.png?v=step1_7_manual_alignment_lock",
+      wide: "./static/characters/nanako/states/neutral/mouth/wide.png?v=step1_7_manual_alignment_lock",
+      round: "./static/characters/nanako/states/neutral/mouth/round.png?v=step1_7_manual_alignment_lock"
     }
   },
   confused: {
-    base: "./static/characters/nanako/states/confused/base.png",
+    base: "./static/characters/nanako/states/confused/base.png?v=step1_7_manual_alignment_lock",
     eyes: {
-      open: "./static/characters/nanako/states/confused/eyes/open.png",
-      half: "./static/characters/nanako/states/confused/eyes/half.png",
-      closed: "./static/characters/nanako/states/confused/eyes/closed.png"
+      open: "./static/characters/nanako/states/confused/eyes/open.png?v=step1_7_manual_alignment_lock",
+      half: "./static/characters/nanako/states/confused/eyes/half.png?v=step1_7_manual_alignment_lock",
+      closed: "./static/characters/nanako/states/confused/eyes/closed.png?v=step1_7_manual_alignment_lock"
     },
     mouth: {
-      closed: "./static/characters/nanako/states/confused/mouth/closed.png",
-      small: "./static/characters/nanako/states/confused/mouth/small.png",
-      medium: "./static/characters/nanako/states/confused/mouth/medium.png",
-      wide: "./static/characters/nanako/states/confused/mouth/wide.png",
-      round: "./static/characters/nanako/states/confused/mouth/round.png"
+      closed: "./static/characters/nanako/states/confused/mouth/closed.png?v=step1_7_manual_alignment_lock",
+      small: "./static/characters/nanako/states/confused/mouth/small.png?v=step1_7_manual_alignment_lock",
+      medium: "./static/characters/nanako/states/confused/mouth/medium.png?v=step1_7_manual_alignment_lock",
+      wide: "./static/characters/nanako/states/confused/mouth/wide.png?v=step1_7_manual_alignment_lock",
+      round: "./static/characters/nanako/states/confused/mouth/round.png?v=step1_7_manual_alignment_lock"
     }
   }
 };
@@ -107,6 +110,7 @@ let animationRaf=0;
 let animationToken=0;
 let idlePlanTimer=0;
 let currentAnimationPlan=null;
+let cachedPythonIdlePlan=null;
 
 function animationAsset(state, part, frame){
   const emotion=ANIMATION_ASSETS[state]?state:"neutral";
@@ -183,20 +187,35 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
   animationRaf=requestAnimationFrame(tick);
 }
 
-async function requestIdleAnimation(){
+function playPythonIdlePlan(plan){
+  if(currentAudio||!plan?.frames?.length)return false;
+  cachedPythonIdlePlan=plan;
+  playAnimationPlan(plan,{loop:false,onComplete:()=>requestIdleAnimation({preferCache:false})});
+  return true;
+}
+
+async function requestIdleAnimation({preferCache=true}={}){
   clearTimeout(idlePlanTimer);
   if(currentAudio)return;
+
+  // Returning from speech must not leave the last talking PNG visible while a
+  // network round-trip fetches a new idle plan. Re-use the last plan that came
+  // from Python immediately, then refresh it only when that plan expires.
+  if(preferCache&&cachedPythonIdlePlan&&playPythonIdlePlan(cachedPythonIdlePlan))return;
+
   try{
     const r=await fetch(`${API}/api/animation/idle-plan?duration_ms=60000&sample_ms=100`,{cache:"no-store"});
     const d=await r.json();
     if(!r.ok||!d?.ok||!d?.animation_plan)throw new Error(d?.error||`Animation request failed (${r.status})`);
-    if(!currentAudio){
-      playAnimationPlan(d.animation_plan,{loop:false,onComplete:()=>requestIdleAnimation()});
-    }
+    cachedPythonIdlePlan=d.animation_plan;
+    if(!currentAudio)playPythonIdlePlan(cachedPythonIdlePlan);
   }catch(err){
     console.warn("[Nanako Animation] Python idle plan unavailable:",err);
+    // Only a fail-safe visual reset. This is not a browser animation system.
+    // It prevents a stale talking mouth from remaining frozen if the idle API
+    // is temporarily unreachable; the browser retries Python immediately.
     renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
-    idlePlanTimer=setTimeout(requestIdleAnimation,5000);
+    idlePlanTimer=setTimeout(()=>requestIdleAnimation({preferCache:false}),1500);
   }
 }
 
@@ -208,14 +227,14 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 function returnToPythonIdle(){
   stopAnimationPlan();
-  requestIdleAnimation();
+  if(!playPythonIdlePlan(cachedPythonIdlePlan))requestIdleAnimation({preferCache:false});
 }
 
 
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v11 STEP 1.6 • IDLE RETURN + SMOOTHER LIPS + PYTHON AUDIO CONDITIONING");
+console.log("[Nanako Build] v11 STEP 1.8 • SAFARI END-OF-SPEECH + IMMEDIATE PYTHON IDLE RETURN");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
@@ -299,7 +318,7 @@ async function play(b,m,animationPlan=null){
   // Keep the hardware bridge alive during TTS. Python gates normal VAD while
   // Nanako speaks and is the only component allowed to declare a barge-in.
   micCapturePaused=false;
-  setServerNanakoSpeaking(true);
+  await setServerNanakoSpeaking(true);
 
 
   const a=ttsAudio;
@@ -316,7 +335,9 @@ async function play(b,m,animationPlan=null){
 
   let finished=false;
   let playbackWatchdog=0;
-  let nearEndSince=0;
+  let playbackStartedAt=0;
+  let lastProgressAt=0;
+  let lastObservedMediaTime=0;
 
   const finish=()=>{
     if(finished)return;
@@ -325,21 +346,37 @@ async function play(b,m,animationPlan=null){
     playbackWatchdog=0;
     a._nanakoPlaybackWatchdog=0;
 
-    // IMPORTANT: clear currentAudio BEFORE requesting idle. Step 1.5 did this
-    // in the opposite order, so requestIdleAnimation() saw an active audio
-    // object and returned immediately, leaving the last talking frame stuck.
+    // Freeze raw user-turn processing until Python has been told that Nanako
+    // stopped speaking. This avoids the first user syllables being discarded by
+    // the server-side barge-in gate during the speaking->idle transition.
+    micCapturePaused=true;
+
+    // Clear the audio identity first, then immediately start the cached Python
+    // idle plan. This removes both causes of the stuck final talking frame:
+    // 1) requestIdleAnimation refusing to run while currentAudio was non-null;
+    // 2) waiting on a network request before replacing the final mouth PNG.
     if(currentAudio===a)currentAudio=null;
     returnToPythonIdle();
-
     convButton();
-    setServerNanakoSpeaking(false);
-    if(active){
-      micCapturePaused=false;
-      status("Listening...");
-      setTimeout(begin,20);
-    }else{
-      status("Ready to chat");
-    }
+
+    try{
+      a.onplaying=null;a.onended=null;a.onpause=null;a.onerror=null;
+      a.pause();
+      a.removeAttribute("src");
+      a.load();
+      revokeCurrentAudioObjectUrl();
+    }catch{}
+
+    // Resume listening only AFTER Python has closed its Nanako-speaking gate.
+    Promise.resolve(setServerNanakoSpeaking(false)).finally(()=>{
+      if(active){
+        micCapturePaused=false;
+        status("Listening...");
+        setTimeout(begin,20);
+      }else{
+        status("Ready to chat");
+      }
+    });
   };
 
   a.onplaying=()=>{
@@ -349,25 +386,53 @@ async function play(b,m,animationPlan=null){
     convButton();
     console.log("[Nanako Audio] Playback started. Python barge-in gate active.");
 
-    // Mobile Safari occasionally misses HTMLMediaElement.onended. This is only
-    // a playback-lifecycle guard; Python still owns every animation decision.
+    // iPhone Safari can audibly drain the audio output yet leave `ended=false`
+    // and even `paused=false`. The old watchdog therefore never fired and the
+    // renderer kept Python's final talking frame on screen indefinitely.
+    playbackStartedAt=performance.now();
+    lastProgressAt=playbackStartedAt;
+    lastObservedMediaTime=Number(a.currentTime||0);
+
     if(playbackWatchdog)clearInterval(playbackWatchdog);
     playbackWatchdog=setInterval(()=>{
       if(finished||currentAudio!==a)return;
+      const now=performance.now();
       const duration=Number(a.duration);
       const current=Number(a.currentTime||0);
-      if(a.ended){finish();return;}
-      const nearEnd=Number.isFinite(duration)&&duration>0&&current>=Math.max(0,duration-0.06);
-      if(nearEnd){
-        if(!nearEndSince)nearEndSince=performance.now();
-        if(a.paused&&performance.now()-nearEndSince>180){
-          console.log("[Nanako Audio] Mobile end watchdog restored idle state.");
+      const rate=Math.max(0.1,Number(a.playbackRate)||1);
+      const planDurationSec=Math.max(0,Number(animationPlan?.duration_ms||0)/1000);
+      const knownDuration=Number.isFinite(duration)&&duration>0?duration:planDurationSec;
+
+      if(current>lastObservedMediaTime+0.008){
+        lastObservedMediaTime=current;
+        lastProgressAt=now;
+      }
+
+      if(a.ended){
+        console.log("[Nanako Audio] Native ended state observed.");
+        finish();
+        return;
+      }
+
+      if(knownDuration>0){
+        // If the media clock is essentially at the end and has stopped moving,
+        // the phone has finished output even when Safari forgot to flip ended.
+        const nearEnd=current>=Math.max(0,knownDuration-0.22);
+        const stalledNearEnd=nearEnd&&(now-lastProgressAt)>=650;
+
+        // Blob audio is fully local, so this is a second safe guard against the
+        // Safari state where currentTime/ended both fail to finalize cleanly.
+        const expectedWallMs=(knownDuration/rate)*1000;
+        const exceededExpected=(now-playbackStartedAt)>expectedWallMs+1400&&current>=Math.max(0,knownDuration-0.55);
+
+        if(stalledNearEnd||exceededExpected){
+          console.log("[Nanako Audio] Safari drain watchdog restored Python idle.",{
+            current,duration:knownDuration,paused:a.paused,ended:a.ended
+          });
           finish();
         }
-      }else{
-        nearEndSince=0;
       }
-    },120);
+    },100);
     a._nanakoPlaybackWatchdog=playbackWatchdog;
   };
   a.onended=()=>{
@@ -377,7 +442,7 @@ async function play(b,m,animationPlan=null){
   a.onpause=()=>{
     if(finished||currentAudio!==a)return;
     const duration=Number(a.duration);
-    if(Number.isFinite(duration)&&duration>0&&Number(a.currentTime||0)>=duration-0.06){
+    if(Number.isFinite(duration)&&duration>0&&Number(a.currentTime||0)>=duration-0.22){
       setTimeout(()=>{if(!finished)finish();},220);
     }
   };
@@ -603,8 +668,8 @@ async function boot(){
   nanakoMotion=document.querySelector(".nanako-motion");
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
-  await requestIdleAnimation();
-  console.log("[Nanako] v11 Step 1.6 thin frontend loaded: Python owns mic/VAD/audio conditioning + animation; browser only captures/transports/renders.");
+  await requestIdleAnimation({preferCache:false});
+  console.log("[Nanako] v11 Step 1.8 thin frontend loaded: Safari audio-drain watchdog + immediate cached Python idle return active.");
 }
 
 boot();
