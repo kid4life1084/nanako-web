@@ -264,7 +264,7 @@ function returnToPythonIdle(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v11 STEP 1.11 • FULL WAV AUDIO + STABLE FACE RENDERER");
+console.log("[Nanako Build] v11 STEP 1.13 • COMPLETE HTTPS WAV + TALKING MIC GATE");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
@@ -345,9 +345,13 @@ async function play(b,m,animationPlan=null){
 
   await stopAudio(false);
 
-  // Keep the hardware bridge alive during TTS. Python gates normal VAD while
-  // Nanako speaks and is the only component allowed to declare a barge-in.
-  micCapturePaused=false;
+  // Do not stream the phone microphone while Nanako is talking.  Until the
+  // server has a synchronized far-end echo reference, her own speaker output can
+  // look like user speech and falsely trigger an acoustic barge-in.  The visible
+  // Interrupt Nanako button still provides immediate manual interruption.
+  micCapturePaused=true;
+  micQueue=[];
+  micBatch=[];
   await setServerNanakoSpeaking(true);
 
 
@@ -632,9 +636,9 @@ async function processPythonMicTurn(turnId){
     const t=String(d?.transcript||"");
     console.log("[Nanako Python Mic] Transcript:",t);
     transcript(t);
-    // Response generation is finished. Re-open raw capture before playback so
-    // Python can own barge-in while Nanako speaks.
-    micCapturePaused=false;
+    // Keep raw capture paused through Nanako playback. play()/finish() owns the
+    // speaking gate and re-enables capture only after the audio has ended.
+    micCapturePaused=true;
     await apply(d,t);
   }catch(x){
     console.error(x);error(x.message);status("Voice turn failed");micCapturePaused=false;
@@ -702,7 +706,7 @@ async function boot(){
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation({preferCache:false});
-  console.log("[Nanako] v11 Step 1.11 thin frontend loaded: full-WAV playback + stable eye/base renderer active.");
+  console.log("[Nanako] v11 Step 1.13 thin frontend loaded: complete-WAV playback + talking mic gate active.");
 }
 
 boot();
