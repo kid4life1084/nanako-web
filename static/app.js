@@ -41,7 +41,7 @@ console.log("[Nanako Frontend] v9.3 AUDIO ALWAYS ON");
 
 
 // ============================================================
-// NANAKO v11 STEP 1.3 — THIN PYTHON-CONTROLLED RENDERER
+// NANAKO v11 STEP 1.4 — AUDIO-CLOCK-SYNCED THIN RENDERER
 //
 // IMPORTANT:
 // Python on Alibaba decides blink timing, mouth timing, emotion,
@@ -80,6 +80,27 @@ const ANIMATION_ASSETS = {
     }
   }
 };
+
+// Renderer-only asset warmup. Python still decides WHICH frame is used and WHEN.
+// Preloading prevents first-use PNG fetches from making the lips appear late on phones.
+const animationPreloadImages=[];
+function preloadAnimationAssets(){
+  const urls=new Set();
+  for(const state of Object.values(ANIMATION_ASSETS)){
+    if(state?.base)urls.add(state.base);
+    for(const groupName of ["eyes","mouth"]){
+      const group=state?.[groupName]||{};
+      for(const url of Object.values(group))if(url)urls.add(url);
+    }
+  }
+  for(const url of urls){
+    const img=new Image();
+    img.decoding="async";
+    img.src=url;
+    animationPreloadImages.push(img);
+  }
+}
+preloadAnimationAssets();
 
 let nanakoBase=null,nanakoEyes=null,nanakoMouth=null,nanakoMotion=null,nanakoAvatar=null;
 let animationRaf=0;
@@ -123,7 +144,7 @@ function stopAnimationPlan(){
   currentAnimationPlan=null;
 }
 
-function playAnimationPlan(plan,{loop=false,onComplete=null}={}){
+function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={}){
   stopAnimationPlan();
   if(!plan||!Array.isArray(plan.frames)||!plan.frames.length)return;
   const token=animationToken;
@@ -133,9 +154,16 @@ function playAnimationPlan(plan,{loop=false,onComplete=null}={}){
 
   const tick=now=>{
     if(token!==animationToken)return;
-    let elapsed=now-started;
-    if(loop)elapsed=elapsed%duration;
-    let frames=plan.frames;
+
+    // Talking animation follows the HTMLAudio media timeline, NOT wall-clock time.
+    // This keeps Python's waveform-derived mouth frames synchronized even when
+    // Nanako is intentionally played at 0.86x speed or the phone briefly stalls.
+    let elapsed=mediaClock
+      ? Math.max(0,Number(mediaClock.currentTime||0)*1000)
+      : now-started;
+
+    if(loop&&!mediaClock)elapsed=elapsed%duration;
+    const frames=plan.frames;
     let lo=0,hi=frames.length-1;
     while(lo<hi){
       const mid=Math.ceil((lo+hi)/2);
@@ -143,7 +171,9 @@ function playAnimationPlan(plan,{loop=false,onComplete=null}={}){
       else hi=mid-1;
     }
     renderAnimationFrame(frames[lo]);
-    if(loop||elapsed<duration){
+
+    const mediaStillPlaying=mediaClock&&!mediaClock.ended&&currentAudio===mediaClock;
+    if(mediaClock?mediaStillPlaying:(loop||elapsed<duration)){
       animationRaf=requestAnimationFrame(tick);
     }else{
       animationRaf=0;
@@ -170,9 +200,9 @@ async function requestIdleAnimation(){
   }
 }
 
-function useTalkingAnimation(plan){
+function useTalkingAnimation(plan,mediaClock=null){
   clearTimeout(idlePlanTimer);
-  if(plan?.frames?.length)playAnimationPlan(plan);
+  if(plan?.frames?.length)playAnimationPlan(plan,{mediaClock});
   else renderAnimationFrame({emotion:"neutral",action:"talking",eyes:"open",mouth:"small",scale:1,translate_y:0});
 }
 
@@ -185,7 +215,7 @@ function returnToPythonIdle(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v11 STEP 1.3 • PYTHON MIC/VAD + ANIMATION");
+console.log("[Nanako Build] v11 STEP 1.5 • PERSONA LOCK + PYTHON MIC/VAD + END-TAIL LIPSYNC");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
@@ -301,7 +331,7 @@ async function play(b,m,animationPlan=null){
 
   a.onplaying=()=>{
     if(currentAudio!==a)return;
-    useTalkingAnimation(animationPlan);
+    useTalkingAnimation(animationPlan,a);
     status("Nanako is speaking...");
     convButton();
     console.log("[Nanako Audio] Playback started. Python barge-in gate active.");
@@ -317,7 +347,8 @@ async function play(b,m,animationPlan=null){
 
   try{
     await a.play();
-    if(currentAudio===a)useTalkingAnimation(animationPlan);
+    // onplaying is the single authoritative start for the talking renderer.
+    // Do not restart the plan here; that caused a small timing reset on mobile.
     return true;
   }catch(x){
     console.error("[Nanako TTS] Playback failed:",x);
@@ -532,7 +563,7 @@ async function boot(){
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation();
-  console.log("[Nanako] v11 Step 1.3 thin frontend loaded: Python owns mic VAD + animation decisions.");
+  console.log("[Nanako] v11 Step 1.5 thin frontend loaded: Python owns mic VAD + animation decisions; audio clock renders the server lip plan.");
 }
 
 boot();
