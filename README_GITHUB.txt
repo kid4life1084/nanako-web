@@ -1,19 +1,16 @@
-NANAKO v11 STEP 1.5 — GITHUB THIN FRONTEND
+NANAKO v11 STEP 1.6 — GITHUB THIN FRONTEND
 
-Upload the CONTENTS of this ZIP to the GitHub Pages repository root.
+Upload the CONTENTS of this ZIP to the GitHub repository root.
 
-Animation architecture:
-- HTML/CSS contain no Nanako animation timing logic.
-- CSS has no Nanako keyframe animations.
-- Python sends precomputed animation plans derived from the returned TTS WAV.
-- JavaScript only renders the returned image frames/transforms against HTMLAudio.currentTime.
-- Step 1.5 keeps the Step 1.4 audio-clock synchronization and works with the new server-side quiet-tail lip plan.
+Frontend responsibilities remain minimal:
+- microphone permission / hardware capture
+- 16 kHz PCM transport
+- audio playback
+- rendering Python animation frames
 
-Microphone architecture:
-- Browser only requests mic permission, captures PCM, resamples to 16 kHz mono, batches it, and sends it to Alibaba.
-- Browser contains no VAD thresholds, RMS/noise-floor calibration, speech start/end timers, silence cutoff, max-turn logic, or MediaRecorder turn decisions.
-- Python owns room-noise tracking, VAD, speech start/end, no-speech timeout, max-turn cutoff, turn buffering, and barge-in gating.
+Step 1.6 fixes:
+- correct return to Python idle after TTS ends
+- mobile Safari playback-end watchdog
+- muted/no-audio talking-plan cleanup
 
-Persona architecture:
-- Persona/scenario decisions are server-side Python/Qwen instructions, not frontend code.
-- Step 1.5 backend anchors Nanako as a mid-20s Japanese receptionist meeting the learner for the first time at a language exchange.
+No browser animation decision engine, RMS/VAD, noise-floor logic, silence cutoff, or mouth-selection logic has been reintroduced.

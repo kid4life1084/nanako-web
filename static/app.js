@@ -215,7 +215,7 @@ function returnToPythonIdle(){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v11 STEP 1.5 • PERSONA LOCK + PYTHON MIC/VAD + END-TAIL LIPSYNC");
+console.log("[Nanako Build] v11 STEP 1.6 • IDLE RETURN + SMOOTHER LIPS + PYTHON AUDIO CONDITIONING");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
@@ -236,7 +236,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);if(currentAudio&&active){e.conv.classList.add("interrupt");e.conv.textContent="✋ Interrupt Nanako"}else{e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";if(b&&!muted)await play(b,m,d?.animation_plan);else{if(d?.animation_plan)playAnimationPlan(d.animation_plan);if(active)setTimeout(begin,20)}}
+async function apply(d,user){e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";if(b&&!muted)await play(b,m,d?.animation_plan);else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>returnToPythonIdle()});else returnToPythonIdle();if(active)setTimeout(begin,20)}}
 async function send(){let t=e.input.value.trim();if(!t||busy)return;busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:true})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
 function audioBlobUrlFromBase64(b,m){let v=String(b||"").trim();if(!v)return"";if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);const bin=atob(v);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:m||"audio/wav"}))}
@@ -268,7 +268,9 @@ async function stopAudio(resume=false){
     try{
       currentAudio.onplaying=null;
       currentAudio.onended=null;
+      currentAudio.onpause=null;
       currentAudio.onerror=null;
+      if(currentAudio._nanakoPlaybackWatchdog){clearInterval(currentAudio._nanakoPlaybackWatchdog);currentAudio._nanakoPlaybackWatchdog=0;}
       currentAudio.pause();
       currentAudio.src="";
       currentAudio.load();
@@ -313,11 +315,22 @@ async function play(b,m,animationPlan=null){
   convButton();
 
   let finished=false;
+  let playbackWatchdog=0;
+  let nearEndSince=0;
+
   const finish=()=>{
     if(finished)return;
     finished=true;
-    returnToPythonIdle();
+    if(playbackWatchdog)clearInterval(playbackWatchdog);
+    playbackWatchdog=0;
+    a._nanakoPlaybackWatchdog=0;
+
+    // IMPORTANT: clear currentAudio BEFORE requesting idle. Step 1.5 did this
+    // in the opposite order, so requestIdleAnimation() saw an active audio
+    // object and returned immediately, leaving the last talking frame stuck.
     if(currentAudio===a)currentAudio=null;
+    returnToPythonIdle();
+
     convButton();
     setServerNanakoSpeaking(false);
     if(active){
@@ -335,10 +348,38 @@ async function play(b,m,animationPlan=null){
     status("Nanako is speaking...");
     convButton();
     console.log("[Nanako Audio] Playback started. Python barge-in gate active.");
+
+    // Mobile Safari occasionally misses HTMLMediaElement.onended. This is only
+    // a playback-lifecycle guard; Python still owns every animation decision.
+    if(playbackWatchdog)clearInterval(playbackWatchdog);
+    playbackWatchdog=setInterval(()=>{
+      if(finished||currentAudio!==a)return;
+      const duration=Number(a.duration);
+      const current=Number(a.currentTime||0);
+      if(a.ended){finish();return;}
+      const nearEnd=Number.isFinite(duration)&&duration>0&&current>=Math.max(0,duration-0.06);
+      if(nearEnd){
+        if(!nearEndSince)nearEndSince=performance.now();
+        if(a.paused&&performance.now()-nearEndSince>180){
+          console.log("[Nanako Audio] Mobile end watchdog restored idle state.");
+          finish();
+        }
+      }else{
+        nearEndSince=0;
+      }
+    },120);
+    a._nanakoPlaybackWatchdog=playbackWatchdog;
   };
   a.onended=()=>{
     console.log("[Nanako Audio] Finished speaking.");
     finish();
+  };
+  a.onpause=()=>{
+    if(finished||currentAudio!==a)return;
+    const duration=Number(a.duration);
+    if(Number.isFinite(duration)&&duration>0&&Number(a.currentTime||0)>=duration-0.06){
+      setTimeout(()=>{if(!finished)finish();},220);
+    }
   };
   a.onerror=()=>{
     console.error("[Nanako Audio] Playback error.");
@@ -563,7 +604,7 @@ async function boot(){
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation();
-  console.log("[Nanako] v11 Step 1.5 thin frontend loaded: Python owns mic VAD + animation decisions; audio clock renders the server lip plan.");
+  console.log("[Nanako] v11 Step 1.6 thin frontend loaded: Python owns mic/VAD/audio conditioning + animation; browser only captures/transports/renders.");
 }
 
 boot();
