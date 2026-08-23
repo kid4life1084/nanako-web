@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0910">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nanako">
+<title>Nanako</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./static/style.css?v=10.5?v=9.9?v=9.4-force-audio-20260822">
+<link rel="preload" as="image" href="./static/characters/nanako/states/neutral/base.png">
+</head>
+<body>
+<main class="app-shell"><section class="nanako-app">
+<header class="top-bar">
+<div><h1>Nanako</h1><div class="subtitle">Japanese Companion</div></div>
+<div class="top-actions"><span id="levelBadge" class="level-badge">Auto</span><button id="menuButton" class="round-button">•••</button></div>
+</header>
+<div class="score-row"><div class="score-track"><div id="scoreFill" class="score-fill"></div></div><span id="scoreText">0</span></div>
+
+<section class="character-stage">
+  <div class="nanako-motion">
+    <div id="nanakoAvatar" class="nanako-avatar" aria-label="Nanako" role="img">
+      <img id="nanakoBase" class="nanako-base" src="./static/characters/nanako/states/neutral/base.png" alt="">
+      <img id="nanakoEyes" class="nanako-part nanako-eyes" src="./static/characters/nanako/states/neutral/eyes/open.png" alt="">
+      <img id="nanakoMouth" class="nanako-part nanako-mouth" src="./static/characters/nanako/states/neutral/mouth/closed.png" alt="">
+    </div>
+  </div>
+  <div id="userTranscript" class="user-transcript" hidden><strong>You</strong><span id="userTranscriptText"></span></div>
+</section>
+
+<section class="nanako-row">
+<div class="avatar">N</div>
+<div class="nanako-copy"><strong>Nanako</strong><span id="statusText">Ready to chat</span></div>
+<button id="romajiButton" class="quick-button">RO</button>
+<button id="englishButton" class="quick-button">EN</button>
+<button id="muteButton" class="quick-button">🔊</button>
+</section>
+
+<section class="reply-card">
+<div id="japaneseReply" class="japanese-reply">こんにちは！ななこです。今日も気楽に話そう。</div>
+<div id="romajiSection" class="helper-section" hidden><div class="helper-label">ROMAJI</div><div id="romajiReply" class="helper-text"></div></div>
+<div id="englishSection" class="helper-section" hidden><div class="helper-label">ENGLISH</div><div id="englishReply" class="helper-text"></div></div>
+</section>
+
+<section class="input-row"><input id="messageInput" placeholder="Type in Japanese or English..."><button id="sendButton" class="send-button">➤</button></section>
+<button id="conversationButton" class="conversation-button">🎤 Start Conversation</button>
+<div id="correctionToast" class="correction-toast" hidden><strong>Correction</strong><div id="wrongText" class="wrong-text"></div><div id="correctText" class="correct-text"></div></div>
+<div id="errorToast" class="error-toast" hidden></div>
+</section></main>
+
+<div id="settingsModal" class="modal-backdrop" hidden><section class="modal-card">
+<div class="modal-header"><div><h2>Nanako</h2><div class="modal-subtitle">Conversation settings</div></div><button id="closeSettingsButton" class="close-button">×</button></div>
+<button id="historyButton" class="settings-nav"><span><small>CURRENT SESSION</small><strong>Conversation History</strong></span><span>›</span></button>
+<div class="settings-block"><div class="settings-row"><span>Japanese response level</span><strong id="levelValue">Auto</strong></div>
+<div id="levelGrid" class="level-grid">
+<button data-level="auto" class="level-choice active">Auto</button><button data-level="n5" class="level-choice">N5</button><button data-level="n4" class="level-choice">N4</button><button data-level="n3" class="level-choice">N3</button><button data-level="n2" class="level-choice">N2</button><button data-level="n1" class="level-choice">N1</button>
+</div></div>
+<div class="settings-block"><div class="settings-row"><span>Conversation score</span><strong id="settingsScore">0 / 100</strong></div><div class="settings-progress"><div id="settingsScoreFill"></div></div></div>
+<div class="settings-block"><div class="settings-label">Voice debug</div><div id="debugMic">Mic: —</div><div id="debugRoom">Room: —</div><div id="debugSpeech">Speech: Waiting</div><div id="debugTurn">Turn: 0.0 sec</div></div>
+<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.2 • GitHub frontend + Alibaba Python runtime</div><div id="runtimeStatus">Python runtime: checking…</div></div>
+<button id="resetButton" class="reset-button">Reset conversation</button>
+</section></div>
+
+<div id="historyModal" class="modal-backdrop" hidden><section class="modal-card history-card">
+<div class="modal-header"><div><h2>Conversation History</h2><div class="modal-subtitle">Current session</div></div><button id="closeHistoryButton" class="close-button">×</button></div>
+<div id="historyEmpty" class="history-empty">No conversation yet.</div><div id="historyList" class="history-list"></div>
+</section></div>
+
+<script src="./static/app.js?v=10.5?v=9.9?v=9.4-force-audio-20260822" defer></script>
+</body></html>
