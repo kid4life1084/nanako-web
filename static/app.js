@@ -270,7 +270,7 @@ const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session
 const RUNTIME_CHECK=`${API}/runtime-check`;
 const MEMORY_KEY="nanakoPersistentMemoryV1";
 const MEMORY_HISTORY_MAX=40,MEMORY_SEND_MAX=16,MEMORY_FACT_MAX=30;
-let persistentFacts=[],persistentUserName="",startupGreetingData=null,startupGreetingPlayed=false,startupGreetingLoading=null;
+let persistentFacts=[],persistentUserName="",startupGreetingData=null,startupGreetingPlayed=false,startupGreetingLoading=null,startupGreetingPlayPromise=null;
 function loadPersistentMemory(){
   try{
     const raw=JSON.parse(localStorage.getItem(MEMORY_KEY)||"{}");
@@ -343,7 +343,7 @@ async function checkPythonRuntime(){const el=document.getElementById("runtimeSta
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micSessionId="",micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,transcriptTimer=0,correctionTimer=0,audioUnlocked=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micSessionId="",micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -390,11 +390,15 @@ async function fetchStartupGreeting(){
 }
 async function playStartupGreetingIfReady(){
   if(startupGreetingPlayed||muted)return false;
-  const d=startupGreetingData||await fetchStartupGreeting();
-  if(!d?.audio_base64)return false;
-  const ok=await play(d.audio_base64,d.audio_mime||"audio/wav",d.animation_plan);
-  if(ok)startupGreetingPlayed=true;
-  return ok;
+  if(startupGreetingPlayPromise)return startupGreetingPlayPromise;
+  startupGreetingPlayPromise=(async()=>{
+    const d=startupGreetingData||await fetchStartupGreeting();
+    if(!d?.audio_base64)return false;
+    const ok=await play(d.audio_base64,d.audio_mime||"audio/wav",d.animation_plan);
+    if(ok)startupGreetingPlayed=true;
+    return ok;
+  })();
+  try{return await startupGreetingPlayPromise;}finally{startupGreetingPlayPromise=null;}
 }
 async function send(){let t=e.input.value.trim();if(!t||busy)return;busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:true,...memoryPayload()})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
@@ -423,6 +427,7 @@ function unlockAudio(){
 }
 
 async function stopAudio(resume=false){
+  if(bargeCaptureTimer){clearTimeout(bargeCaptureTimer);bargeCaptureTimer=0;}
   if(currentAudio){
     try{
       currentAudio.onplaying=null;
@@ -455,13 +460,15 @@ async function play(b,m,animationPlan=null){
 
   await stopAudio(false);
 
-  // Step 1.17 barge-in: keep the essential browser capture bridge running
-  // while Nanako talks. The browser requests hardware AEC/NS; Python alone
-  // decides whether sustained near-user speech is a real interruption.
+  // Step 1.21 self-echo protection: tell Python Nanako is speaking immediately,
+  // but do NOT forward microphone PCM during the opening of her reply. iPhone
+  // speaker echo is strongest right after playback begins and was occasionally
+  // being mistaken for a real barge-in after the old 900 ms grace window.
+  // Barge-in capture is restored automatically after the protected opening.
   micQueue=[];
   micBatch=[];
   await setServerNanakoSpeaking(true);
-  micCapturePaused=false;
+  micCapturePaused=true;
 
 
   const a=ttsAudio;
@@ -486,6 +493,7 @@ async function play(b,m,animationPlan=null){
     if(finished)return;
     finished=true;
     if(playbackWatchdog)clearInterval(playbackWatchdog);
+    if(bargeCaptureTimer){clearTimeout(bargeCaptureTimer);bargeCaptureTimer=0;}
     playbackWatchdog=0;
     a._nanakoPlaybackWatchdog=0;
 
@@ -527,7 +535,18 @@ async function play(b,m,animationPlan=null){
     useTalkingAnimation(animationPlan,a);
     status("Nanako is speaking...");
     convButton();
-    console.log("[Nanako Audio] Playback started. Python barge-in gate active.");
+    console.log("[Nanako Audio] Playback started. Opening echo-protection active.");
+
+    if(bargeCaptureTimer)clearTimeout(bargeCaptureTimer);
+    // 1.6 s is long enough for iPhone speaker/AEC startup to settle while still
+    // allowing natural interruption through the remainder of ordinary replies.
+    bargeCaptureTimer=setTimeout(()=>{
+      bargeCaptureTimer=0;
+      if(active&&currentAudio===a&&!finished){
+        micQueue=[];micBatch=[];micCapturePaused=false;
+        console.log("[Nanako Mic] Barge-in capture armed after startup echo guard.");
+      }
+    },1600);
 
     // iPhone Safari can audibly drain the audio output yet leave `ended=false`
     // and even `paused=false`. The old watchdog therefore never fired and the
@@ -777,6 +796,33 @@ async function stopMicBridge(){
   if(sid){try{await fetch(MIC_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid})})}catch{}}
 }
 
+function armStartupGreetingOnFirstGesture(){
+  if(startupGestureArmed||startupGreetingPlayed||muted)return;
+  startupGestureArmed=true;
+  const release=async()=>{
+    if(startupGreetingPlayed||muted)return;
+    try{
+      unlockAudio();
+      status("Nanako is greeting you...");
+      await playStartupGreetingIfReady();
+    }catch(err){console.warn("[Nanako Startup] first-gesture playback failed",err)}
+  };
+  // Safari may reject cold-page autoplay. The first interaction anywhere in the
+  // app—not only Start Conversation—unlocks the already-prepared greeting.
+  window.addEventListener("pointerdown",release,{once:true,capture:true});
+  window.addEventListener("touchstart",release,{once:true,capture:true,passive:true});
+}
+
+async function tryStartupGreetingAutoplay(){
+  if(startupGreetingPlayed||muted)return;
+  try{
+    status("Nanako is greeting you...");
+    const ok=await playStartupGreetingIfReady();
+    if(ok)return;
+  }catch(err){console.warn("[Nanako Startup] autoplay blocked",err)}
+  armStartupGreetingOnFirstGesture();
+}
+
 async function startMode(){
   if(active)return;
   try{
@@ -795,7 +841,7 @@ async function startMode(){
 async function stopMode(){
   active=false;await setServerNanakoSpeaking(false);await stopMicBridge();await stopAudio(false);convButton();status("Ready to chat");
 }
-async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;fetchStartupGreeting()}
+async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;fetchStartupGreeting()}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
 window.addEventListener("beforeunload",()=>{
@@ -814,6 +860,9 @@ document.addEventListener("visibilitychange",()=>{
 
 async function boot(){
   loadPersistentMemory();
+  // Arm immediately so a fast first tap can unlock speech even while the backend
+  // is still preparing the randomized greeting audio.
+  armStartupGreetingOnFirstGesture();
   setScore(0);quick();convButton();renderHistory();
   await animationAssetsReady;
   if(e.jp)e.jp.textContent=rememberDetectedUserName()?`おかえり、${rememberDetectedUserName()}！`:`はじめまして！ななこです。`;
@@ -825,14 +874,12 @@ async function boot(){
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation({preferCache:false});
-  // Generate the randomized greeting immediately. Browsers that permit autoplay
-  // may play it now; iPhone Safari keeps it queued until the first user tap.
+  // Prepare and display the randomized greeting immediately, then try to speak
+  // it immediately. iPhone Safari may reject cold-load autoplay; if so, the
+  // first tap anywhere in the app releases the queued greeting automatically.
   await fetchStartupGreeting();
-  // iPhone Safari requires a real user gesture before spoken audio. The greeting
-  // stays queued and startMode() plays it on the first Start Conversation tap.
-  // On browsers where this page already has an activated media session, allow it.
-  if(!muted&&navigator.userActivation?.hasBeenActive){try{await playStartupGreetingIfReady()}catch{}}
-  console.log(`[Nanako] v11 Step 1.20 startup greeting ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  await tryStartupGreetingAutoplay();
+  console.log(`[Nanako] v11 Step 1.21 startup greeting ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
