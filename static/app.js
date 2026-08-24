@@ -299,6 +299,22 @@ function cleanNameCandidate(value){
   if(/^(fine|good|okay|ok|happy|tired|busy|here|back)$/i.test(s))return"";
   return s;
 }
+function detectUserNameFromText(value){
+  const msg=String(value||"").trim();if(!msg)return"";
+  const patterns=[
+    /(?:my name is|call me|i am|i'm)\s+([A-Za-z][A-Za-z'\-]{1,23})(?:\b|$)/i,
+    /(?:私の名前は|僕の名前は|俺の名前は|名前は)\s*([ぁ-んァ-ヶー一-龯A-Za-z][ぁ-んァ-ヶー一-龯A-Za-z'\-]{0,23})(?:です|だよ|といいます|っていいます|[。！!]?\s*$)/,
+    /(?:私は|僕は|俺は)\s*([ァ-ヶーA-Za-z][ァ-ヶーA-Za-z'\-]{1,15})\s*(?:です|だよ|といいます|っていいます)[。！!]?\s*$/,
+    /^\s*([ァ-ヶーA-Za-z][ァ-ヶーA-Za-z'\-]{1,15})\s*(?:です|だよ|といいます|っていいます)[。！!]?\s*$/
+  ];
+  for(const re of patterns){const m=msg.match(re);if(m){const n=cleanNameCandidate(m[1]);if(n)return n;}}
+  return"";
+}
+function rememberUserNameFromText(value){
+  const n=detectUserNameFromText(value);
+  if(n&&n!==persistentUserName){persistentUserName=n;savePersistentMemory();}
+  return persistentUserName;
+}
 function detectUserNameFromMemory(){
   if(persistentUserName)return persistentUserName;
   const factPatterns=[
@@ -310,14 +326,7 @@ function detectUserNameFromMemory(){
     for(const re of factPatterns){const m=String(fact).match(re);if(m){const n=cleanNameCandidate(m[1]);if(n)return n;}}
   }
   const userMessages=history.filter(h=>h.role==="user"&&!h.ephemeral).map(h=>String(h.text||""));
-  const patterns=[
-    /(?:my name is|call me)\s+([A-Za-z][A-Za-z'\-]{1,23})(?:\b|$)/i,
-    /(?:私の名前は|僕の名前は|俺の名前は|名前は)\s*([ぁ-んァ-ヶー一-龯A-Za-z][ぁ-んァ-ヶー一-龯A-Za-z'\-]{0,23})(?:です|だよ|といいます|っていいます|[。！!]?\s*$)/,
-    /^\s*([ァ-ヶーA-Za-z][ァ-ヶーA-Za-z'\-]{1,15})\s*(?:です|だよ|といいます|っていいます)[。！!]?\s*$/
-  ];
-  for(const msg of userMessages){
-    for(const re of patterns){const m=msg.match(re);if(m){const n=cleanNameCandidate(m[1]);if(n)return n;}}
-  }
+  for(const msg of userMessages){const n=detectUserNameFromText(msg);if(n)return n;}
   return"";
 }
 function rememberDetectedUserName(){
@@ -334,16 +343,22 @@ function mergeMemoryFacts(items){
   savePersistentMemory();
 }
 function memoryPayload(){
+  const facts=persistentFacts.slice(-MEMORY_FACT_MAX);
+  if(persistentUserName){
+    const nameFact=`The learner's name is ${persistentUserName}.`;
+    if(!facts.some(f=>String(f).toLowerCase()===nameFact.toLowerCase()))facts.push(nameFact);
+  }
   return {
     memory_history:history.slice(-MEMORY_SEND_MAX).map(h=>({role:h.role,content:h.text})),
-    memory_facts:persistentFacts.slice(-MEMORY_FACT_MAX)
+    memory_facts:facts.slice(-MEMORY_FACT_MAX),
+    user_name:persistentUserName||""
   };
 }
 async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const ok=!!(d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?"Python runtime: ONLINE • mic + animation loaded":"Python runtime: incomplete — check Alibaba deployment";console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micSessionId="",micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micSessionId="",micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -351,7 +366,7 @@ function error(m){e.err.textContent=String(m||"Something went wrong.");e.err.hid
 function transcript(t){clearTimeout(transcriptTimer);if(!t){e.userTranscript.hidden=true;return}e.userTranscriptText.textContent=t;e.userTranscript.style.opacity="1";e.userTranscript.hidden=false;transcriptTimer=setTimeout(()=>{e.userTranscript.style.opacity="0";setTimeout(()=>e.userTranscript.hidden=true,420)},2200)}
 function correction(d){let a=d?.analysis&&typeof d.analysis==="object"?d.analysis:{},o=String(a.wrong_text??a.original??a.original_text??a.user_text??"").trim(),c=String(a.correct_text??a.corrected??a.corrected_text??a.correction??"").trim(),n=a.needs_correction===true||a.correct===false||a.is_correct===false||!!(o&&c&&o!==c);return{n,o,c}}
 function showCorrection(x){clearTimeout(correctionTimer);if(!x.n||!x.o||!x.c){e.corr.hidden=true;return}e.wrong.textContent=x.o;e.correct.textContent=`→ ${x.c}`;e.corr.hidden=false;correctionTimer=setTimeout(()=>e.corr.hidden=true,7000)}
-function addHistory(role,text,x=null){history.push({role,text:String(text||""),wrong:x?.n?x.o:"",corrected:x?.n?x.c:""});if(history.length>MEMORY_HISTORY_MAX)history.splice(0,history.length-MEMORY_HISTORY_MAX);renderHistory();savePersistentMemory()}
+function addHistory(role,text,x=null){history.push({role,text:String(text||""),wrong:x?.n?x.o:"",corrected:x?.n?x.c:""});if(history.length>MEMORY_HISTORY_MAX)history.splice(0,history.length-MEMORY_HISTORY_MAX);if(role==="user")rememberUserNameFromText(text);renderHistory();savePersistentMemory()}
 function addEphemeralStartupHistory(text){
   const t=String(text||"").trim();if(!t)return;
   // Keep only the current boot greeting as transient context. It is sent to Python
@@ -388,19 +403,19 @@ async function fetchStartupGreeting(){
   })();
   return startupGreetingLoading;
 }
-async function playStartupGreetingIfReady(){
+async function playStartupGreetingIfReady(fromGesture=false){
   if(startupGreetingPlayed||muted)return false;
   if(startupGreetingPlayPromise)return startupGreetingPlayPromise;
   startupGreetingPlayPromise=(async()=>{
     const d=startupGreetingData||await fetchStartupGreeting();
     if(!d?.audio_base64)return false;
-    const ok=await play(d.audio_base64,d.audio_mime||"audio/wav",d.animation_plan);
+    const ok=await play(d.audio_base64,d.audio_mime||"audio/wav",d.animation_plan,{gestureImmediate:!!fromGesture,silentFailure:true});
     if(ok)startupGreetingPlayed=true;
     return ok;
   })();
   try{return await startupGreetingPlayPromise;}finally{startupGreetingPlayPromise=null;}
 }
-async function send(){let t=e.input.value.trim();if(!t||busy)return;busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:true,...memoryPayload()})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
+async function send(){let t=e.input.value.trim();if(!t||busy)return;rememberUserNameFromText(t);busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:true,...memoryPayload()})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
 function audioBlobUrlFromBase64(b,m){let v=String(b||"").trim();if(!v)return"";if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);const bin=atob(v);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:m||"audio/wav"}))}
 function revokeCurrentAudioObjectUrl(){if(currentAudioObjectUrl){try{URL.revokeObjectURL(currentAudioObjectUrl)}catch{}currentAudioObjectUrl=""}}
@@ -452,22 +467,28 @@ async function stopAudio(resume=false){
   }
 }
 
-async function play(b,m,animationPlan=null){
+async function play(b,m,animationPlan=null,options={}){
   if(!b||muted){
     if(active)setTimeout(begin,40);
     return false;
   }
 
-  await stopAudio(false);
+  const gestureImmediate=!!options?.gestureImmediate&&!currentAudio;
+  const silentFailure=!!options?.silentFailure;
+  if(!gestureImmediate){
+    await stopAudio(false);
+  }else{
+    if(bargeCaptureTimer){clearTimeout(bargeCaptureTimer);bargeCaptureTimer=0;}
+    stopAnimationPlan();
+  }
 
-  // Step 1.21 self-echo protection: tell Python Nanako is speaking immediately,
-  // but do NOT forward microphone PCM during the opening of her reply. iPhone
-  // speaker echo is strongest right after playback begins and was occasionally
-  // being mistaken for a real barge-in after the old 900 ms grace window.
-  // Barge-in capture is restored automatically after the protected opening.
+  // Keep mic PCM out of the opening echo window. For startup greeting playback
+  // triggered by a real user gesture, do not await a network call before
+  // HTMLAudio.play(); Safari would otherwise consume the user activation.
   micQueue=[];
   micBatch=[];
-  await setServerNanakoSpeaking(true);
+  if(gestureImmediate){Promise.resolve(setServerNanakoSpeaking(true)).catch(()=>{});}
+  else{await setServerNanakoSpeaking(true);}
   micCapturePaused=true;
 
 
@@ -538,7 +559,7 @@ async function play(b,m,animationPlan=null){
     console.log("[Nanako Audio] Playback started. Opening echo-protection active.");
 
     if(bargeCaptureTimer)clearTimeout(bargeCaptureTimer);
-    // 1.6 s is long enough for iPhone speaker/AEC startup to settle while still
+    // 2.2 s better protects against occasional self-echo first-word cutoffs on
     // allowing natural interruption through the remainder of ordinary replies.
     bargeCaptureTimer=setTimeout(()=>{
       bargeCaptureTimer=0;
@@ -546,7 +567,7 @@ async function play(b,m,animationPlan=null){
         micQueue=[];micBatch=[];micCapturePaused=false;
         console.log("[Nanako Mic] Barge-in capture armed after startup echo guard.");
       }
-    },1600);
+    },2200);
 
     // iPhone Safari can audibly drain the audio output yet leave `ended=false`
     // and even `paused=false`. The old watchdog therefore never fired and the
@@ -620,8 +641,8 @@ async function play(b,m,animationPlan=null){
     // Do not restart the plan here; that caused a small timing reset on mobile.
     return true;
   }catch(x){
-    console.error("[Nanako TTS] Playback failed:",x);
-    error("Nanako's voice could not play. Tap Start Conversation once more to unlock audio.");
+    console.warn("[Nanako TTS] Playback failed:",x);
+    if(!silentFailure)error("Nanako's voice could not play. Tap once and try again.");
     finish();
     return false;
   }
@@ -796,41 +817,38 @@ async function stopMicBridge(){
   if(sid){try{await fetch(MIC_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid})})}catch{}}
 }
 
-function armStartupGreetingOnFirstGesture(){
-  if(startupGestureArmed||startupGreetingPlayed||muted)return;
-  startupGestureArmed=true;
-  const release=async()=>{
-    if(startupGreetingPlayed||muted)return;
-    try{
-      unlockAudio();
-      status("Nanako is greeting you...");
-      await playStartupGreetingIfReady();
-    }catch(err){console.warn("[Nanako Startup] first-gesture playback failed",err)}
-  };
-  // Safari may reject cold-page autoplay. The first interaction anywhere in the
-  // app—not only Start Conversation—unlocks the already-prepared greeting.
-  window.addEventListener("pointerdown",release,{once:true,capture:true});
-  window.addEventListener("touchstart",release,{once:true,capture:true,passive:true});
-}
+function armStartupGreetingOnFirstGesture(){/* Step 1.23: replaced by explicit splash-screen Enter flow. */}
 
-async function tryStartupGreetingAutoplay(){
-  if(startupGreetingPlayed||muted)return;
+async function enterStartupSplash(){
+  if(startupEnterDone)return;
+  startupEnterDone=true;
+  const splash=document.getElementById("startupSplash");
+  const enterBtn=document.getElementById("startupEnterButton");
+  if(enterBtn){enterBtn.disabled=true;enterBtn.textContent="Entering…";}
+  unlockAudio();
+  status("Nanako is greeting you...");
   try{
-    status("Nanako is greeting you...");
-    const ok=await playStartupGreetingIfReady();
-    if(ok)return;
-  }catch(err){console.warn("[Nanako Startup] autoplay blocked",err)}
-  armStartupGreetingOnFirstGesture();
+    if(!startupGreetingData)await fetchStartupGreeting();
+    if(startupGreetingData?.audio_base64&&!muted){
+      const playPromise=play(startupGreetingData.audio_base64,startupGreetingData.audio_mime||"audio/wav",startupGreetingData.animation_plan,{gestureImmediate:true,silentFailure:false});
+      if(splash)splash.hidden=true;
+      await playPromise;
+    }else{
+      if(splash)splash.hidden=true;
+    }
+  }catch(err){
+    console.error("[Nanako Startup Enter]",err);
+    if(splash)splash.hidden=true;
+    error("Nanako's welcome voice could not play.");
+  }finally{
+    if(enterBtn){enterBtn.disabled=false;enterBtn.textContent="Enter";}
+  }
 }
 
 async function startMode(){
   if(active)return;
   try{
-    active=true;convButton();unlockAudio();
-    // On iPhone this first user gesture unlocks Nanako's queued startup voice.
-    // Speak the greeting before opening the listening turn so her own greeting
-    // cannot be mistaken for user speech.
-    if(!startupGreetingPlayed&&!muted){status("Nanako is greeting you...");await playStartupGreetingIfReady();}
+    active=true;convButton();
     status("Starting microphone...");
     await begin();
   }catch(x){
@@ -841,7 +859,7 @@ async function startMode(){
 async function stopMode(){
   active=false;await setServerNanakoSpeaking(false);await stopMicBridge();await stopAudio(false);convButton();status("Ready to chat");
 }
-async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;fetchStartupGreeting()}
+async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;startupEnterDone=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;const splash=document.getElementById("startupSplash");if(splash)splash.hidden=false;fetchStartupGreeting()}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
 window.addEventListener("beforeunload",()=>{
@@ -860,9 +878,6 @@ document.addEventListener("visibilitychange",()=>{
 
 async function boot(){
   loadPersistentMemory();
-  // Arm immediately so a fast first tap can unlock speech even while the backend
-  // is still preparing the randomized greeting audio.
-  armStartupGreetingOnFirstGesture();
   setScore(0);quick();convButton();renderHistory();
   await animationAssetsReady;
   if(e.jp)e.jp.textContent=rememberDetectedUserName()?`おかえり、${rememberDetectedUserName()}！`:`はじめまして！ななこです。`;
@@ -874,12 +889,13 @@ async function boot(){
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation({preferCache:false});
-  // Prepare and display the randomized greeting immediately, then try to speak
-  // it immediately. iPhone Safari may reject cold-load autoplay; if so, the
-  // first tap anywhere in the app releases the queued greeting automatically.
+  // Prepare and display the randomized greeting immediately, but the explicit
+  // splash-screen Enter button provides the Safari-safe user gesture that lets
+  // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  await tryStartupGreetingAutoplay();
-  console.log(`[Nanako] v11 Step 1.21 startup greeting ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  const splashEnter=document.getElementById("startupEnterButton");
+  if(splashEnter)splashEnter.addEventListener("click", enterStartupSplash);
+  console.log(`[Nanako] v11 Step 1.23 splash startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();

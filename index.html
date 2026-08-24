@@ -11,8 +11,27 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="stylesheet" href="./static/style.css?v=10.5?v=9.9?v=9.4-force-audio-20260822">
 <link rel="preload" as="image" href="./static/characters/nanako/states/neutral/base.png">
+<style>
+.startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 22%,rgba(109,52,136,.24),transparent 38%),linear-gradient(180deg,#15101d,#0b0910);}
+.startup-card{width:min(100%,420px);padding:34px 24px 30px;border:1px solid #2f2538;border-radius:28px;background:linear-gradient(180deg,rgba(27,20,36,.96),rgba(14,11,18,.98));box-shadow:0 24px 72px rgba(0,0,0,.36);display:flex;flex-direction:column;align-items:center;text-align:center;}
+.startup-logo-circle{width:86px;height:86px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,#cf69ea,#a347c5);color:#fff;font-size:40px;font-weight:900;box-shadow:0 10px 30px rgba(199,90,228,.28);}
+.startup-title-ja{margin-top:18px;font-size:34px;font-weight:900;letter-spacing:.08em;color:#fff;}
+.startup-title-en{margin-top:6px;font-size:18px;font-weight:800;color:#d56ff0;}
+.startup-subtitle{margin-top:8px;color:#9a92a2;font-size:13px;}
+.startup-enter-button{margin-top:26px;min-width:180px;height:50px;border:0;border-radius:16px;background:#c75ae4;color:#fff;font-size:18px;font-weight:800;box-shadow:0 12px 28px rgba(199,90,228,.28);}
+.startup-enter-button:disabled{opacity:.72}
+</style>
 </head>
 <body>
+<div id="startupSplash" class="startup-splash">
+  <div class="startup-card">
+    <div class="startup-logo-circle">N</div>
+    <div class="startup-title-ja">ななこ</div>
+    <div class="startup-title-en">Nanako</div>
+    <div class="startup-subtitle">Japanese Companion</div>
+    <button id="startupEnterButton" class="startup-enter-button">Enter</button>
+  </div>
+</div>
 <main class="app-shell"><section class="nanako-app">
 <header class="top-bar">
 <div><h1>Nanako</h1><div class="subtitle">Japanese Companion</div></div>
@@ -69,5 +88,5 @@
 <div id="historyEmpty" class="history-empty">No conversation yet.</div><div id="historyList" class="history-list"></div>
 </section></div>
 
-<script src="./static/app.js?v=11.1.17-bargein-animation-20260824" defer></script>
+<script src="./static/app.js?v=11.2.3-splash-startup-namefix-20260824" defer></script>
 </body></html>
