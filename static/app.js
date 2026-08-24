@@ -268,6 +268,7 @@ console.log("[Nanako Build] v11 STEP 1.20 • RANDOMIZED STARTUP GREETING");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
+const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
 const MEMORY_KEY="nanakoPersistentMemoryV1";
 const MEMORY_HISTORY_MAX=40,MEMORY_SEND_MAX=16,MEMORY_FACT_MAX=30;
 let persistentFacts=[],persistentUserName="",startupGreetingData=null,startupGreetingPlayed=false,startupGreetingLoading=null,startupGreetingPlayPromise=null;
@@ -301,11 +302,12 @@ function cleanNameCandidate(value){
 }
 function detectUserNameFromText(value){
   const msg=String(value||"").trim();if(!msg)return"";
+  const roman="[A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\\-]+";
   const patterns=[
-    /(?:my name is|call me|i am|i'm)\s+([A-Za-z][A-Za-z'\-]{1,23})(?:\b|$)/i,
-    /(?:私の名前は|僕の名前は|俺の名前は|名前は)\s*([ぁ-んァ-ヶー一-龯A-Za-z][ぁ-んァ-ヶー一-龯A-Za-z'\-]{0,23})(?:です|だよ|といいます|っていいます|[。！!]?\s*$)/,
-    /(?:私は|僕は|俺は)\s*([ァ-ヶーA-Za-z][ァ-ヶーA-Za-z'\-]{1,15})\s*(?:です|だよ|といいます|っていいます)[。！!]?\s*$/,
-    /^\s*([ァ-ヶーA-Za-z][ァ-ヶーA-Za-z'\-]{1,15})\s*(?:です|だよ|といいます|っていいます)[。！!]?\s*$/
+    new RegExp(`(?:my name is|call me|i am|i'm)\\s+(${roman}(?:\\s+${roman}){0,2})(?:[.!?]|$)`,`i`),
+    /(?:私の名前は|僕の名前は|俺の名前は|名前は)\s*([ぁ-んァ-ヶー一-龯A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\-]{1,24})(?:です|だよ|といいます|っていいます|[。！!]?\s*$)/,
+    /(?:私は|僕は|俺は)\s*([ァ-ヶー一-龯A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\-]{1,24})\s*(?:です|だよ|といいます|っていいます)[。！!]?\s*$/,
+    /^\s*([ァ-ヶー一-龯A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\-]{1,24})\s*(?:です|だよ|といいます|っていいます)[。！!]?\s*$/
   ];
   for(const re of patterns){const m=msg.match(re);if(m){const n=cleanNameCandidate(m[1]);if(n)return n;}}
   return"";
@@ -385,9 +387,12 @@ async function fetchStartupGreeting(){
   startupGreetingLoading=(async()=>{
     try{
       const userName=rememberDetectedUserName();
-      const r=await fetch(STARTUP_GREETING,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_name:userName||""})});
+      let avoidGreetingId="";
+      try{avoidGreetingId=localStorage.getItem(LAST_GREETING_KEY)||"";}catch{}
+      const r=await fetch(STARTUP_GREETING,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user_name:userName||"",avoid_greeting_id:avoidGreetingId})});
       const d=await jsonResp(r);
       startupGreetingData=d;
+      if(d?.greeting_id){try{localStorage.setItem(LAST_GREETING_KEY,String(d.greeting_id));}catch{}}
       e.jp.textContent=String(d.reply||"");
       e.roText.textContent=String(d.romaji||"");
       e.enText.textContent=String(d.english||"");
@@ -859,7 +864,7 @@ async function startMode(){
 async function stopMode(){
   active=false;await setServerNanakoSpeaking(false);await stopMicBridge();await stopAudio(false);convButton();status("Ready to chat");
 }
-async function reset(){await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;startupEnterDone=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;const splash=document.getElementById("startupSplash");if(splash)splash.hidden=false;fetchStartupGreeting()}
+async function reset(){if(!window.confirm("Forget Nanako’s saved conversation, your name, and all remembered facts? This cannot be undone."))return;await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;startupEnterDone=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;const splash=document.getElementById("startupSplash");if(splash)splash.hidden=false;status("Ready for a fresh start");void fetchStartupGreeting()}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
 window.addEventListener("beforeunload",()=>{
@@ -895,7 +900,7 @@ async function boot(){
   await fetchStartupGreeting();
   const splashEnter=document.getElementById("startupEnterButton");
   if(splashEnter)splashEnter.addEventListener("click", enterStartupSplash);
-  console.log(`[Nanako] v11 Step 1.23 splash startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[Nanako] v11 Step 1.25 splash startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
