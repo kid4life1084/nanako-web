@@ -613,6 +613,10 @@ async function pumpMicQueue(){
       if(m.barge_in&&currentAudio){
         console.log("[Nanako Mic] Python confirmed barge-in.");
         await stopAudio(true);
+        // Step 1.18: an interrupted talking plan has no natural `ended` event.
+        // Explicitly paint the cached Python idle plan so the last open-mouth
+        // frame cannot remain frozen after barge-in.
+        returnToPythonIdle();
       }
       if(m.speech_started)status("I'm listening...");
       if(m.turn_id){
@@ -705,7 +709,7 @@ async function boot(){
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation({preferCache:false});
-  console.log("[Nanako] v11 Step 1.17 thin frontend loaded: Python acoustic barge-in active.");
+  console.log("[Nanako] v11 Step 1.18 thin frontend loaded: barge-in idle recovery active.");
 }
 
 boot();
