@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Nanako">
 <title>Nanako</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./static/style.css?v=11.2.9-nonoverlap-stack-neutral-startup-20260825">
+<link rel="stylesheet" href="./static/style.css?v=11.3.0-bottom-stack-tall-portrait-20260825">
 <link rel="preload" as="image" href="./static/characters/nanako/states/neutral/base.png">
 <style>
 .startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 22%,rgba(109,52,136,.24),transparent 38%),linear-gradient(180deg,#15101d,#0b0910);}
@@ -51,6 +51,7 @@
   <div id="userTranscript" class="user-transcript" hidden><strong>You</strong><span id="userTranscriptText"></span></div>
 </section>
 
+<div class="conversation-stack">
 <section class="nanako-row">
 <div class="avatar">N</div>
 <div class="nanako-copy"><strong>Nanako</strong><span id="statusText">Ready to chat</span></div>
@@ -67,6 +68,7 @@
 
 <section class="input-row"><input id="messageInput" placeholder="Type in Japanese or English..."><button id="sendButton" class="send-button">➤</button></section>
 <button id="conversationButton" class="conversation-button">🎤 Start Conversation</button>
+</div>
 <div id="correctionToast" class="correction-toast" hidden><strong>Correction</strong><div id="wrongText" class="wrong-text"></div><div id="correctText" class="correct-text"></div></div>
 <div id="errorToast" class="error-toast" hidden></div>
 </section></main>
@@ -89,5 +91,5 @@
 <div id="historyEmpty" class="history-empty">No conversation yet.</div><div id="historyList" class="history-list"></div>
 </section></div>
 
-<script src="./static/app.js?v=11.2.9-nonoverlap-stack-neutral-startup-20260825" defer></script>
+<script src="./static/app.js?v=11.3.0-bottom-stack-tall-portrait-20260825" defer></script>
 </body></html>

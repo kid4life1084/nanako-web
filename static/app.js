@@ -924,7 +924,7 @@ async function boot(){
   await fetchStartupGreeting();
   const splashEnter=document.getElementById("startupEnterButton");
   if(splashEnter)splashEnter.addEventListener("click", enterStartupSplash);
-  console.log(`[Nanako] v11 Step 1.29 splash startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[Nanako] v11 Step 1.30 splash startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
