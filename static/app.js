@@ -6,6 +6,7 @@
 try{
   const standalone=window.matchMedia?.("(display-mode: standalone)")?.matches||window.navigator.standalone===true;
   if(standalone)document.documentElement.classList.add("ios-standalone");
+  if(window.innerHeight<780)document.documentElement.classList.add("screen-short");
 }catch{}
 
 // v9.4: permanently remove stale Nanako service workers/caches during Omni stabilization.
@@ -220,39 +221,46 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
   animationRaf=requestAnimationFrame(tick);
 }
 
-function playPythonIdlePlan(plan){
+function animationPlanEmotion(plan){
+  const e=String(plan?.frames?.[0]?.emotion||"").trim().toLowerCase();
+  return e||"neutral";
+}
+
+function playPythonIdlePlan(plan,{emotion=null}={}){
   if(currentAudio||!plan?.frames?.length)return false;
+  if(emotion&&animationPlanEmotion(plan)!==String(emotion).toLowerCase())return false;
   cachedPythonIdlePlan=plan;
   // Paint Python's first idle snapshot immediately. requestAnimationFrame then
   // continues the Python timeline. This guarantees a talking mouth cannot remain
   // visible for even one extra network/render cycle after speech cleanup.
   renderAnimationFrame(plan.frames[0]);
-  playAnimationPlan(plan,{loop:false,onComplete:()=>requestIdleAnimation({preferCache:false})});
+  playAnimationPlan(plan,{loop:false,onComplete:()=>requestIdleAnimation({preferCache:false,emotion:animationPlanEmotion(plan)})});
   return true;
 }
 
-async function requestIdleAnimation({preferCache=true}={}){
+async function requestIdleAnimation({preferCache=true,emotion=null}={}){
   clearTimeout(idlePlanTimer);
   if(currentAudio)return;
 
   // Returning from speech must not leave the last talking PNG visible while a
   // network round-trip fetches a new idle plan. Re-use the last plan that came
   // from Python immediately, then refresh it only when that plan expires.
-  if(preferCache&&cachedPythonIdlePlan&&playPythonIdlePlan(cachedPythonIdlePlan))return;
+  if(preferCache&&cachedPythonIdlePlan&&playPythonIdlePlan(cachedPythonIdlePlan,{emotion}))return;
 
   try{
-    const r=await fetch(`${API}/api/animation/idle-plan?duration_ms=60000&sample_ms=100`,{cache:"no-store"});
+    const emotionQuery=emotion?`&emotion=${encodeURIComponent(emotion)}`:"";
+    const r=await fetch(`${API}/api/animation/idle-plan?duration_ms=60000&sample_ms=100${emotionQuery}`,{cache:"no-store"});
     const d=await r.json();
     if(!r.ok||!d?.ok||!d?.animation_plan)throw new Error(d?.error||`Animation request failed (${r.status})`);
     cachedPythonIdlePlan=d.animation_plan;
-    if(!currentAudio)playPythonIdlePlan(cachedPythonIdlePlan);
+    if(!currentAudio)playPythonIdlePlan(cachedPythonIdlePlan,{emotion});
   }catch(err){
     console.warn("[Nanako Animation] Python idle plan unavailable:",err);
     // Only a fail-safe visual reset. This is not a browser animation system.
     // It prevents a stale talking mouth from remaining frozen if the idle API
     // is temporarily unreachable; the browser retries Python immediately.
     renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
-    idlePlanTimer=setTimeout(()=>requestIdleAnimation({preferCache:false}),1500);
+    idlePlanTimer=setTimeout(()=>requestIdleAnimation({preferCache:false,emotion}),1500);
   }
 }
 
@@ -262,16 +270,20 @@ function useTalkingAnimation(plan,mediaClock=null){
   else renderAnimationFrame({emotion:"neutral",action:"talking",eyes:"open",mouth:"small",scale:1,translate_y:0});
 }
 
-function returnToPythonIdle(){
+function returnToPythonIdle({emotion=null}={}){
   stopAnimationPlan();
-  if(!playPythonIdlePlan(cachedPythonIdlePlan))requestIdleAnimation({preferCache:false});
+  if(emotion){
+    // Explicit state reset immediately, then refresh the matching Python plan.
+    renderAnimationFrame({emotion,action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
+  }
+  if(!playPythonIdlePlan(cachedPythonIdlePlan,{emotion}))requestIdleAnimation({preferCache:false,emotion});
 }
 
 
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v11 STEP 1.20 • RANDOMIZED STARTUP GREETING");
+console.log("[Nanako Build] v11 STEP 1.28 • TALL PORTRAIT + STARTUP NEUTRAL IDLE");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
@@ -421,7 +433,7 @@ async function playStartupGreetingIfReady(fromGesture=false){
   startupGreetingPlayPromise=(async()=>{
     const d=startupGreetingData||await fetchStartupGreeting();
     if(!d?.audio_base64)return false;
-    const ok=await play(d.audio_base64,d.audio_mime||"audio/wav",d.animation_plan,{gestureImmediate:!!fromGesture,silentFailure:true});
+    const ok=await play(d.audio_base64,d.audio_mime||"audio/wav",d.animation_plan,{gestureImmediate:!!fromGesture,silentFailure:true,idleEmotion:"neutral"});
     if(ok)startupGreetingPlayed=true;
     return ok;
   })();
@@ -487,6 +499,7 @@ async function play(b,m,animationPlan=null,options={}){
 
   const gestureImmediate=!!options?.gestureImmediate&&!currentAudio;
   const silentFailure=!!options?.silentFailure;
+  const idleEmotion=String(options?.idleEmotion||"").trim().toLowerCase()||null;
   if(!gestureImmediate){
     await stopAudio(false);
   }else{
@@ -540,7 +553,7 @@ async function play(b,m,animationPlan=null,options={}){
     // 1) requestIdleAnimation refusing to run while currentAudio was non-null;
     // 2) waiting on a network request before replacing the final mouth PNG.
     if(currentAudio===a)currentAudio=null;
-    returnToPythonIdle();
+    returnToPythonIdle({emotion:idleEmotion});
     convButton();
 
     try{
@@ -842,7 +855,7 @@ async function enterStartupSplash(){
   try{
     if(!startupGreetingData)await fetchStartupGreeting();
     if(startupGreetingData?.audio_base64&&!muted){
-      const playPromise=play(startupGreetingData.audio_base64,startupGreetingData.audio_mime||"audio/wav",startupGreetingData.animation_plan,{gestureImmediate:true,silentFailure:false});
+      const playPromise=play(startupGreetingData.audio_base64,startupGreetingData.audio_mime||"audio/wav",startupGreetingData.animation_plan,{gestureImmediate:true,silentFailure:false,idleEmotion:"neutral"});
       if(splash)splash.hidden=true;
       await playPromise;
     }else{

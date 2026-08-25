@@ -228,3 +228,81 @@ html.ios-standalone .conversation-button{height:58px;margin-top:10px;border-radi
   .send-button{width:54px}
   .conversation-button{height:48px;margin-top:8px}
 }
+
+
+/* ==========================================================
+   NANA TALK STEP 1.28 — TALL PORTRAIT STAGE + BOTTOM ANCHOR
+   Layout-only correction to match the approved installed-app mockup.
+   ========================================================== */
+@media (display-mode:standalone){
+  .nanako-app{
+    grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto;
+    height:100dvh;
+    min-height:100dvh;
+    max-height:100dvh;
+    padding-top:max(env(safe-area-inset-top),8px);
+    padding-left:20px;
+    padding-right:20px;
+    padding-bottom:max(env(safe-area-inset-bottom),8px);
+  }
+  .character-stage{
+    /* 627x640 is the new source-layer shape. Never force a square card. */
+    aspect-ratio:auto;
+    min-height:clamp(330px,44dvh,560px);
+    height:100%;
+    margin:0 0 8px;
+  }
+  .nanako-motion{inset:0;align-items:flex-end}
+  .nanako-avatar{
+    width:min(100%,627px);
+    max-width:627px;
+    height:100%;
+    aspect-ratio:auto;
+    align-self:flex-end;
+  }
+  .nanako-base,.nanako-part{
+    width:100%;height:100%;
+    object-fit:contain;
+    object-position:center bottom;
+  }
+  .conversation-button{margin-bottom:0}
+}
+
+html.ios-standalone .nanako-app{
+  grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto;
+  height:100dvh;
+  min-height:100dvh;
+  max-height:100dvh;
+  padding-top:max(env(safe-area-inset-top),8px);
+  padding-left:20px;
+  padding-right:20px;
+  padding-bottom:max(env(safe-area-inset-bottom),8px);
+}
+html.ios-standalone .character-stage{
+  aspect-ratio:auto;
+  min-height:clamp(330px,44dvh,560px);
+  height:100%;
+  margin:0 0 8px;
+}
+html.ios-standalone .nanako-motion{inset:0;align-items:flex-end}
+html.ios-standalone .nanako-avatar{
+  width:min(100%,627px);
+  max-width:627px;
+  height:100%;
+  aspect-ratio:auto;
+  align-self:flex-end;
+}
+html.ios-standalone .nanako-base,
+html.ios-standalone .nanako-part{
+  width:100%;height:100%;
+  object-fit:contain;
+  object-position:center bottom;
+}
+html.ios-standalone .conversation-button{margin-bottom:0}
+
+/* Short installed screens: keep bottom controls visible; portrait gives up
+   height first, but remains portrait-shaped rather than reverting to a square. */
+@media (display-mode:standalone) and (max-height:780px){
+  .character-stage{min-height:clamp(270px,39dvh,420px)}
+}
+html.ios-standalone.screen-short .character-stage{min-height:clamp(270px,39dvh,420px)}
