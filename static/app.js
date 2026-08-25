@@ -6,7 +6,13 @@
 // report CSS dynamic viewport units inconsistently across launches.
 function syncInstalledViewport(){
   try{
-    const h=Math.max(320,Math.round(window.innerHeight||document.documentElement.clientHeight||0));
+    const standalone=window.matchMedia?.("(display-mode: standalone)")?.matches||window.navigator.standalone===true;
+    // Home Screen PWAs on iPhone can report an innerHeight that excludes a large
+    // band near the physical bottom. In standalone mode use screen.height as the
+    // full app canvas, then let CSS safe-area insets protect the home indicator.
+    const viewportH=window.innerHeight||document.documentElement.clientHeight||0;
+    const screenH=window.screen?.height||0;
+    const h=Math.max(320,Math.round(standalone&&screenH?Math.max(viewportH,screenH):viewportH));
     document.documentElement.style.setProperty("--app-height",`${h}px`);
     document.documentElement.classList.toggle("screen-short",h<780);
   }catch{}
@@ -914,7 +920,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.33 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.34 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();

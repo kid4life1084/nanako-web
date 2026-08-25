@@ -34,7 +34,7 @@
 
 
 /* ==========================================================
-   NANACHAT STEP 1.33 — VERIFIED FULLSCREEN LAYOUT
+   NANACHAT STEP 1.34 — FULL PHYSICAL HEIGHT + LOWER STACK
    One authoritative installed-app layout only.
    - Portrait asset geometry: 627 x 640 (never square)
    - Conversation controls: true bottom anchor
@@ -47,7 +47,7 @@ body{min-height:var(--app-height);overflow:hidden}
 
 html.ios-standalone .nanako-app{
   --side:20px;
-  --bottom-gap:max(8px,env(safe-area-inset-bottom));
+  --bottom-gap:max(3px,env(safe-area-inset-bottom));
   --stack-row-status:54px;
   --stack-row-reply:104px;
   --stack-row-input:50px;
