@@ -2,7 +2,12 @@
   "name": "Nanako Japanese Companion",
   "short_name": "Nanako",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "standalone"
+  ],
+  "orientation": "portrait",
   "background_color": "#0b0910",
   "theme_color": "#0b0910"
 }

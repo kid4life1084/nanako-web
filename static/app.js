@@ -1,6 +1,13 @@
 (()=>{
 "use strict";
 
+// Step 1.26: layout-only standalone detection. This does not touch audio, mic,
+// memory, animation, or conversation behaviour.
+try{
+  const standalone=window.matchMedia?.("(display-mode: standalone)")?.matches||window.navigator.standalone===true;
+  if(standalone)document.documentElement.classList.add("ios-standalone");
+}catch{}
+
 // v9.4: permanently remove stale Nanako service workers/caches during Omni stabilization.
 (async()=>{
   try{
