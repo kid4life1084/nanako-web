@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0910">
 <meta name="mobile-web-app-capable" content="yes">
@@ -10,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./static/style.css?v=11.3.4-fullscreen-height-20260825">
+<link rel="stylesheet" href="./static/style.css?v=11.3.6">
 <link rel="preload" as="image" href="./static/characters/nanako/states/neutral/base.png">
 <style>
 .startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 22%,rgba(109,52,136,.24),transparent 38%),linear-gradient(180deg,#15101d,#0b0910);}
@@ -28,13 +31,12 @@
   <div class="startup-card">
     <div class="startup-logo-circle">N</div>
     <div class="startup-title-ja">NanaChat</div>
-    <div class="startup-subtitle">Japanese Companion</div>
     <button id="startupEnterButton" class="startup-enter-button">Enter</button>
   </div>
 </div>
 <main class="app-shell"><section class="nanako-app">
 <header class="top-bar">
-<div><h1>Nanako</h1></div>
+<div><h1>NanaChat</h1></div>
 <div class="top-actions"><span id="levelBadge" class="level-badge">Auto</span><button id="menuButton" class="round-button">•••</button></div>
 </header>
 <div class="score-row"><div class="score-track"><div id="scoreFill" class="score-fill"></div></div><span id="scoreText">0</span></div>
@@ -90,5 +92,5 @@
 <div id="historyEmpty" class="history-empty">No conversation yet.</div><div id="historyList" class="history-list"></div>
 </section></div>
 
-<script src="./static/app.js?v=11.3.4-fullscreen-height-20260825" defer></script>
+<script src="./static/app.js?v=11.3.6" defer></script>
 </body></html>
