@@ -1,7 +1,7 @@
 {
   "name": "Nanako Japanese Companion",
   "short_name": "Nanako",
-  "start_url": "./",
+  "start_url": "./?v=11.3.1",
   "scope": "./",
   "display": "standalone",
   "display_override": [

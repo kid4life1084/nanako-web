@@ -9,42 +9,14 @@ try{
   if(window.innerHeight<780)document.documentElement.classList.add("screen-short");
 }catch{}
 
-// v9.4: permanently remove stale Nanako service workers/caches during Omni stabilization.
-(async()=>{
-  try{
-    if("serviceWorker" in navigator){
-      const regs=await navigator.serviceWorker.getRegistrations();
-      for(const reg of regs) await reg.unregister();
-    }
-    if("caches" in window){
-      const keys=await caches.keys();
-      for(const key of keys) await caches.delete(key);
-    }
-    try{
-      localStorage.removeItem("nanakoVoiceOutput");
-      localStorage.removeItem("nanako_voice_output");
-      localStorage.removeItem("voiceOutput");
-      localStorage.removeItem("voice_output");
-    }catch{}
-    console.log("[Nanako v9.4] stale service workers/caches/voice-output state purged");
-  }catch(err){ console.warn("[Nanako v9.4] purge warning",err); }
-})();
+// Step 1.31: one real PWA service worker. No launch-time unregister/cache purge.
+window.addEventListener("load",()=>{
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("./sw.js?v=11.3.1").catch(err=>console.warn("[Nana Talk SW]",err));
+  }
+});
+
 console.log("[Nanako Frontend] v9.3 AUDIO ALWAYS ON");
-// v9.1 SAFETY: purge legacy service workers/caches from pre-Omni frontend builds.
-// The app intentionally runs without a service worker during Omni stabilization.
-(async()=>{
-  try{
-    if("serviceWorker" in navigator){
-      const regs=await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r=>r.unregister()));
-    }
-    if("caches" in window){
-      const keys=await caches.keys();
-      await Promise.all(keys.map(k=>caches.delete(k)));
-    }
-    console.log("[Nanako v9.1] Legacy service workers/caches purged. Inline Omni audio frontend active.");
-  }catch(err){console.warn("[Nanako v9.1] Cache purge warning:",err);}
-})();
 
 
 
