@@ -1,7 +1,7 @@
 (()=>{
 "use strict";
 
-// NanaChat Step 1.36: physical visual viewport + measured bottom stack.
+// NanaChat Step 1.38: physical viewport + layered Python laughing state.
 function isStandalone(){return window.matchMedia?.("(display-mode: standalone)")?.matches||window.navigator.standalone===true;}
 function syncInstalledViewport(){
   try{
@@ -38,6 +38,259 @@ try{
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",attach,{once:true});else attach();
   }
 }catch{}
+// ============================================================
+// NANAKO v11 STEP 1.4 — AUDIO-CLOCK-SYNCED THIN RENDERER
+//
+// IMPORTANT:
+// Python on Alibaba decides blink timing, mouth timing, emotion,
+// idle/talking state and breathing values.
+// This browser code ONLY displays the animation protocol it receives.
+// STEP 1.7 ALIGNMENT RULE: no JS per-emotion/per-layer x/y/scale/rotate controls.
+// Eye/mouth placement must come entirely from the prepared PNG artwork/CSS authored by Leo.
+// Character-art URLs are versioned only to defeat stale phone/browser image cache.
+// ============================================================
+const ANIMATION_ASSETS = {
+  neutral: {
+    base: "./static/characters/nanako/states/neutral/base.png?v=step1_7_manual_alignment_lock",
+    eyes: {
+      open: "./static/characters/nanako/states/neutral/eyes/open.png?v=step1_7_manual_alignment_lock",
+      half: "./static/characters/nanako/states/neutral/eyes/half.png?v=step1_7_manual_alignment_lock",
+      closed: "./static/characters/nanako/states/neutral/eyes/closed.png?v=step1_7_manual_alignment_lock"
+    },
+    mouth: {
+      closed: "./static/characters/nanako/states/neutral/mouth/closed.png?v=step1_7_manual_alignment_lock",
+      small: "./static/characters/nanako/states/neutral/mouth/small.png?v=step1_7_manual_alignment_lock",
+      medium: "./static/characters/nanako/states/neutral/mouth/medium.png?v=step1_7_manual_alignment_lock",
+      wide: "./static/characters/nanako/states/neutral/mouth/wide.png?v=step1_7_manual_alignment_lock",
+      round: "./static/characters/nanako/states/neutral/mouth/round.png?v=step1_7_manual_alignment_lock"
+    }
+  },
+  confused: {
+    base: "./static/characters/nanako/states/confused/base.png?v=step1_7_manual_alignment_lock",
+    eyes: {
+      open: "./static/characters/nanako/states/confused/eyes/open.png?v=step1_7_manual_alignment_lock",
+      half: "./static/characters/nanako/states/confused/eyes/half.png?v=step1_7_manual_alignment_lock",
+      closed: "./static/characters/nanako/states/confused/eyes/closed.png?v=step1_7_manual_alignment_lock"
+    },
+    mouth: {
+      closed: "./static/characters/nanako/states/confused/mouth/closed.png?v=step1_7_manual_alignment_lock",
+      small: "./static/characters/nanako/states/confused/mouth/small.png?v=step1_7_manual_alignment_lock",
+      medium: "./static/characters/nanako/states/confused/mouth/medium.png?v=step1_7_manual_alignment_lock",
+      wide: "./static/characters/nanako/states/confused/mouth/wide.png?v=step1_7_manual_alignment_lock",
+      round: "./static/characters/nanako/states/confused/mouth/round.png?v=step1_7_manual_alignment_lock"
+    }
+  },
+  laughing: {
+    base: "./static/characters/nanako/states/laughing/base.png?v=step1_38_layered_laugh",
+    eyes: {
+      open: "./static/characters/nanako/states/laughing/base_head.png?v=step1_38_layered_laugh",
+      half: "./static/characters/nanako/states/laughing/base_head.png?v=step1_38_layered_laugh",
+      closed: "./static/characters/nanako/states/laughing/base_head.png?v=step1_38_layered_laugh"
+    },
+    mouth: {
+      closed: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_38_layered_laugh",
+      small: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_38_layered_laugh",
+      medium: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_38_layered_laugh",
+      wide: "./static/characters/nanako/states/laughing/mouth/large.png?v=step1_38_layered_laugh",
+      round: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_38_layered_laugh"
+    }
+  }
+};
+
+
+
+// Renderer-only asset warmup. Python still decides WHICH frame is used and WHEN.
+// Preloading prevents first-use PNG fetches from making the lips appear late on phones.
+const animationPreloadImages=[];
+async function preloadAnimationAssets(){
+  const urls=new Set();
+  for(const state of Object.values(ANIMATION_ASSETS)){
+    if(state?.base)urls.add(state.base);
+    for(const groupName of ["eyes","mouth"]){
+      const group=state?.[groupName]||{};
+      for(const url of Object.values(group))if(url)urls.add(url);
+    }
+  }
+  const jobs=[];
+  for(const url of urls){
+    const img=new Image();
+    img.decoding="async";
+    img.src=url;
+    animationPreloadImages.push(img);
+    jobs.push((async()=>{
+      try{
+        if(img.decode) await img.decode();
+        else if(!img.complete) await new Promise(resolve=>{
+          img.onload=resolve; img.onerror=resolve;
+        });
+      }catch{}
+    })());
+  }
+  await Promise.allSettled(jobs);
+}
+const animationAssetsReady=preloadAnimationAssets();
+
+let nanakoBase=null,nanakoEyes=null,nanakoMouth=null,nanakoMotion=null,nanakoAvatar=null;
+let animationRaf=0;
+let animationToken=0;
+let idlePlanTimer=0;
+let currentAnimationPlan=null;
+let cachedPythonIdlePlan=null;
+
+// Renderer cache: eye/base assets are written only when the semantic frame
+// actually changes. Mouth swaps must never cause Safari to reassign/repaint the
+// confused eye layer.
+let renderedBaseAsset="";
+let renderedEyeAsset="";
+let renderedMouthAsset="";
+
+function animationAsset(state, part, frame){
+  const emotion=ANIMATION_ASSETS[state]?state:"neutral";
+  if(part==="base")return ANIMATION_ASSETS[emotion].base;
+  const table=ANIMATION_ASSETS[emotion][part]||ANIMATION_ASSETS.neutral[part];
+  return table[frame]||table.open||table.closed;
+}
+
+function renderAnimationFrame(frame){
+  if(!frame)return;
+  const emotion=ANIMATION_ASSETS[frame.emotion]?frame.emotion:"neutral";
+  const base=animationAsset(emotion,"base");
+  const eyes=animationAsset(emotion,"eyes",frame.eyes||"open");
+  const mouth=animationAsset(emotion,"mouth",frame.mouth||"closed");
+  if(nanakoBase&&renderedBaseAsset!==base){
+    nanakoBase.src=base;
+    renderedBaseAsset=base;
+  }
+  if(nanakoEyes&&renderedEyeAsset!==eyes){
+    nanakoEyes.src=eyes;
+    renderedEyeAsset=eyes;
+  }
+  if(nanakoMouth&&renderedMouthAsset!==mouth){
+    nanakoMouth.src=mouth;
+    renderedMouthAsset=mouth;
+  }
+
+  // These transform NUMBERS are generated by Python.
+  // JS only applies them to the display surface.
+  const scale=Number.isFinite(Number(frame.scale))?Number(frame.scale):1;
+  const y=Number.isFinite(Number(frame.translate_y))?Number(frame.translate_y):0;
+  if(nanakoMotion)nanakoMotion.style.transform=`translateY(${y}px) scale(${scale})`;
+
+  // Step 1.38: Python alone chooses the laugh head bob. The full-canvas
+  // head and mouth PNGs share the same transform so lip alignment stays locked.
+  const headY=(emotion==="laughing"&&Number.isFinite(Number(frame.head_translate_y)))?Number(frame.head_translate_y):0;
+  const headTransform=headY?`translateY(${headY}px)`:"";
+  if(nanakoEyes)nanakoEyes.style.transform=headTransform;
+  if(nanakoMouth)nanakoMouth.style.transform=headTransform;
+
+  if(nanakoAvatar){
+    nanakoAvatar.dataset.emotion=emotion;
+    nanakoAvatar.dataset.action=frame.action||"idle";
+  }
+}
+
+function stopAnimationPlan(){
+  animationToken+=1;
+  if(animationRaf)cancelAnimationFrame(animationRaf);
+  animationRaf=0;
+  currentAnimationPlan=null;
+}
+
+function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={}){
+  stopAnimationPlan();
+  if(!plan||!Array.isArray(plan.frames)||!plan.frames.length)return;
+  const token=animationToken;
+  currentAnimationPlan=plan;
+  const started=performance.now();
+  const duration=Math.max(1,Number(plan.duration_ms)||1);
+
+  const tick=now=>{
+    if(token!==animationToken)return;
+
+    // Talking animation follows the HTMLAudio media timeline, NOT wall-clock time.
+    // This keeps Python's waveform-derived mouth frames synchronized even when
+    // Nanako is intentionally played at 0.86x speed or the phone briefly stalls.
+    let elapsed=mediaClock
+      ? Math.max(0,Number(mediaClock.currentTime||0)*1000)
+      : now-started;
+
+    if(loop&&!mediaClock)elapsed=elapsed%duration;
+    const frames=plan.frames;
+    let lo=0,hi=frames.length-1;
+    while(lo<hi){
+      const mid=Math.ceil((lo+hi)/2);
+      if((Number(frames[mid].t)||0)<=elapsed)lo=mid;
+      else hi=mid-1;
+    }
+    renderAnimationFrame(frames[lo]);
+
+    const mediaStillPlaying=mediaClock&&!mediaClock.ended&&currentAudio===mediaClock;
+    if(mediaClock?mediaStillPlaying:(loop||elapsed<duration)){
+      animationRaf=requestAnimationFrame(tick);
+    }else{
+      animationRaf=0;
+      if(typeof onComplete==="function")onComplete();
+    }
+  };
+  animationRaf=requestAnimationFrame(tick);
+}
+
+function playPythonIdlePlan(plan){
+  if(currentAudio||!plan?.frames?.length)return false;
+  cachedPythonIdlePlan=plan;
+  // Paint Python's first idle snapshot immediately. requestAnimationFrame then
+  // continues the Python timeline. This guarantees a talking mouth cannot remain
+  // visible for even one extra network/render cycle after speech cleanup.
+  renderAnimationFrame(plan.frames[0]);
+  playAnimationPlan(plan,{loop:false,onComplete:()=>requestIdleAnimation({preferCache:false})});
+  return true;
+}
+
+async function requestIdleAnimation({preferCache=true}={}){
+  clearTimeout(idlePlanTimer);
+  if(currentAudio)return;
+
+  // Returning from speech must not leave the last talking PNG visible while a
+  // network round-trip fetches a new idle plan. Re-use the last plan that came
+  // from Python immediately, then refresh it only when that plan expires.
+  if(preferCache&&cachedPythonIdlePlan&&playPythonIdlePlan(cachedPythonIdlePlan))return;
+
+  try{
+    const r=await fetch(`${API}/api/animation/idle-plan?duration_ms=60000&sample_ms=100`,{cache:"no-store"});
+    const d=await r.json();
+    if(!r.ok||!d?.ok||!d?.animation_plan)throw new Error(d?.error||`Animation request failed (${r.status})`);
+    cachedPythonIdlePlan=d.animation_plan;
+    if(!currentAudio)playPythonIdlePlan(cachedPythonIdlePlan);
+  }catch(err){
+    console.warn("[Nanako Animation] Python idle plan unavailable:",err);
+    // Only a fail-safe visual reset. This is not a browser animation system.
+    // It prevents a stale talking mouth from remaining frozen if the idle API
+    // is temporarily unreachable; the browser retries Python immediately.
+    renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
+    idlePlanTimer=setTimeout(()=>requestIdleAnimation({preferCache:false}),1500);
+  }
+}
+
+function useTalkingAnimation(plan,mediaClock=null){
+  clearTimeout(idlePlanTimer);
+  if(plan?.frames?.length)playAnimationPlan(plan,{mediaClock});
+  else renderAnimationFrame({emotion:"neutral",action:"talking",eyes:"open",mouth:"small",scale:1,translate_y:0});
+}
+
+function returnToPythonIdle({emotion=null}={}){
+  stopAnimationPlan();
+  if(emotion==="neutral"){
+    cachedPythonIdlePlan=null;
+    renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
+    requestIdleAnimation({preferCache:false});
+    return;
+  }
+  if(!playPythonIdlePlan(cachedPythonIdlePlan))requestIdleAnimation({preferCache:false});
+}
+
+
+
+
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
@@ -154,7 +407,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";if(b&&!muted)await play(b,m,d?.animation_plan);else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>returnToPythonIdle()});else returnToPythonIdle();if(active)setTimeout(begin,20)}}
+async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=d?.laughing?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>returnToPythonIdle({emotion:idleEmotion})});else returnToPythonIdle({emotion:idleEmotion});if(active)setTimeout(begin,20)}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -690,7 +943,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.36 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.37 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();

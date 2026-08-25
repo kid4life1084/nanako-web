@@ -92,3 +92,7 @@ html.app-layout.screen-short .conversation-stack .japanese-reply{font-size:17px;
 html.app-layout.screen-short .conversation-stack .input-row{height:44px;}
 html.app-layout.screen-short .conversation-stack .conversation-button{height:46px;}
 html.app-layout.screen-short .conversation-stack .send-button{width:50px;}
+
+
+/* Step 1.38 layered laugh: Python drives head/mouth bob; artwork owns alignment. */
+.nanako-eyes,.nanako-mouth{transform-origin:50% 74%;will-change:transform;}
