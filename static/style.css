@@ -306,3 +306,88 @@ html.ios-standalone .conversation-button{margin-bottom:0}
   .character-stage{min-height:clamp(270px,39dvh,420px)}
 }
 html.ios-standalone.screen-short .character-stage{min-height:clamp(270px,39dvh,420px)}
+
+
+/* ==========================================================
+   NANA TALK STEP 1.29 — STRICT NON-OVERLAPPING APP STACK
+   Fixes Step 1.28 portrait min-height overflowing over chat.
+   ========================================================== */
+@media (display-mode:standalone){
+  .nanako-app{
+    display:grid;
+    grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto;
+    height:100dvh;
+    min-height:100dvh;
+    max-height:100dvh;
+    overflow:hidden;
+    padding-top:max(env(safe-area-inset-top),8px);
+    padding-left:20px;
+    padding-right:20px;
+    padding-bottom:calc(max(env(safe-area-inset-bottom),10px) + 2px);
+  }
+
+  /* CRITICAL: no minimum height here. The stage receives exactly the remaining
+     screen space after all controls, so it can never cover the status/chat rows. */
+  .character-stage{
+    min-height:0 !important;
+    height:100% !important;
+    max-height:none;
+    aspect-ratio:auto !important;
+    margin:0 0 8px;
+    overflow:hidden;
+  }
+
+  /* New portrait assets are 627 x 640. Preserve that portrait geometry while
+     anchoring Nanako to the bottom so any spare room becomes visible headroom. */
+  .nanako-motion{inset:0;align-items:flex-end;justify-content:center}
+  .nanako-avatar{
+    height:100% !important;
+    width:auto !important;
+    max-width:100% !important;
+    aspect-ratio:627 / 640 !important;
+    align-self:flex-end;
+  }
+  .nanako-base,.nanako-part{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    object-position:center bottom;
+  }
+
+  .nanako-row{position:relative;z-index:2;margin:0;min-height:62px;padding:3px 0 5px;background:transparent}
+  .reply-card{position:relative;z-index:2;margin:0;height:150px}
+  .input-row{position:relative;z-index:2;height:56px;margin-top:9px}
+  .conversation-button{position:relative;z-index:2;height:56px;margin-top:9px;margin-bottom:0}
+}
+
+html.ios-standalone .nanako-app{
+  display:grid;
+  grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto;
+  height:100dvh;
+  min-height:100dvh;
+  max-height:100dvh;
+  overflow:hidden;
+  padding-top:max(env(safe-area-inset-top),8px);
+  padding-left:20px;
+  padding-right:20px;
+  padding-bottom:calc(max(env(safe-area-inset-bottom),10px) + 2px);
+}
+html.ios-standalone .character-stage{min-height:0!important;height:100%!important;max-height:none;aspect-ratio:auto!important;margin:0 0 8px;overflow:hidden}
+html.ios-standalone .nanako-motion{inset:0;align-items:flex-end;justify-content:center}
+html.ios-standalone .nanako-avatar{height:100%!important;width:auto!important;max-width:100%!important;aspect-ratio:627 / 640!important;align-self:flex-end}
+html.ios-standalone .nanako-base,
+html.ios-standalone .nanako-part{width:100%;height:100%;object-fit:contain;object-position:center bottom}
+html.ios-standalone .nanako-row{position:relative;z-index:2;margin:0;min-height:62px;padding:3px 0 5px;background:transparent}
+html.ios-standalone .reply-card{position:relative;z-index:2;margin:0;height:150px}
+html.ios-standalone .input-row{position:relative;z-index:2;height:56px;margin-top:9px}
+html.ios-standalone .conversation-button{position:relative;z-index:2;height:56px;margin-top:9px;margin-bottom:0}
+
+/* Smaller installed screens: reduce chat heights slightly; never allow the
+   portrait itself to overflow its allocated row. */
+@media (display-mode:standalone) and (max-height:760px){
+  .nanako-row{min-height:54px}
+  .reply-card{height:118px;padding:12px 15px}
+  .japanese-reply{font-size:17px;line-height:25px}
+  .input-row{height:48px;margin-top:7px}
+  .conversation-button{height:48px;margin-top:7px}
+}

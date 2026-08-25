@@ -847,6 +847,10 @@ function armStartupGreetingOnFirstGesture(){/* Step 1.23: replaced by explicit s
 async function enterStartupSplash(){
   if(startupEnterDone)return;
   startupEnterDone=true;
+  // Step 1.29: startup is always a neutral interaction. Never allow an idle
+  // plan cached from an earlier confused turn/session to survive into startup.
+  cachedPythonIdlePlan=null;
+  renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   const splash=document.getElementById("startupSplash");
   const enterBtn=document.getElementById("startupEnterButton");
   if(enterBtn){enterBtn.disabled=true;enterBtn.textContent="Entering…";}
@@ -920,7 +924,7 @@ async function boot(){
   await fetchStartupGreeting();
   const splashEnter=document.getElementById("startupEnterButton");
   if(splashEnter)splashEnter.addEventListener("click", enterStartupSplash);
-  console.log(`[Nanako] v11 Step 1.25 splash startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[Nanako] v11 Step 1.29 splash startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
