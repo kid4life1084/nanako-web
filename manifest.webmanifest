@@ -1,7 +1,7 @@
 {
-  "name": "Nanako Japanese Companion",
-  "short_name": "Nanako",
-  "start_url": "./?v=11.3.1",
+  "name": "NanaChat",
+  "short_name": "NanaChat",
+  "start_url": "./?v=11.3.3",
   "scope": "./",
   "display": "standalone",
   "display_override": [

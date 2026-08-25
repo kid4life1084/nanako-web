@@ -6,7 +6,7 @@
 .score-row{height:22px;display:flex;align-items:center;gap:9px}.score-track{flex:1;height:4px;border-radius:4px;overflow:hidden;background:#27212d}.score-fill{width:0;height:100%;background:#ce59eb;transition:width .35s}.score-row span{width:26px;text-align:right;color:#b8b0be;font-size:10px}
 .character-stage{position:relative;flex:1 1 auto;min-height:245px;border:1px solid #251d2e;border-radius:23px;overflow:hidden;background:radial-gradient(ellipse at 50% 38%,rgba(142,80,177,.34),transparent 62%),#16101f}
 .nanako-motion{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;transform-origin:50% 91%;will-change:transform}
-.nanako-avatar{position:relative;width:100%;height:100%;max-width:627px;aspect-ratio:1/1;align-self:flex-end}
+.nanako-avatar{position:relative;height:100%;width:auto;max-width:100%;aspect-ratio:627/640;align-self:flex-end}
 .nanako-base{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none}
 .nanako-part{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;visibility:hidden;opacity:0;user-select:none;-webkit-user-drag:none;pointer-events:none}
 .nanako-avatar.face-ready .nanako-part{visibility:visible;opacity:1}
@@ -34,133 +34,99 @@
 
 
 /* ==========================================================
-   NANA TALK STEP 1.31 — CONSOLIDATED INSTALLED-APP LAYOUT
-   One source of truth. No Step 1.26–1.30 override stacking.
+   NANACHAT STEP 1.33 — VERIFIED FULLSCREEN LAYOUT
+   One authoritative installed-app layout only.
+   - Portrait asset geometry: 627 x 640 (never square)
+   - Conversation controls: true bottom anchor
+   - App height: JS-synchronised --app-height for iOS Home Screen
    ========================================================== */
+:root{--app-height:100dvh}
 html,body{width:100%;height:100%;min-height:100%;overscroll-behavior:none;-webkit-text-size-adjust:100%}
-body{min-height:100svh;min-height:100dvh}
-.app-shell{width:100%;min-height:100svh;min-height:100dvh}
+body{min-height:var(--app-height);overflow:hidden}
+.app-shell{width:100%;height:var(--app-height);min-height:var(--app-height);overflow:hidden}
 
-@media (display-mode:standalone){
-  html,body,.app-shell{height:100%;min-height:100%;overflow:hidden}
-
-  .nanako-app{
-    position:fixed;
-    inset:0;
-    width:min(100%,520px);
-    height:100%;
-    min-height:0;
-    margin:0 auto;
-    padding-top:max(env(safe-area-inset-top),8px);
-    padding-right:20px;
-    padding-left:20px;
-    /* Deliberately use part of the iPhone bottom safe area. The button still
-       remains clear of the home indicator, but we do not waste 70–100px. */
-    padding-bottom:max(10px,calc(env(safe-area-inset-bottom) - 16px));
-    display:grid;
-    grid-template-rows:auto auto minmax(0,1fr) auto;
-    row-gap:0;
-    overflow:hidden;
-  }
-
-  .top-bar{min-height:58px;flex:none}
-  .top-bar h1{font-size:29px;line-height:1.05}
-  .subtitle{margin-top:7px;font-size:11px}
-  .score-row{height:34px;padding-bottom:7px;flex:none}
-
-  /* This is the ONLY flexible row. It receives every remaining vertical pixel. */
-  .character-stage{
-    min-height:0;
-    height:100%;
-    max-height:none;
-    aspect-ratio:auto;
-    margin:0 0 8px;
-    border-radius:27px;
-    overflow:hidden;
-  }
-  .nanako-motion{inset:0;align-items:flex-end;justify-content:center}
-  .nanako-avatar{
-    position:relative;
-    height:100%;
-    width:auto;
-    max-width:100%;
-    aspect-ratio:627 / 640;
-    align-self:flex-end;
-  }
-  .nanako-base,.nanako-part{
-    width:100%;height:100%;
-    object-fit:contain;
-    object-position:center bottom;
-  }
-
-  /* The complete interaction area is one compact bottom-anchored block. */
-  .conversation-stack{
-    min-height:0;
-    display:grid;
-    grid-template-rows:62px 150px 56px 56px;
-    row-gap:9px;
-    width:100%;
-    margin:0;
-    padding:0;
-  }
-  .conversation-stack .nanako-row{min-height:0;height:62px;padding:2px 0;margin:0}
-  .conversation-stack .avatar{width:48px;height:48px}
-  .conversation-stack .nanako-copy strong{font-size:18px}
-  .conversation-stack .nanako-copy span{font-size:13px;margin-top:2px}
-  .conversation-stack .quick-button{width:48px;height:48px}
-  .conversation-stack .reply-card{height:150px;margin:0;padding:18px 20px;border-radius:25px}
-  .conversation-stack .japanese-reply{font-size:20px;line-height:31px}
-  .conversation-stack .input-row{height:56px;margin:0;gap:10px}
-  .conversation-stack .input-row input{border-radius:18px;padding:0 18px;font-size:16px}
-  .conversation-stack .send-button{width:64px;border-radius:18px;font-size:25px}
-  .conversation-stack .conversation-button{height:56px;margin:0;border-radius:18px;font-size:17px}
-
-  .startup-splash{
-    padding-top:max(env(safe-area-inset-top),24px)!important;
-    padding-bottom:max(env(safe-area-inset-bottom),24px)!important;
-  }
-}
-
-/* navigator.standalone fallback for iOS versions with unreliable media-query reporting. */
-html.ios-standalone,html.ios-standalone body,html.ios-standalone .app-shell{height:100%;min-height:100%;overflow:hidden}
 html.ios-standalone .nanako-app{
-  position:fixed;inset:0;width:min(100%,520px);height:100%;min-height:0;margin:0 auto;
-  padding-top:max(env(safe-area-inset-top),8px);padding-right:20px;padding-left:20px;
-  padding-bottom:max(10px,calc(env(safe-area-inset-bottom) - 16px));
-  display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;row-gap:0;overflow:hidden;
+  --side:20px;
+  --bottom-gap:max(8px,env(safe-area-inset-bottom));
+  --stack-row-status:54px;
+  --stack-row-reply:104px;
+  --stack-row-input:50px;
+  --stack-row-action:52px;
+  --stack-gap:8px;
+  --stack-h:calc(var(--stack-row-status) + var(--stack-row-reply) + var(--stack-row-input) + var(--stack-row-action) + (var(--stack-gap) * 3));
+  position:fixed;
+  top:0;left:50%;transform:translateX(-50%);
+  width:min(100%,520px);
+  height:var(--app-height);
+  min-height:0;
+  margin:0;
+  padding:max(env(safe-area-inset-top),8px) var(--side) calc(var(--stack-h) + var(--bottom-gap) + 8px);
+  display:grid;
+  grid-template-rows:auto auto minmax(0,1fr);
+  row-gap:0;
+  overflow:hidden;
 }
 html.ios-standalone .top-bar{min-height:58px;flex:none}
 html.ios-standalone .top-bar h1{font-size:29px;line-height:1.05}
 html.ios-standalone .subtitle{margin-top:7px;font-size:11px}
-html.ios-standalone .score-row{height:34px;padding-bottom:7px;flex:none}
-html.ios-standalone .character-stage{min-height:0;height:100%;max-height:none;aspect-ratio:auto;margin:0 0 8px;border-radius:27px;overflow:hidden}
-html.ios-standalone .nanako-motion{inset:0;align-items:flex-end;justify-content:center}
-html.ios-standalone .nanako-avatar{position:relative;height:100%;width:auto;max-width:100%;aspect-ratio:627/640;align-self:flex-end}
-html.ios-standalone .nanako-base,html.ios-standalone .nanako-part{width:100%;height:100%;object-fit:contain;object-position:center bottom}
-html.ios-standalone .conversation-stack{min-height:0;display:grid;grid-template-rows:62px 150px 56px 56px;row-gap:9px;width:100%;margin:0;padding:0}
-html.ios-standalone .conversation-stack .nanako-row{min-height:0;height:62px;padding:2px 0;margin:0}
-html.ios-standalone .conversation-stack .avatar{width:48px;height:48px}
-html.ios-standalone .conversation-stack .nanako-copy strong{font-size:18px}
-html.ios-standalone .conversation-stack .nanako-copy span{font-size:13px;margin-top:2px}
-html.ios-standalone .conversation-stack .quick-button{width:48px;height:48px}
-html.ios-standalone .conversation-stack .reply-card{height:150px;margin:0;padding:18px 20px;border-radius:25px}
-html.ios-standalone .conversation-stack .japanese-reply{font-size:20px;line-height:31px}
-html.ios-standalone .conversation-stack .input-row{height:56px;margin:0;gap:10px}
-html.ios-standalone .conversation-stack .input-row input{border-radius:18px;padding:0 18px;font-size:16px}
-html.ios-standalone .conversation-stack .send-button{width:64px;border-radius:18px;font-size:25px}
-html.ios-standalone .conversation-stack .conversation-button{height:56px;margin:0;border-radius:18px;font-size:17px}
+html.ios-standalone .score-row{height:30px;padding-bottom:4px;flex:none}
 
-/* Short displays: only the lower stack compacts; portrait still owns all leftover height. */
-@media (display-mode:standalone) and (max-height:780px){
-  .nanako-app{padding-right:16px;padding-left:16px}
-  .top-bar{min-height:52px}
-  .score-row{height:26px;padding-bottom:4px}
-  .conversation-stack{grid-template-rows:54px 118px 48px 48px;row-gap:7px}
-  .conversation-stack .nanako-row{height:54px}
-  .conversation-stack .avatar,.conversation-stack .quick-button{width:42px;height:42px}
-  .conversation-stack .reply-card{height:118px;padding:12px 15px}
-  .conversation-stack .japanese-reply{font-size:18px;line-height:26px}
-  .conversation-stack .input-row{height:48px}
-  .conversation-stack .send-button{width:54px}
-  .conversation-stack .conversation-button{height:48px}
+html.ios-standalone .character-stage{
+  min-height:0;
+  height:100%;
+  max-height:none;
+  margin:0;
+  aspect-ratio:auto;
+  border-radius:27px;
+  overflow:hidden;
 }
+html.ios-standalone .nanako-motion{inset:0;align-items:flex-end;justify-content:center}
+/* SINGLE authoritative portrait rule: 627x640. No 1:1 fallback. */
+html.ios-standalone .nanako-avatar{
+  position:relative;
+  height:100%;
+  width:auto;
+  max-width:100%;
+  max-height:100%;
+  aspect-ratio:627/640;
+  align-self:flex-end;
+}
+html.ios-standalone .nanako-base,
+html.ios-standalone .nanako-part{
+  width:100%;height:100%;object-fit:contain;object-position:center bottom;
+}
+
+/* Bottom stack is physically anchored to the measured Home Screen viewport. */
+html.ios-standalone .conversation-stack{
+  position:absolute;
+  left:var(--side);right:var(--side);
+  bottom:var(--bottom-gap);
+  height:var(--stack-h);
+  min-height:0;
+  display:grid;
+  grid-template-rows:var(--stack-row-status) var(--stack-row-reply) var(--stack-row-input) var(--stack-row-action);
+  row-gap:var(--stack-gap);
+  margin:0;padding:0;width:auto;z-index:20;
+}
+html.ios-standalone .conversation-stack .nanako-row{height:var(--stack-row-status);min-height:0;padding:0;margin:0}
+html.ios-standalone .conversation-stack .avatar{width:46px;height:46px}
+html.ios-standalone .conversation-stack .nanako-copy strong{font-size:18px}
+html.ios-standalone .conversation-stack .nanako-copy span{font-size:13px;margin-top:1px}
+html.ios-standalone .conversation-stack .quick-button{width:46px;height:46px}
+html.ios-standalone .conversation-stack .reply-card{height:var(--stack-row-reply);margin:0;padding:14px 18px;border-radius:23px}
+html.ios-standalone .conversation-stack .japanese-reply{font-size:18px;line-height:27px}
+html.ios-standalone .conversation-stack .input-row{height:var(--stack-row-input);margin:0;gap:9px}
+html.ios-standalone .conversation-stack .input-row input{border-radius:17px;padding:0 16px;font-size:16px}
+html.ios-standalone .conversation-stack .send-button{width:58px;border-radius:17px;font-size:24px}
+html.ios-standalone .conversation-stack .conversation-button{height:var(--stack-row-action);margin:0;border-radius:17px;font-size:17px}
+html.ios-standalone .startup-splash{padding-top:max(env(safe-area-inset-top),24px)!important;padding-bottom:max(env(safe-area-inset-bottom),24px)!important}
+
+/* Short phones keep bottom anchoring; only compact the lower stack slightly. */
+html.ios-standalone.screen-short .nanako-app{
+  --side:16px;--stack-row-status:48px;--stack-row-reply:92px;--stack-row-input:46px;--stack-row-action:48px;--stack-gap:7px;
+}
+html.ios-standalone.screen-short .conversation-stack .avatar,
+html.ios-standalone.screen-short .conversation-stack .quick-button{width:40px;height:40px}
+html.ios-standalone.screen-short .conversation-stack .reply-card{padding:11px 14px}
+html.ios-standalone.screen-short .conversation-stack .japanese-reply{font-size:17px;line-height:24px}
+html.ios-standalone.screen-short .conversation-stack .send-button{width:52px}

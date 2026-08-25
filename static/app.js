@@ -1,18 +1,28 @@
 (()=>{
 "use strict";
 
-// Step 1.26: layout-only standalone detection. This does not touch audio, mic,
-// memory, animation, or conversation behaviour.
+// NanaChat Step 1.33: installed-app detection + measured iOS viewport.
+// window.innerHeight is used deliberately because iOS Home Screen PWAs can
+// report CSS dynamic viewport units inconsistently across launches.
+function syncInstalledViewport(){
+  try{
+    const h=Math.max(320,Math.round(window.innerHeight||document.documentElement.clientHeight||0));
+    document.documentElement.style.setProperty("--app-height",`${h}px`);
+    document.documentElement.classList.toggle("screen-short",h<780);
+  }catch{}
+}
 try{
   const standalone=window.matchMedia?.("(display-mode: standalone)")?.matches||window.navigator.standalone===true;
   if(standalone)document.documentElement.classList.add("ios-standalone");
-  if(window.innerHeight<780)document.documentElement.classList.add("screen-short");
+  syncInstalledViewport();
+  window.addEventListener("resize",syncInstalledViewport,{passive:true});
+  window.visualViewport?.addEventListener("resize",syncInstalledViewport,{passive:true});
 }catch{}
 
 // Step 1.31: one real PWA service worker. No launch-time unregister/cache purge.
 window.addEventListener("load",()=>{
   if("serviceWorker" in navigator){
-    navigator.serviceWorker.register("./sw.js?v=11.3.1").catch(err=>console.warn("[Nana Talk SW]",err));
+    navigator.serviceWorker.register("./sw.js?v=11.3.3").catch(err=>console.warn("[Nana Talk SW]",err));
   }
 });
 
@@ -255,7 +265,7 @@ function returnToPythonIdle({emotion=null}={}){
 // ============================================================
 // APP / VOICE LOGIC
 // ============================================================
-console.log("[Nanako Build] v11 STEP 1.28 • TALL PORTRAIT + STARTUP NEUTRAL IDLE");
+console.log("[NanaChat Build] v11 STEP 1.33 • VERIFIED 627x640 PORTRAIT + BOTTOM ANCHOR + FIRST-TAP ENTER");
 const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
@@ -819,27 +829,29 @@ function armStartupGreetingOnFirstGesture(){/* Step 1.23: replaced by explicit s
 async function enterStartupSplash(){
   if(startupEnterDone)return;
   startupEnterDone=true;
-  // Step 1.29: startup is always a neutral interaction. Never allow an idle
-  // plan cached from an earlier confused turn/session to survive into startup.
-  cachedPythonIdlePlan=null;
-  renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   const splash=document.getElementById("startupSplash");
   const enterBtn=document.getElementById("startupEnterButton");
-  if(enterBtn){enterBtn.disabled=true;enterBtn.textContent="Entering…";}
+  // This MUST run synchronously inside the first tap for iOS audio permission.
   unlockAudio();
+  if(enterBtn){enterBtn.disabled=true;enterBtn.textContent="Entering…";}
+  if(splash)splash.hidden=true;
   status("Nanako is greeting you...");
+  cachedPythonIdlePlan=null;
   try{
+    await animationAssetsReady;
+    nanakoAvatar=nanakoAvatar||document.getElementById("nanakoAvatar");
+    nanakoBase=nanakoBase||document.getElementById("nanakoBase");
+    nanakoEyes=nanakoEyes||document.getElementById("nanakoEyes");
+    nanakoMouth=nanakoMouth||document.getElementById("nanakoMouth");
+    nanakoMotion=nanakoMotion||document.querySelector(".nanako-motion");
+    renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
     if(!startupGreetingData)await fetchStartupGreeting();
     if(startupGreetingData?.audio_base64&&!muted){
-      const playPromise=play(startupGreetingData.audio_base64,startupGreetingData.audio_mime||"audio/wav",startupGreetingData.animation_plan,{gestureImmediate:true,silentFailure:false,idleEmotion:"neutral"});
-      if(splash)splash.hidden=true;
-      await playPromise;
-    }else{
-      if(splash)splash.hidden=true;
+      await play(startupGreetingData.audio_base64,startupGreetingData.audio_mime||"audio/wav",startupGreetingData.animation_plan,{gestureImmediate:false,silentFailure:false,idleEmotion:"neutral"});
+      startupGreetingPlayed=true;
     }
   }catch(err){
-    console.error("[Nanako Startup Enter]",err);
-    if(splash)splash.hidden=true;
+    console.error("[NanaChat Startup Enter]",err);
     error("Nanako's welcome voice could not play.");
   }finally{
     if(enterBtn){enterBtn.disabled=false;enterBtn.textContent="Enter";}
@@ -880,13 +892,21 @@ document.addEventListener("visibilitychange",()=>{
 async function boot(){
   loadPersistentMemory();
   setScore(0);quick();convButton();renderHistory();
-  await animationAssetsReady;
-  if(e.jp)e.jp.textContent=rememberDetectedUserName()?`おかえり、${rememberDetectedUserName()}！`:`はじめまして！ななこです。`;
+  syncInstalledViewport();
+  // Attach Enter immediately. This is intentionally before every await so the
+  // very first tap is never lost while assets/greeting are still loading.
+  const splashEnter=document.getElementById("startupEnterButton");
+  if(splashEnter&&!splashEnter.dataset.bound){
+    splashEnter.dataset.bound="1";
+    splashEnter.addEventListener("click",enterStartupSplash);
+  }
   nanakoAvatar=document.getElementById("nanakoAvatar");
   nanakoBase=document.getElementById("nanakoBase");
   nanakoEyes=document.getElementById("nanakoEyes");
   nanakoMouth=document.getElementById("nanakoMouth");
   nanakoMotion=document.querySelector(".nanako-motion");
+  await animationAssetsReady;
+  if(e.jp)e.jp.textContent=rememberDetectedUserName()?`おかえり、${rememberDetectedUserName()}！`:`はじめまして！ななこです。`;
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
   if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation({preferCache:false});
@@ -894,9 +914,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  const splashEnter=document.getElementById("startupEnterButton");
-  if(splashEnter)splashEnter.addEventListener("click", enterStartupSplash);
-  console.log(`[Nanako] v11 Step 1.30 splash startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.33 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
