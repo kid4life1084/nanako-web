@@ -85,3 +85,146 @@ html.ios-standalone .character-stage{flex:1 1 0;min-height:250px}
   .character-stage{min-height:150px}
   .reply-card{height:104px}
 }
+
+/* ==========================================================
+   NANA TALK STEP 1.27 — FULLSCREEN PORTRAIT / BOTTOM STACK
+   Matches the approved mobile layout mockup.
+   Layout only: no audio, animation, mic, memory or model logic.
+   ========================================================== */
+
+/* In installed-app mode, use a strict screen-height layout. The portrait stage
+   is the only flexible row, so all reclaimed browser chrome becomes character
+   headroom instead of unused space below the conversation button. */
+@media (display-mode:standalone){
+  .nanako-app{
+    display:grid;
+    grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto;
+    row-gap:0;
+    height:100dvh;
+    min-height:100dvh;
+    max-height:100dvh;
+    padding-top:max(env(safe-area-inset-top),10px);
+    padding-right:20px;
+    padding-left:20px;
+    padding-bottom:calc(max(env(safe-area-inset-bottom),18px) + 8px);
+  }
+
+  .top-bar{min-height:64px}
+  .top-bar h1{font-size:29px;line-height:1.05}
+  .subtitle{margin-top:7px;font-size:11px}
+  .score-row{height:34px;padding-bottom:7px}
+
+  .character-stage{
+    min-height:0;
+    height:auto;
+    margin:0 0 8px;
+    border-radius:27px;
+  }
+
+  /* More breathing room above Nanako's hair. Keep the avatar anchored to the
+     bottom of the stage so extending the stage upward creates headroom rather
+     than lifting/cropping the character. */
+  .nanako-motion{align-items:flex-end}
+  .nanako-avatar{
+    width:min(100%,680px);
+    max-width:680px;
+    height:100%;
+    aspect-ratio:auto;
+    align-self:flex-end;
+  }
+  .nanako-base,.nanako-part{
+    object-fit:contain;
+    object-position:center bottom;
+  }
+
+  .nanako-row{
+    min-height:66px;
+    padding:3px 0 5px;
+  }
+  .avatar{width:48px;height:48px}
+  .nanako-copy strong{font-size:18px}
+  .nanako-copy span{font-size:13px;margin-top:2px}
+  .quick-button{width:48px;height:48px}
+
+  .reply-card{
+    height:158px;
+    margin-top:0;
+    padding:18px 20px;
+    border-radius:25px;
+  }
+  .japanese-reply{font-size:20px;line-height:31px}
+
+  .input-row{
+    height:58px;
+    margin-top:10px;
+    gap:10px;
+  }
+  .input-row input{
+    border-radius:18px;
+    padding:0 18px;
+    font-size:16px;
+  }
+  .send-button{
+    width:64px;
+    border-radius:18px;
+    font-size:25px;
+  }
+
+  .conversation-button{
+    height:58px;
+    margin-top:10px;
+    border-radius:18px;
+    font-size:17px;
+  }
+}
+
+/* navigator.standalone fallback for iOS versions where display-mode media
+   matching is inconsistent. Keep this block equivalent to the rule above. */
+html.ios-standalone .nanako-app{
+  display:grid;
+  grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto;
+  row-gap:0;
+  height:100dvh;
+  min-height:100dvh;
+  max-height:100dvh;
+  padding-top:max(env(safe-area-inset-top),10px);
+  padding-right:20px;
+  padding-left:20px;
+  padding-bottom:calc(max(env(safe-area-inset-bottom),18px) + 8px);
+}
+html.ios-standalone .top-bar{min-height:64px}
+html.ios-standalone .top-bar h1{font-size:29px;line-height:1.05}
+html.ios-standalone .subtitle{margin-top:7px;font-size:11px}
+html.ios-standalone .score-row{height:34px;padding-bottom:7px}
+html.ios-standalone .character-stage{min-height:0;height:auto;margin:0 0 8px;border-radius:27px}
+html.ios-standalone .nanako-motion{align-items:flex-end}
+html.ios-standalone .nanako-avatar{width:min(100%,680px);max-width:680px;height:100%;aspect-ratio:auto;align-self:flex-end}
+html.ios-standalone .nanako-base,
+html.ios-standalone .nanako-part{object-fit:contain;object-position:center bottom}
+html.ios-standalone .nanako-row{min-height:66px;padding:3px 0 5px}
+html.ios-standalone .avatar{width:48px;height:48px}
+html.ios-standalone .nanako-copy strong{font-size:18px}
+html.ios-standalone .nanako-copy span{font-size:13px;margin-top:2px}
+html.ios-standalone .quick-button{width:48px;height:48px}
+html.ios-standalone .reply-card{height:158px;margin-top:0;padding:18px 20px;border-radius:25px}
+html.ios-standalone .japanese-reply{font-size:20px;line-height:31px}
+html.ios-standalone .input-row{height:58px;margin-top:10px;gap:10px}
+html.ios-standalone .input-row input{border-radius:18px;padding:0 18px;font-size:16px}
+html.ios-standalone .send-button{width:64px;border-radius:18px;font-size:25px}
+html.ios-standalone .conversation-button{height:58px;margin-top:10px;border-radius:18px;font-size:17px}
+
+/* Smaller iPhones: preserve every control and let portrait surrender height
+   first. This avoids scrolling or clipping the bottom controls. */
+@media (display-mode:standalone) and (max-height:780px){
+  .nanako-app{padding-right:16px;padding-left:16px}
+  .top-bar{min-height:54px}
+  .score-row{height:26px}
+  .nanako-row{min-height:57px}
+  .avatar{width:42px;height:42px}
+  .quick-button{width:42px;height:42px}
+  .reply-card{height:126px;padding:13px 16px}
+  .japanese-reply{font-size:18px;line-height:26px}
+  .input-row{height:50px;margin-top:8px}
+  .send-button{width:54px}
+  .conversation-button{height:48px;margin-top:8px}
+}
