@@ -6,13 +6,13 @@
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.8",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.5.1",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.48: verified angry + cheeky + laughing + confused state routing.
+// NanaChat Step 1.51: joke fast-path + angry expressive voice + teeth end-pose-only.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -108,11 +108,11 @@ const ANIMATION_ASSETS = {
     },
     mouth: {
       closed: "./static/characters/nanako/states/angry/mouth/closed.png?v=step1_48_angry",
-      small: "./static/characters/nanako/states/angry/mouth/teeth.png?v=step1_48_angry",
-      medium: "./static/characters/nanako/states/angry/mouth/medium.png?v=step1_48_angry",
-      wide: "./static/characters/nanako/states/angry/mouth/wide.png?v=step1_48_angry",
-      round: "./static/characters/nanako/states/angry/mouth/wide.png?v=step1_48_angry",
-      teeth: "./static/characters/nanako/states/angry/mouth/teeth.png?v=step1_48_angry"
+      small: "./static/characters/nanako/states/angry/mouth/medium.png?v=step1_51_angry_no_teeth_during_speech",
+      medium: "./static/characters/nanako/states/angry/mouth/medium.png?v=step1_51_angry_no_teeth_during_speech",
+      wide: "./static/characters/nanako/states/angry/mouth/wide.png?v=step1_51_angry_no_teeth_during_speech",
+      round: "./static/characters/nanako/states/angry/mouth/wide.png?v=step1_51_angry_no_teeth_during_speech",
+      teeth: "./static/characters/nanako/states/angry/mouth/teeth.png?v=step1_51_angry_end_only"
     }
   },
   cheeky: {
@@ -493,7 +493,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||["cheeky","angry"].includes(d?.animation_plan?.emotion))?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
+async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||["cheeky","angry"].includes(d?.animation_plan?.emotion))?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -593,6 +593,7 @@ async function play(b,m,animationPlan=null,options={}){
   const gestureImmediate=!!options?.gestureImmediate&&!currentAudio;
   const silentFailure=!!options?.silentFailure;
   const idleEmotion=String(options?.idleEmotion||"").trim().toLowerCase()||null;
+  const voiceMode=String(options?.voiceMode||"talking").trim().toLowerCase();
   if(!gestureImmediate){
     await stopAudio(false);
   }else{
@@ -615,8 +616,10 @@ async function play(b,m,animationPlan=null,options={}){
   try{currentAudioObjectUrl=audioBlobUrlFromBase64(b,m);a.src=currentAudioObjectUrl;}catch(blobErr){console.warn("[Nanako Audio] Blob conversion failed; using data URL.",blobErr);a.src=normalizeAudioSource(b,m);}
   a.preload="auto";
   a.volume=1;
-  a.playbackRate=.86;
-  a.defaultPlaybackRate=.86;
+  const speechRate=voiceMode==="angry"?.95:.86;
+  a.playbackRate=speechRate;
+  a.defaultPlaybackRate=speechRate;
+  try{a.preservesPitch=true;a.webkitPreservesPitch=true;}catch{}
   currentAudio=a;
 
 
@@ -1032,7 +1035,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.37 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.51 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
