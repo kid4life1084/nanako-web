@@ -6,13 +6,13 @@
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.6",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.7",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.46: layered laugh + cheeky emotional state.
+// NanaChat Step 1.47: state-arbitrated cheeky + full-audio looping layered laugh.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -100,19 +100,19 @@ const ANIMATION_ASSETS = {
     }
   },
   cheeky: {
-    base: "./static/characters/nanako/states/cheeky/base.png?v=step1_46_cheeky",
+    base: "./static/characters/nanako/states/cheeky/base.png?v=step1_47_cheeky",
     eyes: {
-      open: "./static/characters/nanako/states/cheeky/eyes/full.png?v=step1_46_cheeky",
-      half: "./static/characters/nanako/states/cheeky/eyes/half.png?v=step1_46_cheeky",
-      closed: "./static/characters/nanako/states/cheeky/eyes/closed.png?v=step1_46_cheeky",
-      wink: "./static/characters/nanako/states/cheeky/eyes/half_closed.png?v=step1_46_cheeky"
+      open: "./static/characters/nanako/states/cheeky/eyes/full.png?v=step1_47_cheeky",
+      half: "./static/characters/nanako/states/cheeky/eyes/half.png?v=step1_47_cheeky",
+      closed: "./static/characters/nanako/states/cheeky/eyes/closed.png?v=step1_47_cheeky",
+      wink: "./static/characters/nanako/states/cheeky/eyes/half_closed.png?v=step1_47_cheeky"
     },
     mouth: {
-      closed: "./static/characters/nanako/states/cheeky/mouth/closed.png?v=step1_46_cheeky",
-      small: "./static/characters/nanako/states/cheeky/mouth/small.png?v=step1_46_cheeky",
-      medium: "./static/characters/nanako/states/cheeky/mouth/medium.png?v=step1_46_cheeky",
-      wide: "./static/characters/nanako/states/cheeky/mouth/wide.png?v=step1_46_cheeky",
-      round: "./static/characters/nanako/states/cheeky/mouth/round.png?v=step1_46_cheeky"
+      closed: "./static/characters/nanako/states/cheeky/mouth/closed.png?v=step1_47_cheeky",
+      small: "./static/characters/nanako/states/cheeky/mouth/small.png?v=step1_47_cheeky",
+      medium: "./static/characters/nanako/states/cheeky/mouth/medium.png?v=step1_47_cheeky",
+      wide: "./static/characters/nanako/states/cheeky/mouth/wide.png?v=step1_47_cheeky",
+      round: "./static/characters/nanako/states/cheeky/mouth/round.png?v=step1_47_cheeky"
     }
   },
   confused: {
@@ -264,7 +264,11 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
       ? Math.max(0,Number(mediaClock.currentTime||0)*1000)
       : now-started;
 
-    if(loop&&!mediaClock)elapsed=elapsed%duration;
+    // Step 1.47: a laugh plan must keep moving for the ENTIRE audible reply.
+    // If iOS/Qwen reports a media duration longer than Python's sampled WAV
+    // plan, wrap the laugh timeline instead of freezing on its last frame.
+    if(mediaClock&&plan?.kind==="laughing"&&duration>1)elapsed=elapsed%duration;
+    else if(loop&&!mediaClock)elapsed=elapsed%duration;
     const frames=plan.frames;
     let lo=0,hi=frames.length-1;
     while(lo<hi){
