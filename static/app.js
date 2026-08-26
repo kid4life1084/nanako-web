@@ -6,13 +6,13 @@
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.5.1",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.5.2",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.51: joke fast-path + angry expressive voice + teeth end-pose-only.
+// NanaChat Step 1.52: expanded joke fast-path + waveform-synced laughing mouth.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -280,11 +280,11 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
       ? Math.max(0,Number(mediaClock.currentTime||0)*1000)
       : now-started;
 
-    // Step 1.47: a laugh plan must keep moving for the ENTIRE audible reply.
-    // If iOS/Qwen reports a media duration longer than Python's sampled WAV
-    // plan, wrap the laugh timeline instead of freezing on its last frame.
-    if(mediaClock&&plan?.kind==="laughing"&&duration>1)elapsed=elapsed%duration;
-    else if(loop&&!mediaClock)elapsed=elapsed%duration;
+    // Step 1.52: laughter is waveform-synced just like every other speaking
+    // state. Never modulo-loop it: real pauses must close the mouth, and if the
+    // browser runs a few milliseconds beyond the plan it should hold the final
+    // closed frame rather than resume artificial mouth cycling.
+    if(loop&&!mediaClock)elapsed=elapsed%duration;
     const frames=plan.frames;
     let lo=0,hi=frames.length-1;
     while(lo<hi){
@@ -1035,7 +1035,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.51 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.52 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
