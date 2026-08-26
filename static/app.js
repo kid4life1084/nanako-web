@@ -115,18 +115,18 @@ const ANIMATION_ASSETS = {
     }
   },
   laughing: {
-    base: "./static/characters/nanako/states/laughing/base.png?v=step1_40_layered_laugh",
+    base: "./static/characters/nanako/states/laughing/base.png?v=step1_42_layered_laugh",
     eyes: {
-      open: "./static/characters/nanako/states/laughing/base_head.png?v=step1_40_layered_laugh",
-      half: "./static/characters/nanako/states/laughing/base_head.png?v=step1_40_layered_laugh",
-      closed: "./static/characters/nanako/states/laughing/base_head.png?v=step1_40_layered_laugh"
+      open: "./static/characters/nanako/states/laughing/base_head.png?v=step1_42_layered_laugh",
+      half: "./static/characters/nanako/states/laughing/base_head.png?v=step1_42_layered_laugh",
+      closed: "./static/characters/nanako/states/laughing/base_head.png?v=step1_42_layered_laugh"
     },
     mouth: {
-      closed: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_40_layered_laugh",
-      small: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_40_layered_laugh",
-      medium: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_40_layered_laugh",
-      wide: "./static/characters/nanako/states/laughing/mouth/large.png?v=step1_40_layered_laugh",
-      round: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_40_layered_laugh"
+      closed: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_42_layered_laugh",
+      small: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_42_layered_laugh",
+      medium: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_42_layered_laugh",
+      wide: "./static/characters/nanako/states/laughing/mouth/large.png?v=step1_42_layered_laugh",
+      round: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_42_layered_laugh"
     }
   }
 };
