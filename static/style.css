@@ -27,14 +27,14 @@
    NanaChat Step 1.36 — AUTHORITATIVE mobile/fullscreen layout
    No legacy standalone overrides below this point.
    ========================================================== */
-:root{--app-h:100dvh;--stack-measured:286px;--side:20px;--safe-bottom:max(8px,env(safe-area-inset-bottom));}
+:root{--app-h:100dvh;--viewport-top:0px;--stack-measured:286px;--side:20px;--safe-bottom:max(8px,env(safe-area-inset-bottom));}
 html,body{width:100%;height:100%;min-height:100%;overscroll-behavior:none;-webkit-text-size-adjust:100%;}
 body{overflow:hidden;}
 .app-shell{width:100%;height:100dvh;min-height:100dvh;overflow:hidden;}
 
 html.app-layout .app-shell{height:var(--app-h);min-height:var(--app-h);}
 html.app-layout .nanako-app{
-  position:fixed;inset:0 auto auto 50%;transform:translateX(-50%);
+  position:fixed;top:var(--viewport-top);left:50%;right:auto;bottom:auto;transform:translateX(-50%);
   width:min(100%,520px);height:var(--app-h);min-height:0;margin:0;
   padding:max(env(safe-area-inset-top),8px) var(--side) calc(var(--stack-measured) + var(--safe-bottom) + 6px);
   display:grid;grid-template-rows:auto auto minmax(0,1fr);row-gap:0;overflow:hidden;
@@ -61,11 +61,12 @@ html.app-layout .nanako-part{
   width:100%!important;height:100%!important;object-fit:contain!important;object-position:center bottom!important;
 }
 
-/* Fixed to the physical visible app bottom, independent of .nanako-app sizing. */
+/* Anchored inside NanaChat's fixed app canvas. During keyboard entry that canvas
+   becomes the actual iOS visual viewport, so nothing can extend below it. */
 html.app-layout .conversation-stack{
-  position:fixed!important;z-index:50;
-  left:max(var(--side),calc((100vw - 520px)/2 + var(--side)));
-  right:max(var(--side),calc((100vw - 520px)/2 + var(--side)));
+  position:absolute!important;z-index:50;
+  left:var(--side);
+  right:var(--side);
   bottom:var(--safe-bottom)!important;
   height:auto!important;min-height:0!important;margin:0!important;padding:0!important;
   display:grid!important;grid-template-rows:auto auto auto auto;gap:8px;
@@ -96,3 +97,10 @@ html.app-layout.screen-short .conversation-stack .send-button{width:50px;}
 
 /* Step 1.38 layered laugh: Python drives head/mouth bob; artwork owns alignment. */
 .nanako-eyes,.nanako-mouth{transform-origin:50% 74%;will-change:transform;}
+
+/* Step 1.40: keyboard mode is a self-contained visible-viewport canvas. */
+html.app-layout.keyboard-open,html.app-layout.keyboard-open body{width:100%!important;height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;}
+html.app-layout.keyboard-open .app-shell{height:var(--app-h)!important;min-height:0!important;overflow:hidden!important;}
+html.app-layout.keyboard-open .nanako-app{height:var(--app-h)!important;min-height:0!important;max-height:var(--app-h)!important;overflow:hidden!important;}
+html.app-layout.keyboard-open .character-stage{min-height:0!important;}
+html.app-layout.keyboard-open .conversation-stack{bottom:max(4px,env(safe-area-inset-bottom))!important;max-height:calc(var(--app-h) - 12px)!important;overflow:hidden!important;}

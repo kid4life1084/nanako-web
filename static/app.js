@@ -1,14 +1,47 @@
 (()=>{
 "use strict";
 
-// NanaChat Step 1.38: physical viewport + layered Python laughing state.
+// Step 1.41: explicitly install/update the current service worker.
+// Older NanaChat builds sometimes left a previously-registered worker in control.
+async function ensureCurrentServiceWorker(){
+  if(!("serviceWorker" in navigator))return;
+  try{
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.1",{scope:"./",updateViaCache:"none"});
+    await reg.update();
+  }catch(err){console.warn("NanaChat SW update failed",err);}
+}
+ensureCurrentServiceWorker();
+
+// NanaChat Step 1.41: verified service-worker update + keyboard containment.
+// The entire app canvas follows the actual visual viewport while the keyboard
+// is open. This prevents iOS from creating a tall scrollable page or pushing
+// controls beyond the visible app boundary.
 function isStandalone(){return window.matchMedia?.("(display-mode: standalone)")?.matches||window.navigator.standalone===true;}
+let fullAppViewportH=0;
+function inputHasFocus(){
+  const a=document.activeElement;
+  return !!a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.isContentEditable);
+}
 function syncInstalledViewport(){
   try{
     const vv=window.visualViewport;
-    const h=Math.max(320,Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight||0));
-    document.documentElement.style.setProperty("--app-h",`${h}px`);
-    document.documentElement.classList.toggle("screen-short",h<780);
+    const visibleH=Math.max(320,Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight||0));
+    const visibleTop=Math.max(0,Math.round(vv?.offsetTop||0));
+    const layoutH=Math.max(320,Math.round(window.innerHeight||0),Math.round(document.documentElement.clientHeight||0));
+    const focused=inputHasFocus();
+    const keyboardLikely=focused&&fullAppViewportH>0&&visibleH<fullAppViewportH-90;
+    if(!keyboardLikely)fullAppViewportH=Math.max(fullAppViewportH,visibleH,layoutH);
+    const appH=keyboardLikely?visibleH:Math.max(320,fullAppViewportH||layoutH||visibleH);
+    const appTop=keyboardLikely?visibleTop:0;
+    document.documentElement.style.setProperty("--app-h",`${appH}px`);
+    document.documentElement.style.setProperty("--viewport-top",`${appTop}px`);
+    document.documentElement.classList.toggle("keyboard-open",keyboardLikely);
+    document.documentElement.classList.toggle("screen-short",appH<780);
+    if(keyboardLikely){
+      window.scrollTo(0,0);
+      document.documentElement.scrollTop=0;
+      document.body.scrollTop=0;
+    }
   }catch{}
 }
 function syncConversationStackHeight(){
@@ -23,10 +56,11 @@ try{
   if(isStandalone()||Math.min(window.innerWidth||9999,document.documentElement.clientWidth||9999)<=600)document.documentElement.classList.add("app-layout");
   syncInstalledViewport();
   window.addEventListener("resize",()=>{syncInstalledViewport();syncConversationStackHeight();},{passive:true});
-  window.visualViewport?.addEventListener("resize",()=>{syncInstalledViewport();syncConversationStackHeight();},{passive:true});
-  window.visualViewport?.addEventListener("scroll",syncInstalledViewport,{passive:true});
+  window.visualViewport?.addEventListener("resize",()=>requestAnimationFrame(()=>{syncInstalledViewport();syncConversationStackHeight();}),{passive:true});
+  window.visualViewport?.addEventListener("scroll",()=>requestAnimationFrame(syncInstalledViewport),{passive:true});
+  document.addEventListener("focusin",()=>requestAnimationFrame(()=>{syncInstalledViewport();syncConversationStackHeight();}));
+  document.addEventListener("focusout",()=>setTimeout(()=>{syncInstalledViewport();syncConversationStackHeight();},120));
 }catch{}
-
 
 try{
   const __measureStack=()=>{syncInstalledViewport();syncConversationStackHeight();};
@@ -34,7 +68,7 @@ try{
   else{__measureStack();requestAnimationFrame(__measureStack);setTimeout(__measureStack,250);}
   if("ResizeObserver" in window){
     const ro=new ResizeObserver(syncConversationStackHeight);
-    const attach=()=>{const s=document.querySelector(".conversation-stack");if(s)ro.observe(s);};
+    const attach=()=>{const st=document.querySelector(".conversation-stack");if(st)ro.observe(st);};
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",attach,{once:true});else attach();
   }
 }catch{}
@@ -81,18 +115,18 @@ const ANIMATION_ASSETS = {
     }
   },
   laughing: {
-    base: "./static/characters/nanako/states/laughing/base.png?v=step1_38_layered_laugh",
+    base: "./static/characters/nanako/states/laughing/base.png?v=step1_40_layered_laugh",
     eyes: {
-      open: "./static/characters/nanako/states/laughing/base_head.png?v=step1_38_layered_laugh",
-      half: "./static/characters/nanako/states/laughing/base_head.png?v=step1_38_layered_laugh",
-      closed: "./static/characters/nanako/states/laughing/base_head.png?v=step1_38_layered_laugh"
+      open: "./static/characters/nanako/states/laughing/base_head.png?v=step1_40_layered_laugh",
+      half: "./static/characters/nanako/states/laughing/base_head.png?v=step1_40_layered_laugh",
+      closed: "./static/characters/nanako/states/laughing/base_head.png?v=step1_40_layered_laugh"
     },
     mouth: {
-      closed: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_38_layered_laugh",
-      small: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_38_layered_laugh",
-      medium: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_38_layered_laugh",
-      wide: "./static/characters/nanako/states/laughing/mouth/large.png?v=step1_38_layered_laugh",
-      round: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_38_layered_laugh"
+      closed: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_40_layered_laugh",
+      small: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_40_layered_laugh",
+      medium: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_40_layered_laugh",
+      wide: "./static/characters/nanako/states/laughing/mouth/large.png?v=step1_40_layered_laugh",
+      round: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_40_layered_laugh"
     }
   }
 };
