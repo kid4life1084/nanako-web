@@ -12,7 +12,7 @@ async function ensureCurrentServiceWorker(){
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.53: expanded joke fast-path + waveform-synced laughing mouth.
+// NanaChat Step 1.54: expanded joke fast-path + waveform-synced laughing mouth.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -316,7 +316,7 @@ function playPythonIdlePlan(plan){
   return true;
 }
 
-async function requestIdleAnimation({preferCache=true}={}){
+async function requestIdleAnimation({preferCache=true,emotion=null}={}){
   clearTimeout(idlePlanTimer);
   if(currentAudio)return;
 
@@ -326,7 +326,9 @@ async function requestIdleAnimation({preferCache=true}={}){
   if(preferCache&&cachedPythonIdlePlan&&playPythonIdlePlan(cachedPythonIdlePlan))return;
 
   try{
-    const r=await fetch(`${API}/api/animation/idle-plan?duration_ms=60000&sample_ms=100`,{cache:"no-store"});
+    const requestedEmotion=String(emotion||"").trim().toLowerCase();
+    const emotionQuery=requestedEmotion?`&emotion=${encodeURIComponent(requestedEmotion)}`:"";
+    const r=await fetch(`${API}/api/animation/idle-plan?duration_ms=60000&sample_ms=100${emotionQuery}`,{cache:"no-store"});
     const d=await r.json();
     if(!r.ok||!d?.ok||!d?.animation_plan)throw new Error(d?.error||`Animation request failed (${r.status})`);
     cachedPythonIdlePlan=d.animation_plan;
@@ -337,7 +339,7 @@ async function requestIdleAnimation({preferCache=true}={}){
     // It prevents a stale talking mouth from remaining frozen if the idle API
     // is temporarily unreachable; the browser retries Python immediately.
     renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
-    idlePlanTimer=setTimeout(()=>requestIdleAnimation({preferCache:false}),1500);
+    idlePlanTimer=setTimeout(()=>requestIdleAnimation({preferCache:false,emotion:requestedEmotion||null}),1500);
   }
 }
 
@@ -352,7 +354,7 @@ function returnToPythonIdle({emotion=null}={}){
   if(emotion==="neutral"){
     cachedPythonIdlePlan=null;
     renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
-    requestIdleAnimation({preferCache:false});
+    requestIdleAnimation({preferCache:false,emotion:"neutral"});
     return;
   }
   if(!playPythonIdlePlan(cachedPythonIdlePlan))requestIdleAnimation({preferCache:false});
