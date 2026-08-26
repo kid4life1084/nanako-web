@@ -6,13 +6,13 @@
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.4",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.6",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.44: five-frame layered laugh mouth set.
+// NanaChat Step 1.46: layered laugh + cheeky emotional state.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -97,6 +97,22 @@ const ANIMATION_ASSETS = {
       medium: "./static/characters/nanako/states/neutral/mouth/medium.png?v=step1_7_manual_alignment_lock",
       wide: "./static/characters/nanako/states/neutral/mouth/wide.png?v=step1_7_manual_alignment_lock",
       round: "./static/characters/nanako/states/neutral/mouth/round.png?v=step1_7_manual_alignment_lock"
+    }
+  },
+  cheeky: {
+    base: "./static/characters/nanako/states/cheeky/base.png?v=step1_46_cheeky",
+    eyes: {
+      open: "./static/characters/nanako/states/cheeky/eyes/full.png?v=step1_46_cheeky",
+      half: "./static/characters/nanako/states/cheeky/eyes/half.png?v=step1_46_cheeky",
+      closed: "./static/characters/nanako/states/cheeky/eyes/closed.png?v=step1_46_cheeky",
+      wink: "./static/characters/nanako/states/cheeky/eyes/half_closed.png?v=step1_46_cheeky"
+    },
+    mouth: {
+      closed: "./static/characters/nanako/states/cheeky/mouth/closed.png?v=step1_46_cheeky",
+      small: "./static/characters/nanako/states/cheeky/mouth/small.png?v=step1_46_cheeky",
+      medium: "./static/characters/nanako/states/cheeky/mouth/medium.png?v=step1_46_cheeky",
+      wide: "./static/characters/nanako/states/cheeky/mouth/wide.png?v=step1_46_cheeky",
+      round: "./static/characters/nanako/states/cheeky/mouth/round.png?v=step1_46_cheeky"
     }
   },
   confused: {
@@ -322,6 +338,22 @@ function returnToPythonIdle({emotion=null}={}){
   if(!playPythonIdlePlan(cachedPythonIdlePlan))requestIdleAnimation({preferCache:false});
 }
 
+function finishPlanWithPostHold(plan,{idleEmotion=null,onDone=null}={}){
+  const hold=Math.max(0,Math.min(2500,Number(plan?.post_speech_hold_ms)||0));
+  const post=plan?.post_speech_frame;
+  if(hold>0&&post){
+    stopAnimationPlan();
+    renderAnimationFrame(post);
+    setTimeout(()=>{
+      returnToPythonIdle({emotion:idleEmotion||"neutral"});
+      if(typeof onDone==="function")onDone();
+    },hold);
+    return;
+  }
+  returnToPythonIdle({emotion:idleEmotion});
+  if(typeof onDone==="function")onDone();
+}
+
 
 
 
@@ -441,7 +473,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=d?.laughing?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>returnToPythonIdle({emotion:idleEmotion})});else returnToPythonIdle({emotion:idleEmotion});if(active)setTimeout(begin,20)}}
+async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||d?.animation_plan?.emotion==="cheeky")?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -594,7 +626,6 @@ async function play(b,m,animationPlan=null,options={}){
     // 1) requestIdleAnimation refusing to run while currentAudio was non-null;
     // 2) waiting on a network request before replacing the final mouth PNG.
     if(currentAudio===a)currentAudio=null;
-    returnToPythonIdle({emotion:idleEmotion});
     convButton();
 
     try{
@@ -605,15 +636,19 @@ async function play(b,m,animationPlan=null,options={}){
       revokeCurrentAudioObjectUrl();
     }catch{}
 
-    // Resume listening only AFTER Python has closed its Nanako-speaking gate.
+    // Close Python's speaking gate immediately after audio, but keep the mic
+    // paused through an optional cheeky wink hold. This guarantees the wink is
+    // visible for the full backend-requested second before neutral idle resumes.
     Promise.resolve(setServerNanakoSpeaking(false)).finally(()=>{
-      if(active){
-        micCapturePaused=false;
-        status("Listening...");
-        setTimeout(begin,20);
-      }else{
-        status("Ready to chat");
-      }
+      finishPlanWithPostHold(animationPlan,{idleEmotion,onDone:()=>{
+        if(active){
+          micCapturePaused=false;
+          status("Listening...");
+          setTimeout(begin,20);
+        }else{
+          status("Ready to chat");
+        }
+      }});
     });
   };
 
