@@ -6,13 +6,13 @@
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.1",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.4",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.41: verified service-worker update + keyboard containment.
+// NanaChat Step 1.44: five-frame layered laugh mouth set.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -115,18 +115,18 @@ const ANIMATION_ASSETS = {
     }
   },
   laughing: {
-    base: "./static/characters/nanako/states/laughing/base.png?v=step1_42_layered_laugh",
+    base: "./static/characters/nanako/states/laughing/base.png?v=step1_44_laugh5mouth",
     eyes: {
-      open: "./static/characters/nanako/states/laughing/base_head.png?v=step1_42_layered_laugh",
-      half: "./static/characters/nanako/states/laughing/base_head.png?v=step1_42_layered_laugh",
-      closed: "./static/characters/nanako/states/laughing/base_head.png?v=step1_42_layered_laugh"
+      open: "./static/characters/nanako/states/laughing/base_head.png?v=step1_44_laugh5mouth",
+      half: "./static/characters/nanako/states/laughing/base_head.png?v=step1_44_laugh5mouth",
+      closed: "./static/characters/nanako/states/laughing/base_head.png?v=step1_44_laugh5mouth"
     },
     mouth: {
-      closed: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_42_layered_laugh",
-      small: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_42_layered_laugh",
-      medium: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_42_layered_laugh",
-      wide: "./static/characters/nanako/states/laughing/mouth/large.png?v=step1_42_layered_laugh",
-      round: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_42_layered_laugh"
+      closed: "./static/characters/nanako/states/laughing/mouth/closed.png?v=step1_44_laugh5mouth",
+      small: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_44_laugh5mouth",
+      medium: "./static/characters/nanako/states/laughing/mouth/medium.png?v=step1_44_laugh5mouth",
+      wide: "./static/characters/nanako/states/laughing/mouth/wide.png?v=step1_44_laugh5mouth",
+      round: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_44_laugh5mouth"
     }
   }
 };
