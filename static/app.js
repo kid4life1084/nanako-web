@@ -6,13 +6,13 @@
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.7",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.4.8",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.47: state-arbitrated cheeky + full-audio looping layered laugh.
+// NanaChat Step 1.48: verified angry + cheeky + laughing + confused state routing.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -97,6 +97,22 @@ const ANIMATION_ASSETS = {
       medium: "./static/characters/nanako/states/neutral/mouth/medium.png?v=step1_7_manual_alignment_lock",
       wide: "./static/characters/nanako/states/neutral/mouth/wide.png?v=step1_7_manual_alignment_lock",
       round: "./static/characters/nanako/states/neutral/mouth/round.png?v=step1_7_manual_alignment_lock"
+    }
+  },
+  angry: {
+    base: "./static/characters/nanako/states/angry/base.png?v=step1_48_angry",
+    eyes: {
+      open: "./static/characters/nanako/states/angry/eyes/open.png?v=step1_48_angry",
+      half: "./static/characters/nanako/states/angry/eyes/half.png?v=step1_48_angry",
+      closed: "./static/characters/nanako/states/angry/eyes/closed.png?v=step1_48_angry"
+    },
+    mouth: {
+      closed: "./static/characters/nanako/states/angry/mouth/closed.png?v=step1_48_angry",
+      small: "./static/characters/nanako/states/angry/mouth/teeth.png?v=step1_48_angry",
+      medium: "./static/characters/nanako/states/angry/mouth/medium.png?v=step1_48_angry",
+      wide: "./static/characters/nanako/states/angry/mouth/wide.png?v=step1_48_angry",
+      round: "./static/characters/nanako/states/angry/mouth/wide.png?v=step1_48_angry",
+      teeth: "./static/characters/nanako/states/angry/mouth/teeth.png?v=step1_48_angry"
     }
   },
   cheeky: {
@@ -477,7 +493,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||d?.animation_plan?.emotion==="cheeky")?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
+async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||["cheeky","angry"].includes(d?.animation_plan?.emotion))?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
