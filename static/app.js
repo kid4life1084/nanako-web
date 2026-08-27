@@ -12,7 +12,7 @@ async function ensureCurrentServiceWorker(){
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.56: disgust round-mouth smoothing asset + waveform mapping.
+// NanaChat Step 1.57: sad emotional state + empathy routing + 1s end hold.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -100,20 +100,38 @@ const ANIMATION_ASSETS = {
     }
   },
   disgust: {
-    base: "./static/characters/nanako/states/disgust/base.png?v=step1_56_disgust_round",
+    base: "./static/characters/nanako/states/disgust/base.png?v=step1_57_disgust_round",
     eyes: {
-      open: "./static/characters/nanako/states/disgust/eyes/open.png?v=step1_56_disgust_round",
-      half: "./static/characters/nanako/states/disgust/eyes/half.png?v=step1_56_disgust_round",
-      closed: "./static/characters/nanako/states/disgust/eyes/closed.png?v=step1_56_disgust_round"
+      open: "./static/characters/nanako/states/disgust/eyes/open.png?v=step1_57_disgust_round",
+      half: "./static/characters/nanako/states/disgust/eyes/half.png?v=step1_57_disgust_round",
+      closed: "./static/characters/nanako/states/disgust/eyes/closed.png?v=step1_57_disgust_round"
     },
     mouth: {
-      closed: "./static/characters/nanako/states/disgust/mouth/closed.png?v=step1_56_disgust_round",
-      small: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_56_disgust_round",
-      medium: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_56_disgust_round",
-      half: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_56_disgust_round",
-      wide: "./static/characters/nanako/states/disgust/mouth/full.png?v=step1_56_disgust_round",
-      round: "./static/characters/nanako/states/disgust/mouth/round.png?v=step1_56_disgust_round",
-      full: "./static/characters/nanako/states/disgust/mouth/full.png?v=step1_56_disgust_round"
+      closed: "./static/characters/nanako/states/disgust/mouth/closed.png?v=step1_57_disgust_round",
+      small: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_57_disgust_round",
+      medium: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_57_disgust_round",
+      half: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_57_disgust_round",
+      wide: "./static/characters/nanako/states/disgust/mouth/full.png?v=step1_57_disgust_round",
+      round: "./static/characters/nanako/states/disgust/mouth/round.png?v=step1_57_disgust_round",
+      full: "./static/characters/nanako/states/disgust/mouth/full.png?v=step1_57_disgust_round"
+    }
+  },
+  sad: {
+    base: "./static/characters/nanako/states/sad/base.png?v=step1_57_sad",
+    eyes: {
+      open: "./static/characters/nanako/states/sad/eyes/open.png?v=step1_57_sad",
+      half: "./static/characters/nanako/states/sad/eyes/half.png?v=step1_57_sad",
+      closed: "./static/characters/nanako/states/sad/eyes/closed.png?v=step1_57_sad"
+    },
+    mouth: {
+      closed: "./static/characters/nanako/states/sad/mouth/close.png?v=step1_57_sad",
+      close: "./static/characters/nanako/states/sad/mouth/close.png?v=step1_57_sad",
+      small: "./static/characters/nanako/states/sad/mouth/half.png?v=step1_57_sad",
+      half: "./static/characters/nanako/states/sad/mouth/half.png?v=step1_57_sad",
+      medium: "./static/characters/nanako/states/sad/mouth/half.png?v=step1_57_sad",
+      wide: "./static/characters/nanako/states/sad/mouth/open.png?v=step1_57_sad",
+      open: "./static/characters/nanako/states/sad/mouth/open.png?v=step1_57_sad",
+      round: "./static/characters/nanako/states/sad/mouth/round.png?v=step1_57_sad"
     }
   },
   angry: {
@@ -512,7 +530,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||["cheeky","angry","confused"].includes(d?.animation_plan?.emotion))?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
+async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||["cheeky","angry","confused","disgust","sad"].includes(d?.animation_plan?.emotion))?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -1054,7 +1072,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.52 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.57 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
