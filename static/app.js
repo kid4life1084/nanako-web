@@ -12,7 +12,7 @@ async function ensureCurrentServiceWorker(){
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.54: expanded joke fast-path + waveform-synced laughing mouth.
+// NanaChat Step 1.56: disgust round-mouth smoothing asset + waveform mapping.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -97,6 +97,23 @@ const ANIMATION_ASSETS = {
       medium: "./static/characters/nanako/states/neutral/mouth/medium.png?v=step1_7_manual_alignment_lock",
       wide: "./static/characters/nanako/states/neutral/mouth/wide.png?v=step1_7_manual_alignment_lock",
       round: "./static/characters/nanako/states/neutral/mouth/round.png?v=step1_7_manual_alignment_lock"
+    }
+  },
+  disgust: {
+    base: "./static/characters/nanako/states/disgust/base.png?v=step1_56_disgust_round",
+    eyes: {
+      open: "./static/characters/nanako/states/disgust/eyes/open.png?v=step1_56_disgust_round",
+      half: "./static/characters/nanako/states/disgust/eyes/half.png?v=step1_56_disgust_round",
+      closed: "./static/characters/nanako/states/disgust/eyes/closed.png?v=step1_56_disgust_round"
+    },
+    mouth: {
+      closed: "./static/characters/nanako/states/disgust/mouth/closed.png?v=step1_56_disgust_round",
+      small: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_56_disgust_round",
+      medium: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_56_disgust_round",
+      half: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_56_disgust_round",
+      wide: "./static/characters/nanako/states/disgust/mouth/full.png?v=step1_56_disgust_round",
+      round: "./static/characters/nanako/states/disgust/mouth/round.png?v=step1_56_disgust_round",
+      full: "./static/characters/nanako/states/disgust/mouth/full.png?v=step1_56_disgust_round"
     }
   },
   angry: {
