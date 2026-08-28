@@ -12,7 +12,7 @@ async function ensureCurrentServiceWorker(){
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.61: refreshed confused-state base/eye/mouth assets with user-aligned 627x640 layers; all Step 1.60 behavior preserved.
+// NanaChat Step 1.63: persistent emotional idles with Python breathing/blinking; all Step 1.62 behavior preserved.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -166,6 +166,24 @@ const ANIMATION_ASSETS = {
       wide: "./static/characters/nanako/states/embarrassed/mouth/open.png?v=step1_59_embarrassed",
       open: "./static/characters/nanako/states/embarrassed/mouth/open.png?v=step1_59_embarrassed",
       round: "./static/characters/nanako/states/embarrassed/mouth/round.png?v=step1_59_embarrassed"
+    }
+  },
+  thinking: {
+    base: "./static/characters/nanako/states/thinking/base.png?v=step1_62_thinking",
+    eyes: {
+      open: "./static/characters/nanako/states/thinking/eyes/open.png?v=step1_62_thinking",
+      half: "./static/characters/nanako/states/thinking/eyes/half.png?v=step1_62_thinking",
+      closed: "./static/characters/nanako/states/thinking/eyes/close.png?v=step1_62_thinking"
+    },
+    mouth: {
+      closed: "./static/characters/nanako/states/thinking/mouth/close.png?v=step1_62_thinking",
+      close: "./static/characters/nanako/states/thinking/mouth/close.png?v=step1_62_thinking",
+      small: "./static/characters/nanako/states/thinking/mouth/half.png?v=step1_62_thinking",
+      half: "./static/characters/nanako/states/thinking/mouth/half.png?v=step1_62_thinking",
+      medium: "./static/characters/nanako/states/thinking/mouth/half.png?v=step1_62_thinking",
+      wide: "./static/characters/nanako/states/thinking/mouth/open.png?v=step1_62_thinking",
+      open: "./static/characters/nanako/states/thinking/mouth/open.png?v=step1_62_thinking",
+      round: "./static/characters/nanako/states/thinking/mouth/round.png?v=step1_62_thinking"
     }
   },
   angry: {
@@ -374,14 +392,18 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
   animationRaf=requestAnimationFrame(tick);
 }
 
+function idlePlanEmotion(plan){
+  return String(plan?.emotion||plan?.frames?.[0]?.emotion||"neutral").trim().toLowerCase()||"neutral";
+}
+
 function playPythonIdlePlan(plan){
   if(currentAudio||!plan?.frames?.length)return false;
   cachedPythonIdlePlan=plan;
-  // Paint Python's first idle snapshot immediately. requestAnimationFrame then
-  // continues the Python timeline. This guarantees a talking mouth cannot remain
-  // visible for even one extra network/render cycle after speech cleanup.
+  const planEmotion=idlePlanEmotion(plan);
+  // Paint Python's first idle snapshot immediately, then continue its breathing
+  // and blink timeline. When it expires, refresh the SAME emotional idle.
   renderAnimationFrame(plan.frames[0]);
-  playAnimationPlan(plan,{loop:false,onComplete:()=>requestIdleAnimation({preferCache:false})});
+  playAnimationPlan(plan,{loop:false,onComplete:()=>requestIdleAnimation({preferCache:false,emotion:planEmotion})});
   return true;
 }
 
@@ -389,13 +411,12 @@ async function requestIdleAnimation({preferCache=true,emotion=null}={}){
   clearTimeout(idlePlanTimer);
   if(currentAudio)return;
 
-  // Returning from speech must not leave the last talking PNG visible while a
-  // network round-trip fetches a new idle plan. Re-use the last plan that came
-  // from Python immediately, then refresh it only when that plan expires.
-  if(preferCache&&cachedPythonIdlePlan&&playPythonIdlePlan(cachedPythonIdlePlan))return;
+  const requestedEmotion=String(emotion||"").trim().toLowerCase();
+  const cachedEmotion=idlePlanEmotion(cachedPythonIdlePlan);
+  // Step 1.63: never reuse a neutral plan for an emotional idle (or vice versa).
+  if(preferCache&&cachedPythonIdlePlan&&(!requestedEmotion||cachedEmotion===requestedEmotion)&&playPythonIdlePlan(cachedPythonIdlePlan))return;
 
   try{
-    const requestedEmotion=String(emotion||"").trim().toLowerCase();
     const emotionQuery=requestedEmotion?`&emotion=${encodeURIComponent(requestedEmotion)}`:"";
     const r=await fetch(`${API}/api/animation/idle-plan?duration_ms=60000&sample_ms=100${emotionQuery}`,{cache:"no-store"});
     const d=await r.json();
@@ -404,12 +425,43 @@ async function requestIdleAnimation({preferCache=true,emotion=null}={}){
     if(!currentAudio)playPythonIdlePlan(cachedPythonIdlePlan);
   }catch(err){
     console.warn("[Nanako Animation] Python idle plan unavailable:",err);
-    // Only a fail-safe visual reset. This is not a browser animation system.
-    // It prevents a stale talking mouth from remaining frozen if the idle API
-    // is temporarily unreachable; the browser retries Python immediately.
-    renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
+    // Fail-safe keeps the requested emotion's current visual frame rather than
+    // forcibly snapping an emotional pose to neutral during a temporary outage.
+    if(!requestedEmotion||requestedEmotion==="neutral"){
+      renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
+    }
     idlePlanTimer=setTimeout(()=>requestIdleAnimation({preferCache:false,emotion:requestedEmotion||null}),1500);
   }
+}
+
+function returnToPythonIdle({emotion=null}={}){
+  stopAnimationPlan();
+  const target=String(emotion||"neutral").trim().toLowerCase()||"neutral";
+  const cachedEmotion=idlePlanEmotion(cachedPythonIdlePlan);
+  if(cachedPythonIdlePlan&&cachedEmotion===target&&playPythonIdlePlan(cachedPythonIdlePlan))return;
+  cachedPythonIdlePlan=null;
+  requestIdleAnimation({preferCache:false,emotion:target});
+}
+
+function finishPlanWithPostHold(plan,{idleEmotion=null,onDone=null}={}){
+  const hold=Math.max(0,Math.min(2500,Number(plan?.post_speech_hold_ms)||0));
+  const post=plan?.post_speech_frame;
+  const planEmotion=String(plan?.emotion||"neutral").trim().toLowerCase()||"neutral";
+  const target=String(idleEmotion||planEmotion||"neutral").trim().toLowerCase()||"neutral";
+  if(hold>0&&post){
+    stopAnimationPlan();
+    renderAnimationFrame(post);
+    setTimeout(()=>{
+      // Cheeky is the special case: Python's cheeky persistent idle starts on
+      // open eyes after the one-second wink. Other emotions retain their exact
+      // designated end pose as their living idle baseline.
+      returnToPythonIdle({emotion:target});
+      if(typeof onDone==="function")onDone();
+    },hold);
+    return;
+  }
+  returnToPythonIdle({emotion:target});
+  if(typeof onDone==="function")onDone();
 }
 
 function useTalkingAnimation(plan,mediaClock=null){
@@ -417,34 +469,6 @@ function useTalkingAnimation(plan,mediaClock=null){
   if(plan?.frames?.length)playAnimationPlan(plan,{mediaClock});
   else renderAnimationFrame({emotion:"neutral",action:"talking",eyes:"open",mouth:"small",scale:1,translate_y:0});
 }
-
-function returnToPythonIdle({emotion=null}={}){
-  stopAnimationPlan();
-  if(emotion==="neutral"){
-    cachedPythonIdlePlan=null;
-    renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
-    requestIdleAnimation({preferCache:false,emotion:"neutral"});
-    return;
-  }
-  if(!playPythonIdlePlan(cachedPythonIdlePlan))requestIdleAnimation({preferCache:false});
-}
-
-function finishPlanWithPostHold(plan,{idleEmotion=null,onDone=null}={}){
-  const hold=Math.max(0,Math.min(2500,Number(plan?.post_speech_hold_ms)||0));
-  const post=plan?.post_speech_frame;
-  if(hold>0&&post){
-    stopAnimationPlan();
-    renderAnimationFrame(post);
-    setTimeout(()=>{
-      returnToPythonIdle({emotion:idleEmotion||"neutral"});
-      if(typeof onDone==="function")onDone();
-    },hold);
-    return;
-  }
-  returnToPythonIdle({emotion:idleEmotion});
-  if(typeof onDone==="function")onDone();
-}
-
 
 
 
@@ -564,7 +588,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||["cheeky","angry","confused","disgust","sad","scared","embarrassed"].includes(d?.animation_plan?.emotion))?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
+async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=String(d?.animation_plan?.emotion||"neutral").trim().toLowerCase()||"neutral";if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -1106,7 +1130,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.61 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.63 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();

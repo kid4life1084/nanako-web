@@ -1,4 +1,4 @@
-// NanaChat STEP1_61 network-only development worker
+// NanaChat STEP1_63 network-only development worker
 const BUILD="nanachat-step1-61-network-only";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys())await caches.delete(k);await self.clients.claim();})()));
