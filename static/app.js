@@ -12,7 +12,7 @@ async function ensureCurrentServiceWorker(){
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.63: persistent emotional idles with Python breathing/blinking; all Step 1.62 behavior preserved.
+// NanaChat Step 1.64: laugh/state/mic/latency stabilization; persistent emotional idles preserved.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -366,6 +366,16 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
     let elapsed=mediaClock
       ? Math.max(0,Number(mediaClock.currentTime||0)*1000)
       : now-started;
+    // Step 1.64: if a laughing plan ever arrives shorter than the browser's
+    // decoded audio duration, map the media timeline across the complete Python
+    // plan instead of parking forever on its last mouth frame. The backend now
+    // preserves full WAV duration too; this is a defensive mobile-browser guard.
+    if(mediaClock&&String(plan?.kind||"")==="laughing"){
+      const mediaDurationMs=Number(mediaClock.duration||0)*1000;
+      if(Number.isFinite(mediaDurationMs)&&mediaDurationMs>duration+120&&mediaDurationMs>0){
+        elapsed=Math.min(duration,elapsed*(duration/mediaDurationMs));
+      }
+    }
 
     // Step 1.52: laughter is waveform-synced just like every other speaking
     // state. Never modulo-loop it: real pauses must close the mouth, and if the
@@ -883,7 +893,13 @@ async function play(b,m,animationPlan=null,options={}){
 async function ensureMicHardware(){
   if(stream&&stream.getTracks().some(t=>t.readyState==="live")&&ctx&&micProcessor)return;
   if(!navigator.mediaDevices?.getUserMedia)throw new Error("Microphone access requires HTTPS.");
-  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+  const supported=navigator.mediaDevices.getSupportedConstraints?.()||{};
+  const audioConstraints={echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1};
+  // Step 1.64: request browser-level voice isolation where Safari/iOS exposes
+  // it, while remaining fully compatible with browsers that do not. Python still
+  // owns VAD/turn detection; this only asks the phone to deliver cleaner PCM.
+  if(supported.voiceIsolation)audioConstraints.voiceIsolation=true;
+  stream=await navigator.mediaDevices.getUserMedia({audio:audioConstraints});
   const AC=window.AudioContext||window.webkitAudioContext;
   if(!AC)throw new Error("Web Audio is not supported by this browser.");
   ctx=new AC();
@@ -1130,7 +1146,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.63 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.64 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
