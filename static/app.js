@@ -528,7 +528,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
+const API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,AWARENESS_START=`${API}/api/awareness/start`,AWARENESS_ANALYZE=`${API}/api/awareness/analyze`,AWARENESS_STOP=`${API}/api/awareness/stop`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
 const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
@@ -540,14 +540,16 @@ function loadPersistentMemory(){
     const raw=JSON.parse(localStorage.getItem(MEMORY_KEY)||"{}");
     const h=Array.isArray(raw.history)?raw.history:[];
     const f=Array.isArray(raw.facts)?raw.facts:[];
-    persistentUserName=String(raw?.profile?.user_name||"").trim();
+    const storedUserName=String(raw?.profile?.user_name||"").trim();
+    persistentUserName=cleanNameCandidate(storedUserName);
     history.length=0;
     h.slice(-MEMORY_HISTORY_MAX).forEach(item=>{
       if(!item||!(item.role==="user"||item.role==="assistant"))return;
       const txt=String(item.text||item.content||"").trim();if(!txt)return;
       history.push({role:item.role,text:txt,wrong:String(item.wrong||""),corrected:String(item.corrected||"")});
     });
-    persistentFacts=f.map(x=>String(x||"").trim()).filter(Boolean).slice(-MEMORY_FACT_MAX);
+    persistentFacts=f.map(x=>String(x||"").trim()).filter(x=>x&&!memoryFactHasInvalidName(x)).slice(-MEMORY_FACT_MAX);
+    if(storedUserName!==persistentUserName||persistentFacts.length!==f.map(x=>String(x||"").trim()).filter(Boolean).slice(-MEMORY_FACT_MAX).length)savePersistentMemory();
   }catch(err){console.warn("[Nanako Memory] restore failed",err);history.length=0;persistentFacts=[];persistentUserName="";}
 }
 function savePersistentMemory(){
@@ -560,17 +562,22 @@ function savePersistentMemory(){
 function cleanNameCandidate(value){
   let s=String(value||"").trim().replace(/[。！？!?、,:;]+$/g,"");
   if(!s||s.length>24||/\s{2,}/.test(s))return"";
-  if(/^(fine|good|okay|ok|happy|tired|busy|here|back)$/i.test(s))return"";
+  if(/^(fine|good|okay|ok|happy|tired|busy|here|back|nanako|nani|what|this|kore)$/i.test(s))return"";
+  if(/^(ななこ|ナナコ|なに|ナニ|何|なん|ナン|これは|これ|それ|あれ|だれ|誰|どれ|どこ|いつ|なぜ|どうして)$/.test(s))return"";
   return s;
+}
+function memoryFactHasInvalidName(value){
+  const text=String(value||"");
+  const m=text.match(/(?:the )?(?:user|learner)(?:'s|’s)? name is\s+([^.;,!！？，、]{1,32})/i)||text.match(/(?:the )?(?:user|learner) is\s+([^.;,!！？，、]{1,32})/i)||text.match(/(?:ユーザー|学習者)の名前は\s*([^。！？，、]{1,24})/);
+  return !!(m&&!cleanNameCandidate(m[1]));
 }
 function detectUserNameFromText(value){
   const msg=String(value||"").trim();if(!msg)return"";
   const roman="[A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\\-]+";
   const patterns=[
     new RegExp(`(?:my name is|call me|i am|i'm)\\s+(${roman}(?:\\s+${roman}){0,2})(?:[.!?]|$)`,`i`),
-    /(?:私の名前は|僕の名前は|俺の名前は|名前は)\s*([ぁ-んァ-ヶー一-龯A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\-]{1,24})(?:です|だよ|といいます|っていいます|[。！!]?\s*$)/,
-    /(?:私は|僕は|俺は)\s*([ァ-ヶー一-龯A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\-]{1,24})\s*(?:です|だよ|といいます|っていいます)[。！!]?\s*$/,
-    /^\s*([ァ-ヶー一-龯A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\-]{1,24})\s*(?:です|だよ|といいます|っていいます)[。！!]?\s*$/
+    /(?:私の名前は|僕の名前は|俺の名前は|名前は)\s*([ぁ-んァ-ヶー一-龯A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\-]{1,24}?)(?:です|だよ|といいます|っていいます)[。！!]?\s*$/,
+    /(?:私は|僕は|俺は)?\s*([ァ-ヶー一-龯A-Za-zÀ-ÖØ-öø-ÿĀ-ž'’\-]{1,24})\s*(?:といいます|っていいます)[。！!]?\s*$/
   ];
   for(const re of patterns){const m=msg.match(re);if(m){const n=cleanNameCandidate(m[1]);if(n)return n;}}
   return"";
@@ -602,7 +609,7 @@ function rememberDetectedUserName(){
 function mergeMemoryFacts(items){
   if(!Array.isArray(items))return;
   const seen=new Set(persistentFacts.map(x=>x.toLowerCase()));
-  for(const item of items){const fact=String(item||"").trim();if(!fact)continue;const key=fact.toLowerCase();if(seen.has(key))continue;seen.add(key);persistentFacts.push(fact);}
+  for(const item of items){const fact=String(item||"").trim();if(!fact||memoryFactHasInvalidName(fact))continue;const key=fact.toLowerCase();if(seen.has(key))continue;seen.add(key);persistentFacts.push(fact);}
   if(persistentFacts.length>MEMORY_FACT_MAX)persistentFacts=persistentFacts.slice(-MEMORY_FACT_MAX);
   if(!persistentUserName)rememberDetectedUserName();
   savePersistentMemory();
@@ -619,11 +626,11 @@ function memoryPayload(){
     user_name:persistentUserName||""
   };
 }
-async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const ok=!!(d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?"Python runtime: ONLINE • mic + animation loaded":"Python runtime: incomplete — check Alibaba deployment";console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
+async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const ok=!!(d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?"Python runtime: ONLINE • mic + animation + vision loaded":"Python runtime: incomplete — check Alibaba deployment";console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
-const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micSessionId="",micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
+let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micSessionId="",micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -641,10 +648,10 @@ function addEphemeralStartupHistory(text){
   renderHistory();
 }
 function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=history.length>0;history.forEach(h=>{let b=document.createElement("div");b.className=`history-bubble ${h.role==="user"?"user":""}`;let r=document.createElement("div");r.className="history-role";r.textContent=h.role==="user"?"YOU":"NANAKO";let t=document.createElement("div");t.className="history-text";t.textContent=h.text;b.append(r,t);if(h.wrong&&h.corrected){let c=document.createElement("div");c.className="history-correction";c.innerHTML=`<div class="history-wrong"></div><div class="history-correct"></div>`;c.children[0].textContent=h.wrong;c.children[1].textContent=h.corrected;b.append(c)}e.historyList.append(b)})}
-function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
+function quick(){e.awareness.classList.toggle("active",awarenessActive);e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=String(d?.animation_plan?.emotion||"neutral").trim().toLowerCase()||"neutral";if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
+async function apply(d,user,options={}){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);if(!options.spontaneous)addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=String(d?.animation_plan?.emotion||"neutral").trim().toLowerCase()||"neutral";if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -685,9 +692,17 @@ async function playStartupGreetingIfReady(fromGesture=false){
 }
 async function send(){let t=e.input.value.trim();if(!t||busy)return;rememberUserNameFromText(t);busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:true,...memoryPayload()})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 
+let awarenessActive=false,awarenessStream=null,awarenessSessionId="",awarenessTimer=0,awarenessCheckBusy=false,awarenessResumeAfterObject=false;
+function scheduleAwarenessCheck(delay=8000){clearTimeout(awarenessTimer);if(awarenessActive)awarenessTimer=setTimeout(runAwarenessCheck,Math.max(1000,Number(delay)||8000))}
+function captureAwarenessFrame(){const video=e.awarenessVideo;if(!video?.videoWidth||!video?.videoHeight)throw new Error("The visual-awareness camera is not ready.");const maxSide=480,scale=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));canvas.getContext("2d",{alpha:false}).drawImage(video,0,0,canvas.width,canvas.height);return canvas.toDataURL("image/jpeg",.68)}
+async function startVisualAwareness(){if(awarenessActive||busy)return;if(!navigator.mediaDevices?.getUserMedia){error("Visual awareness requires camera access over HTTPS.");return}status("Starting visual awareness...");try{const supported=navigator.mediaDevices.getSupportedConstraints?.()||{};const videoConstraints={facingMode:{ideal:"user"},width:{ideal:640},height:{ideal:480},frameRate:{ideal:15,max:24}};awarenessStream=await navigator.mediaDevices.getUserMedia({video:videoConstraints,audio:false});e.awarenessVideo.srcObject=awarenessStream;await e.awarenessVideo.play();const r=await fetch(AWARENESS_START,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});const d=await jsonResp(r);awarenessSessionId=String(d.session_id||"");if(!awarenessSessionId)throw new Error("Python visual awareness did not start.");awarenessActive=true;quick();status("Visual awareness on");scheduleAwarenessCheck(1500)}catch(x){console.error(x);try{awarenessStream?.getTracks().forEach(t=>t.stop())}catch{}awarenessStream=null;e.awarenessVideo.srcObject=null;awarenessSessionId="";awarenessActive=false;quick();error("Allow front-camera access and check the Step 1.73 Python backend.");status(active?"Listening...":"Ready to chat")}}
+async function stopVisualAwareness(options={}){clearTimeout(awarenessTimer);awarenessTimer=0;const sid=awarenessSessionId;awarenessSessionId="";awarenessActive=false;awarenessCheckBusy=false;try{awarenessStream?.getTracks().forEach(t=>t.stop())}catch{}awarenessStream=null;if(e.awarenessVideo)e.awarenessVideo.srcObject=null;quick();if(sid){try{await fetch(AWARENESS_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid})})}catch{}}if(!options.silent)status(active?"Listening...":"Visual awareness off")}
+async function toggleVisualAwareness(){if(awarenessActive)await stopVisualAwareness();else await startVisualAwareness()}
+async function runAwarenessCheck(){if(!awarenessActive||awarenessCheckBusy)return;if(document.visibilityState!=="visible"||busy||currentAudio||userSpeechActive||cameraVoiceMode){scheduleAwarenessCheck(3000);return}awarenessCheckBusy=true;let next=8000;try{const image_data_url=captureAwarenessFrame();const r=await fetch(AWARENESS_ANALYZE,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:awarenessSessionId,image_data_url})});const d=await jsonResp(r);next=Number(d.next_check_ms)||8000;if(d.reaction){busy=true;micCapturePaused=true;micQueue=[];micBatch=[];status("Nanako noticed your expression...");await apply(d,"",{spontaneous:true});busy=false;if(!currentAudio&&active)setTimeout(begin,40);else if(!currentAudio&&!active)status("Visual awareness on")}}catch(x){console.error("[Nanako visual awareness]",x);if(/session expired|not loaded/i.test(String(x.message||""))){error(x.message);await stopVisualAwareness({silent:true})}}finally{awarenessCheckBusy=false;if(awarenessActive)scheduleAwarenessCheck(next)}}
+
 let cameraStream=null,cameraVoiceMode=false,cameraStartedMic=false;
-async function closeCamera(){cameraVoiceMode=false;if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null}if(e.cameraVideo)e.cameraVideo.srcObject=null;if(e.cameraModal)e.cameraModal.hidden=true;if(e.cameraStatus)e.cameraStatus.textContent="Camera is off";if(cameraStartedMic){cameraStartedMic=false;await stopMode()}}
-async function openCamera(){if(busy)return;if(!navigator.mediaDevices?.getUserMedia){error("Camera access is not supported in this browser.");return}e.cameraModal.hidden=false;e.cameraStatus.textContent="Starting camera...";try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:960}},audio:false});e.cameraVideo.srcObject=cameraStream;await e.cameraVideo.play()}catch(x){console.error(x);e.cameraStatus.textContent="Camera permission was not granted";error("Allow camera access, then try again.");return}cameraVoiceMode=true;cameraStartedMic=!active;if(!active){e.cameraStatus.textContent="Starting microphone...";await startMode()}if(active){e.cameraStatus.textContent="Listening — say これは何？ or tap Ask Nanako"}else{e.cameraStatus.textContent="Microphone unavailable — tap Ask Nanako"}}
+async function closeCamera(){cameraVoiceMode=false;if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null}if(e.cameraVideo)e.cameraVideo.srcObject=null;if(e.cameraModal)e.cameraModal.hidden=true;if(e.cameraStatus)e.cameraStatus.textContent="Camera is off";if(cameraStartedMic){cameraStartedMic=false;await stopMode()}if(awarenessResumeAfterObject){awarenessResumeAfterObject=false;await startVisualAwareness()}}
+async function openCamera(){if(busy)return;if(!navigator.mediaDevices?.getUserMedia){error("Camera access is not supported in this browser.");return}if(awarenessActive){awarenessResumeAfterObject=true;await stopVisualAwareness({silent:true})}e.cameraModal.hidden=false;e.cameraStatus.textContent="Starting camera...";try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:960}},audio:false});e.cameraVideo.srcObject=cameraStream;await e.cameraVideo.play()}catch(x){console.error(x);e.cameraStatus.textContent="Camera permission was not granted";error("Allow camera access, then try again.");if(awarenessResumeAfterObject){awarenessResumeAfterObject=false;await startVisualAwareness()}return}cameraVoiceMode=true;cameraStartedMic=!active;if(!active){e.cameraStatus.textContent="Starting microphone...";await startMode()}if(active){e.cameraStatus.textContent="Listening — say これは何？ or tap Ask Nanako"}else{e.cameraStatus.textContent="Microphone unavailable — tap Ask Nanako"}}
 function captureCameraFrame(){const video=e.cameraVideo;if(!video?.videoWidth||!video?.videoHeight)throw new Error("The camera is not ready yet.");const maxSide=960,scale=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));canvas.getContext("2d",{alpha:false}).drawImage(video,0,0,canvas.width,canvas.height);return canvas.toDataURL("image/jpeg",.82)}
 async function askCamera(){if(busy)return;let question=String(e.cameraQuestion?.value||"").trim()||"これは何？";busy=true;micCapturePaused=true;micQueue=[];micBatch=[];e.askCamera.disabled=true;e.cameraStatus.textContent="Nanako is looking...";status("Nanako is looking...");try{if(active&&micSessionId)await restartPythonMicSession();const image_data_url=captureCameraFrame();const r=await fetch(VISION_IDENTIFY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image_data_url,question,level})});const d=await jsonResp(r);transcript(question);e.cameraStatus.textContent="Nanako is answering...";await apply(d,question)}catch(x){console.error(x);error(x.message);e.cameraStatus.textContent="Could not identify the object. Try again.";status("Vision failed.");micCapturePaused=false}finally{busy=false;e.askCamera.disabled=false;if(!currentAudio&&active)setTimeout(begin,40);else if(!currentAudio&&!active)status("Ready to chat")}}
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
@@ -1055,15 +1070,16 @@ async function pumpMicQueue(){
         // frame cannot remain frozen after barge-in.
         returnToPythonIdle();
       }
-      if(m.speech_started){status("I'm listening...");if(cameraVoiceMode)e.cameraStatus.textContent="I can hear you..."}
+      if(m.speech_started){userSpeechActive=true;status("I'm listening...");if(cameraVoiceMode)e.cameraStatus.textContent="I can hear you..."}
       if(m.turn_id){
+        userSpeechActive=false;
         micCapturePaused=true;micQueue=[];micBatch=[];
         await processPythonMicTurn(m.turn_id);
         break;
       }
     }
   }catch(x){
-    console.error("[Nanako Mic bridge]",x);error(x.message);status("Microphone connection problem");
+    userSpeechActive=false;console.error("[Nanako Mic bridge]",x);error(x.message);status("Microphone connection problem");
   }finally{micPumpBusy=false;if(active&&!micCapturePaused&&micQueue.length)setTimeout(pumpMicQueue,0)}
 }
 
@@ -1093,12 +1109,13 @@ async function begin(){
   await startPythonMicSession();
   await ensureMicHardware();
   micCapturePaused=false;
+  userSpeechActive=false;
   status("Listening...");
   if(cameraVoiceMode&&!e.cameraModal.hidden)e.cameraStatus.textContent="Listening — say これは何？ or tap Ask Nanako";
 }
 
 async function stopMicBridge(){
-  micCapturePaused=true;micQueue=[];micBatch=[];
+  micCapturePaused=true;userSpeechActive=false;micQueue=[];micBatch=[];
   const sid=micSessionId;micSessionId="";
   try{micProcessor?.disconnect()}catch{}
   try{micSource?.disconnect()}catch{}
@@ -1160,9 +1177,9 @@ async function startMode(){
 async function stopMode(){
   active=false;await setServerNanakoSpeaking(false);await stopMicBridge();await stopAudio(false);convButton();status("Ready to chat");
 }
-async function reset(){if(!window.confirm("Forget Nanako’s saved conversation, your name, and all remembered facts? This cannot be undone."))return;await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;startupEnterDone=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;const splash=document.getElementById("startupSplash");if(splash)splash.hidden=false;status("Ready for a fresh start");void fetchStartupGreeting()}
+async function reset(){if(!window.confirm("Forget Nanako’s saved conversation, your name, and all remembered facts? This cannot be undone."))return;await stopVisualAwareness({silent:true});await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;startupEnterDone=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;const splash=document.getElementById("startupSplash");if(splash)splash.hidden=false;status("Ready for a fresh start");void fetchStartupGreeting()}
 
-e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.camera.onclick=openCamera;e.closeCamera.onclick=closeCamera;e.askCamera.onclick=askCamera;e.cameraModal.onclick=x=>{if(x.target===e.cameraModal)void closeCamera()};e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
+e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.camera.onclick=openCamera;e.closeCamera.onclick=closeCamera;e.askCamera.onclick=askCamera;e.cameraModal.onclick=x=>{if(x.target===e.cameraModal)void closeCamera()};e.awareness.onclick=toggleVisualAwareness;e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
 window.addEventListener("beforeunload",()=>{
   stopAnimationPlan();
   active=false;micCapturePaused=true;
@@ -1170,11 +1187,12 @@ window.addEventListener("beforeunload",()=>{
   try{micSource?.disconnect()}catch{}
   try{stream?.getTracks().forEach(t=>t.stop())}catch{}
   try{cameraStream?.getTracks().forEach(t=>t.stop())}catch{}
+  try{awarenessStream?.getTracks().forEach(t=>t.stop())}catch{}
   currentAudio?.pause();
 });
 
 document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="visible"&&!currentAudio)requestIdleAnimation();
+  if(document.visibilityState==="visible"){if(!currentAudio)requestIdleAnimation();if(awarenessActive)scheduleAwarenessCheck(1000)}else{clearTimeout(awarenessTimer)}
 });
 
 
@@ -1207,7 +1225,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.68 STABLE startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.73 STABLE startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();

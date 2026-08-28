@@ -153,3 +153,4 @@ html.portrait-lock-landscape .modal-backdrop{
 .camera-question{box-sizing:border-box;width:100%;height:46px;margin-top:12px;padding:0 14px;border:1px solid #3b3044;border-radius:14px;background:#17121d;color:#fff;font-size:17px}
 .camera-ask-button{margin-top:12px}
 .camera-privacy{margin-top:10px;color:#8f8797;font-size:12px;text-align:center}
+.awareness-video-sink{position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.001;pointer-events:none;z-index:0}

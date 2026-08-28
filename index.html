@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./static/style.css?v=11.7.2">
+<link rel="stylesheet" href="./static/style.css?v=11.7.3">
 <link rel="preload" as="image" href="./static/characters/nanako/states/neutral/base.png">
 <style>
 .startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 22%,rgba(109,52,136,.24),transparent 38%),linear-gradient(180deg,#15101d,#0b0910);}
@@ -56,6 +56,7 @@
 <section class="nanako-row">
 <div class="avatar">N</div>
 <div class="nanako-copy"><strong>Nanako</strong><span id="statusText">Ready to chat</span></div>
+<button id="videoAwarenessButton" class="quick-button" aria-label="Visual awareness">👁️</button>
 <button id="romajiButton" class="quick-button">RO</button>
 <button id="englishButton" class="quick-button">EN</button>
 <button id="muteButton" class="quick-button">🔊</button>
@@ -83,7 +84,7 @@
 </div></div>
 <div class="settings-block"><div class="settings-row"><span>Conversation score</span><strong id="settingsScore">0 / 100</strong></div><div class="settings-progress"><div id="settingsScoreFill"></div></div></div>
 <div class="settings-block"><div class="settings-label">Voice debug</div><div id="debugMic">Mic: —</div><div id="debugRoom">Room: —</div><div id="debugSpeech">Speech: Waiting</div><div id="debugTurn">Turn: 0.0 sec</div></div>
-<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.72 • spoken camera conversation</div><div id="runtimeStatus">Python runtime: checking…</div></div>
+<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.73 • Python visual emotion awareness</div><div id="runtimeStatus">Python runtime: checking…</div></div>
 <button id="resetButton" class="reset-button">Forget Everything &amp; Start Fresh</button>
 </section></div>
 
@@ -101,5 +102,7 @@
 <div class="camera-privacy">One frame is sent only when you tap Ask Nanako.</div>
 </section></div>
 
-<script src="./static/app.js?v=11.7.2" defer></script>
+<video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
+
+<script src="./static/app.js?v=11.7.3" defer></script>
 </body></html>
