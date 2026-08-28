@@ -685,11 +685,11 @@ async function playStartupGreetingIfReady(fromGesture=false){
 }
 async function send(){let t=e.input.value.trim();if(!t||busy)return;rememberUserNameFromText(t);busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:true,...memoryPayload()})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 
-let cameraStream=null;
-async function closeCamera(){if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null}if(e.cameraVideo)e.cameraVideo.srcObject=null;if(e.cameraModal)e.cameraModal.hidden=true;if(e.cameraStatus)e.cameraStatus.textContent="Camera is off"}
-async function openCamera(){if(busy)return;if(!navigator.mediaDevices?.getUserMedia){error("Camera access is not supported in this browser.");return}e.cameraModal.hidden=false;e.cameraStatus.textContent="Starting camera...";try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:960}},audio:false});e.cameraVideo.srcObject=cameraStream;await e.cameraVideo.play();e.cameraStatus.textContent="Place one object inside the guide"}catch(x){console.error(x);e.cameraStatus.textContent="Camera permission was not granted";error("Allow camera access, then try again.")}}
+let cameraStream=null,cameraVoiceMode=false,cameraStartedMic=false;
+async function closeCamera(){cameraVoiceMode=false;if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null}if(e.cameraVideo)e.cameraVideo.srcObject=null;if(e.cameraModal)e.cameraModal.hidden=true;if(e.cameraStatus)e.cameraStatus.textContent="Camera is off";if(cameraStartedMic){cameraStartedMic=false;await stopMode()}}
+async function openCamera(){if(busy)return;if(!navigator.mediaDevices?.getUserMedia){error("Camera access is not supported in this browser.");return}e.cameraModal.hidden=false;e.cameraStatus.textContent="Starting camera...";try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:960}},audio:false});e.cameraVideo.srcObject=cameraStream;await e.cameraVideo.play()}catch(x){console.error(x);e.cameraStatus.textContent="Camera permission was not granted";error("Allow camera access, then try again.");return}cameraVoiceMode=true;cameraStartedMic=!active;if(!active){e.cameraStatus.textContent="Starting microphone...";await startMode()}if(active){e.cameraStatus.textContent="Listening — say これは何？ or tap Ask Nanako"}else{e.cameraStatus.textContent="Microphone unavailable — tap Ask Nanako"}}
 function captureCameraFrame(){const video=e.cameraVideo;if(!video?.videoWidth||!video?.videoHeight)throw new Error("The camera is not ready yet.");const maxSide=960,scale=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));canvas.getContext("2d",{alpha:false}).drawImage(video,0,0,canvas.width,canvas.height);return canvas.toDataURL("image/jpeg",.82)}
-async function askCamera(){if(busy)return;let question=String(e.cameraQuestion?.value||"").trim()||"これは何？";busy=true;e.askCamera.disabled=true;e.cameraStatus.textContent="Nanako is looking...";status("Nanako is looking...");try{const image_data_url=captureCameraFrame();const r=await fetch(VISION_IDENTIFY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image_data_url,question,level})});const d=await jsonResp(r);await closeCamera();transcript(question);await apply(d,question)}catch(x){console.error(x);error(x.message);e.cameraStatus.textContent="Could not identify the object. Try again.";status("Vision failed.")}finally{busy=false;e.askCamera.disabled=false;if(!currentAudio&&!active)status("Ready to chat")}}
+async function askCamera(){if(busy)return;let question=String(e.cameraQuestion?.value||"").trim()||"これは何？";busy=true;micCapturePaused=true;micQueue=[];micBatch=[];e.askCamera.disabled=true;e.cameraStatus.textContent="Nanako is looking...";status("Nanako is looking...");try{if(active&&micSessionId)await restartPythonMicSession();const image_data_url=captureCameraFrame();const r=await fetch(VISION_IDENTIFY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image_data_url,question,level})});const d=await jsonResp(r);transcript(question);e.cameraStatus.textContent="Nanako is answering...";await apply(d,question)}catch(x){console.error(x);error(x.message);e.cameraStatus.textContent="Could not identify the object. Try again.";status("Vision failed.");micCapturePaused=false}finally{busy=false;e.askCamera.disabled=false;if(!currentAudio&&active)setTimeout(begin,40);else if(!currentAudio&&!active)status("Ready to chat")}}
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
 function audioBlobUrlFromBase64(b,m){let v=String(b||"").trim();if(!v)return"";if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);const bin=atob(v);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:m||"audio/wav"}))}
 function revokeCurrentAudioObjectUrl(){if(currentAudioObjectUrl){try{URL.revokeObjectURL(currentAudioObjectUrl)}catch{}currentAudioObjectUrl=""}}
@@ -1055,7 +1055,7 @@ async function pumpMicQueue(){
         // frame cannot remain frozen after barge-in.
         returnToPythonIdle();
       }
-      if(m.speech_started)status("I'm listening...");
+      if(m.speech_started){status("I'm listening...");if(cameraVoiceMode)e.cameraStatus.textContent="I can hear you..."}
       if(m.turn_id){
         micCapturePaused=true;micQueue=[];micBatch=[];
         await processPythonMicTurn(m.turn_id);
@@ -1071,7 +1071,9 @@ async function processPythonMicTurn(turnId){
   if(!active||!micSessionId)return;
   busy=true;status("Nanako is thinking...");
   try{
-    const r=await fetch(MIC_RESPOND,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:micSessionId,turn_id:turnId,level,...memoryPayload()})});
+    const payload={session_id:micSessionId,turn_id:turnId,level,...memoryPayload()};
+    if(cameraVoiceMode&&!e.cameraModal.hidden){payload.image_data_url=captureCameraFrame();e.cameraStatus.textContent="Nanako is looking and listening..."}
+    const r=await fetch(MIC_RESPOND,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     const d=await jsonResp(r);
     const t=String(d?.transcript||"");
     console.log("[Nanako Python Mic] Transcript:",t);
@@ -1079,9 +1081,10 @@ async function processPythonMicTurn(turnId){
     // Keep raw capture paused through Nanako playback. play()/finish() owns the
     // speaking gate and re-enables capture only after the audio has ended.
     micCapturePaused=true;
+    if(cameraVoiceMode)e.cameraStatus.textContent="Nanako is answering...";
     await apply(d,t);
   }catch(x){
-    console.error(x);error(x.message);status("Voice turn failed");micCapturePaused=false;
+    console.error(x);error(x.message);status("Voice turn failed");if(cameraVoiceMode)e.cameraStatus.textContent="Please try saying これは何？ again";micCapturePaused=false;
   }finally{busy=false;if(active&&!currentAudio){status("Listening...");setTimeout(begin,40)}}
 }
 
@@ -1091,6 +1094,7 @@ async function begin(){
   await ensureMicHardware();
   micCapturePaused=false;
   status("Listening...");
+  if(cameraVoiceMode&&!e.cameraModal.hidden)e.cameraStatus.textContent="Listening — say これは何？ or tap Ask Nanako";
 }
 
 async function stopMicBridge(){
@@ -1165,6 +1169,7 @@ window.addEventListener("beforeunload",()=>{
   try{micProcessor?.disconnect()}catch{}
   try{micSource?.disconnect()}catch{}
   try{stream?.getTracks().forEach(t=>t.stop())}catch{}
+  try{cameraStream?.getTracks().forEach(t=>t.stop())}catch{}
   currentAudio?.pause();
 });
 
