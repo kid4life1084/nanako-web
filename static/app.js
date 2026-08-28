@@ -12,7 +12,7 @@ async function ensureCurrentServiceWorker(){
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.58: scared eyes-only emotional state + fear/threat routing + 1s end hold.
+// NanaChat Step 1.61: refreshed confused-state base/eye/mouth assets with user-aligned 627x640 layers; all Step 1.60 behavior preserved.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
@@ -85,18 +85,18 @@ try{
 // ============================================================
 const ANIMATION_ASSETS = {
   neutral: {
-    base: "./static/characters/nanako/states/neutral/base.png?v=step1_7_manual_alignment_lock",
+    base: "./static/characters/nanako/states/neutral/base.png?v=step1_61_confused_realign",
     eyes: {
-      open: "./static/characters/nanako/states/neutral/eyes/open.png?v=step1_7_manual_alignment_lock",
-      half: "./static/characters/nanako/states/neutral/eyes/half.png?v=step1_7_manual_alignment_lock",
-      closed: "./static/characters/nanako/states/neutral/eyes/closed.png?v=step1_7_manual_alignment_lock"
+      open: "./static/characters/nanako/states/neutral/eyes/open.png?v=step1_61_confused_realign",
+      half: "./static/characters/nanako/states/neutral/eyes/half.png?v=step1_61_confused_realign",
+      closed: "./static/characters/nanako/states/neutral/eyes/closed.png?v=step1_61_confused_realign"
     },
     mouth: {
-      closed: "./static/characters/nanako/states/neutral/mouth/closed.png?v=step1_7_manual_alignment_lock",
-      small: "./static/characters/nanako/states/neutral/mouth/small.png?v=step1_7_manual_alignment_lock",
-      medium: "./static/characters/nanako/states/neutral/mouth/medium.png?v=step1_7_manual_alignment_lock",
-      wide: "./static/characters/nanako/states/neutral/mouth/wide.png?v=step1_7_manual_alignment_lock",
-      round: "./static/characters/nanako/states/neutral/mouth/round.png?v=step1_7_manual_alignment_lock"
+      closed: "./static/characters/nanako/states/neutral/mouth/closed.png?v=step1_61_confused_realign",
+      small: "./static/characters/nanako/states/neutral/mouth/small.png?v=step1_61_confused_realign",
+      medium: "./static/characters/nanako/states/neutral/mouth/medium.png?v=step1_61_confused_realign",
+      wide: "./static/characters/nanako/states/neutral/mouth/wide.png?v=step1_61_confused_realign",
+      round: "./static/characters/nanako/states/neutral/mouth/round.png?v=step1_61_confused_realign"
     }
   },
   disgust: {
@@ -150,6 +150,24 @@ const ANIMATION_ASSETS = {
       round: "./static/characters/nanako/states/scared/mouth/none.png?v=step1_58_scared"
     }
   },
+  embarrassed: {
+    base: "./static/characters/nanako/states/embarrassed/base.png?v=step1_59_embarrassed",
+    eyes: {
+      open: "./static/characters/nanako/states/embarrassed/eyes/open.png?v=step1_59_embarrassed",
+      half: "./static/characters/nanako/states/embarrassed/eyes/half.png?v=step1_59_embarrassed",
+      closed: "./static/characters/nanako/states/embarrassed/eyes/close.png?v=step1_59_embarrassed"
+    },
+    mouth: {
+      closed: "./static/characters/nanako/states/embarrassed/mouth/close.png?v=step1_59_embarrassed",
+      close: "./static/characters/nanako/states/embarrassed/mouth/close.png?v=step1_59_embarrassed",
+      small: "./static/characters/nanako/states/embarrassed/mouth/half.png?v=step1_59_embarrassed",
+      half: "./static/characters/nanako/states/embarrassed/mouth/half.png?v=step1_59_embarrassed",
+      medium: "./static/characters/nanako/states/embarrassed/mouth/half.png?v=step1_59_embarrassed",
+      wide: "./static/characters/nanako/states/embarrassed/mouth/open.png?v=step1_59_embarrassed",
+      open: "./static/characters/nanako/states/embarrassed/mouth/open.png?v=step1_59_embarrassed",
+      round: "./static/characters/nanako/states/embarrassed/mouth/round.png?v=step1_59_embarrassed"
+    }
+  },
   angry: {
     base: "./static/characters/nanako/states/angry/base.png?v=step1_48_angry",
     eyes: {
@@ -162,7 +180,7 @@ const ANIMATION_ASSETS = {
       small: "./static/characters/nanako/states/angry/mouth/medium.png?v=step1_51_angry_no_teeth_during_speech",
       medium: "./static/characters/nanako/states/angry/mouth/medium.png?v=step1_51_angry_no_teeth_during_speech",
       wide: "./static/characters/nanako/states/angry/mouth/wide.png?v=step1_51_angry_no_teeth_during_speech",
-      round: "./static/characters/nanako/states/angry/mouth/wide.png?v=step1_51_angry_no_teeth_during_speech",
+      round: "./static/characters/nanako/states/angry/mouth/round.png?v=step1_60_angry_round",
       teeth: "./static/characters/nanako/states/angry/mouth/teeth.png?v=step1_51_angry_end_only"
     }
   },
@@ -183,18 +201,18 @@ const ANIMATION_ASSETS = {
     }
   },
   confused: {
-    base: "./static/characters/nanako/states/confused/base.png?v=step1_7_manual_alignment_lock",
+    base: "./static/characters/nanako/states/confused/base.png?v=step1_61_confused_realign",
     eyes: {
-      open: "./static/characters/nanako/states/confused/eyes/open.png?v=step1_7_manual_alignment_lock",
-      half: "./static/characters/nanako/states/confused/eyes/half.png?v=step1_7_manual_alignment_lock",
-      closed: "./static/characters/nanako/states/confused/eyes/closed.png?v=step1_7_manual_alignment_lock"
+      open: "./static/characters/nanako/states/confused/eyes/open.png?v=step1_61_confused_realign",
+      half: "./static/characters/nanako/states/confused/eyes/half.png?v=step1_61_confused_realign",
+      closed: "./static/characters/nanako/states/confused/eyes/closed.png?v=step1_61_confused_realign"
     },
     mouth: {
-      closed: "./static/characters/nanako/states/confused/mouth/closed.png?v=step1_7_manual_alignment_lock",
-      small: "./static/characters/nanako/states/confused/mouth/small.png?v=step1_7_manual_alignment_lock",
-      medium: "./static/characters/nanako/states/confused/mouth/medium.png?v=step1_7_manual_alignment_lock",
-      wide: "./static/characters/nanako/states/confused/mouth/wide.png?v=step1_7_manual_alignment_lock",
-      round: "./static/characters/nanako/states/confused/mouth/round.png?v=step1_7_manual_alignment_lock"
+      closed: "./static/characters/nanako/states/confused/mouth/closed.png?v=step1_61_confused_realign",
+      small: "./static/characters/nanako/states/confused/mouth/small.png?v=step1_61_confused_realign",
+      medium: "./static/characters/nanako/states/confused/mouth/medium.png?v=step1_61_confused_realign",
+      wide: "./static/characters/nanako/states/confused/mouth/wide.png?v=step1_61_confused_realign",
+      round: "./static/characters/nanako/states/confused/mouth/round.png?v=step1_61_confused_realign"
     }
   },
   laughing: {
@@ -546,7 +564,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||["cheeky","angry","confused","disgust","sad","scared"].includes(d?.animation_plan?.emotion))?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
+async function apply(d,user){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=(d?.laughing||["cheeky","angry","confused","disgust","sad","scared","embarrassed"].includes(d?.animation_plan?.emotion))?"neutral":null;if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -1088,7 +1106,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.58 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.61 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
