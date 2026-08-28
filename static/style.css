@@ -104,3 +104,40 @@ html.app-layout.keyboard-open .app-shell{height:var(--app-h)!important;min-heigh
 html.app-layout.keyboard-open .nanako-app{height:var(--app-h)!important;min-height:0!important;max-height:var(--app-h)!important;overflow:hidden!important;}
 html.app-layout.keyboard-open .character-stage{min-height:0!important;}
 html.app-layout.keyboard-open .conversation-stack{bottom:max(4px,env(safe-area-inset-bottom))!important;max-height:calc(var(--app-h) - 12px)!important;overflow:hidden!important;}
+
+
+/* ==========================================================
+   NanaChat Step 1.66 — portrait orientation lock fallback
+   Real orientation locking is requested through screen.orientation.lock().
+   On iPhone Safari, where page-level locking is unavailable, keep the app on
+   the same portrait canvas and rotate that canvas rather than reflowing it.
+   ========================================================== */
+html.portrait-lock-landscape,
+html.portrait-lock-landscape body{
+  width:100%!important;height:100%!important;min-height:100%!important;
+  overflow:hidden!important;overscroll-behavior:none!important;
+}
+html.portrait-lock-landscape body{
+  position:fixed!important;
+  left:50%!important;top:50%!important;
+  width:var(--portrait-lock-w)!important;
+  height:var(--portrait-lock-h)!important;
+  min-width:var(--portrait-lock-w)!important;
+  min-height:var(--portrait-lock-h)!important;
+  transform:translate(-50%,-50%) rotate(var(--portrait-lock-rotation,90deg))!important;
+  transform-origin:50% 50%!important;
+}
+html.portrait-lock-landscape .app-shell{
+  width:100%!important;height:var(--portrait-lock-h)!important;
+  min-height:var(--portrait-lock-h)!important;overflow:hidden!important;
+}
+html.portrait-lock-landscape.app-layout .nanako-app{
+  top:0!important;
+  width:min(100%,520px)!important;
+  height:var(--portrait-lock-h)!important;
+  min-height:0!important;
+}
+html.portrait-lock-landscape .startup-splash,
+html.portrait-lock-landscape .modal-backdrop{
+  position:fixed!important;inset:0!important;
+}

@@ -6,17 +6,59 @@
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.5.8",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.5.9",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
 ensureCurrentServiceWorker();
 
-// NanaChat Step 1.64: laugh/state/mic/latency stabilization; persistent emotional idles preserved.
+// NanaChat Step 1.68 STABLE: Step 1.67 robust joke routing preserved; laughing now settles closed-mouth.
 // The entire app canvas follows the actual visual viewport while the keyboard
 // is open. This prevents iOS from creating a tall scrollable page or pushing
 // controls beyond the visible app boundary.
 function isStandalone(){return window.matchMedia?.("(display-mode: standalone)")?.matches||window.navigator.standalone===true;}
+
+// Step 1.66 portrait lock.
+// Installed PWAs / supporting browsers get a real Screen Orientation API lock.
+// iPhone Safari does not expose a reliable page-level orientation lock, so when
+// iOS rotates the browser viewport we keep NanaChat on a portrait-sized canvas
+// and rotate that canvas with the device instead of reflowing the app landscape.
+function isPhoneLike(){
+  try{
+    return window.matchMedia?.("(pointer: coarse)")?.matches===true || /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent||"");
+  }catch{return false;}
+}
+function currentDeviceOrientationAngle(){
+  let a=Number(screen.orientation?.angle);
+  if(!Number.isFinite(a))a=Number(window.orientation);
+  if(!Number.isFinite(a))a=90;
+  a=((a%360)+360)%360;
+  if(a===270)return -90;
+  if(a===90)return 90;
+  return 90;
+}
+function syncPortraitPresentation(){
+  try{
+    const vv=window.visualViewport;
+    const vw=Math.max(1,Math.round(vv?.width||window.innerWidth||document.documentElement.clientWidth||1));
+    const vh=Math.max(1,Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight||1));
+    const landscape=isPhoneLike()&&vw>vh;
+    document.documentElement.classList.toggle("portrait-lock-landscape",landscape);
+    if(landscape){
+      document.documentElement.style.setProperty("--portrait-lock-w",`${vh}px`);
+      document.documentElement.style.setProperty("--portrait-lock-h",`${vw}px`);
+      document.documentElement.style.setProperty("--portrait-lock-rotation",`${currentDeviceOrientationAngle()}deg`);
+    }
+    return landscape;
+  }catch{return false;}
+}
+async function requestPortraitOrientationLock(){
+  try{
+    if(screen.orientation?.lock)await screen.orientation.lock("portrait");
+  }catch{/* Browser may require installed/fullscreen mode. CSS fallback remains active. */}
+  syncPortraitPresentation();
+}
+
 let fullAppViewportH=0;
 function inputHasFocus(){
   const a=document.activeElement;
@@ -24,10 +66,13 @@ function inputHasFocus(){
 }
 function syncInstalledViewport(){
   try{
+    const portraitFallback=syncPortraitPresentation();
     const vv=window.visualViewport;
-    const visibleH=Math.max(320,Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight||0));
-    const visibleTop=Math.max(0,Math.round(vv?.offsetTop||0));
-    const layoutH=Math.max(320,Math.round(window.innerHeight||0),Math.round(document.documentElement.clientHeight||0));
+    const rawW=Math.round(vv?.width||window.innerWidth||document.documentElement.clientWidth||0);
+    const rawH=Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight||0);
+    const visibleH=Math.max(320,portraitFallback?Math.max(rawW,rawH):rawH);
+    const visibleTop=portraitFallback?0:Math.max(0,Math.round(vv?.offsetTop||0));
+    const layoutH=Math.max(320,portraitFallback?Math.max(Math.round(window.innerWidth||0),Math.round(window.innerHeight||0)):Math.round(window.innerHeight||0),portraitFallback?Math.max(Math.round(document.documentElement.clientWidth||0),Math.round(document.documentElement.clientHeight||0)):Math.round(document.documentElement.clientHeight||0));
     const focused=inputHasFocus();
     const keyboardLikely=focused&&fullAppViewportH>0&&visibleH<fullAppViewportH-90;
     if(!keyboardLikely)fullAppViewportH=Math.max(fullAppViewportH,visibleH,layoutH);
@@ -56,6 +101,7 @@ try{
   if(isStandalone()||Math.min(window.innerWidth||9999,document.documentElement.clientWidth||9999)<=600)document.documentElement.classList.add("app-layout");
   syncInstalledViewport();
   window.addEventListener("resize",()=>{syncInstalledViewport();syncConversationStackHeight();},{passive:true});
+  window.addEventListener("orientationchange",()=>setTimeout(()=>{syncPortraitPresentation();syncInstalledViewport();syncConversationStackHeight();},60),{passive:true});
   window.visualViewport?.addEventListener("resize",()=>requestAnimationFrame(()=>{syncInstalledViewport();syncConversationStackHeight();}),{passive:true});
   window.visualViewport?.addEventListener("scroll",()=>requestAnimationFrame(syncInstalledViewport),{passive:true});
   document.addEventListener("focusin",()=>requestAnimationFrame(()=>{syncInstalledViewport();syncConversationStackHeight();}));
@@ -366,7 +412,7 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
     let elapsed=mediaClock
       ? Math.max(0,Number(mediaClock.currentTime||0)*1000)
       : now-started;
-    // Step 1.64: if a laughing plan ever arrives shorter than the browser's
+    // Step 1.65: if a laughing plan ever arrives shorter than the browser's
     // decoded audio duration, map the media timeline across the complete Python
     // plan instead of parking forever on its last mouth frame. The backend now
     // preserves full WAV duration too; this is a defensive mobile-browser guard.
@@ -895,7 +941,7 @@ async function ensureMicHardware(){
   if(!navigator.mediaDevices?.getUserMedia)throw new Error("Microphone access requires HTTPS.");
   const supported=navigator.mediaDevices.getSupportedConstraints?.()||{};
   const audioConstraints={echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1};
-  // Step 1.64: request browser-level voice isolation where Safari/iOS exposes
+  // Step 1.65: request browser-level voice isolation where Safari/iOS exposes
   // it, while remaining fully compatible with browsers that do not. Python still
   // owns VAD/turn detection; this only asks the phone to deliver cleaner PCM.
   if(supported.voiceIsolation)audioConstraints.voiceIsolation=true;
@@ -1059,6 +1105,9 @@ async function enterStartupSplash(){
   startupEnterDone=true;
   const splash=document.getElementById("startupSplash");
   const enterBtn=document.getElementById("startupEnterButton");
+  // Keep portrait orientation wherever the platform permits it. This call is
+  // deliberately started from the same explicit user gesture as audio unlock.
+  void requestPortraitOrientationLock();
   // This MUST run synchronously inside the first tap for iOS audio permission.
   unlockAudio();
   if(enterBtn){enterBtn.disabled=true;enterBtn.textContent="Entering…";}
@@ -1089,6 +1138,7 @@ async function enterStartupSplash(){
 async function startMode(){
   if(active)return;
   try{
+    void requestPortraitOrientationLock();
     active=true;convButton();
     status("Starting microphone...");
     await begin();
@@ -1146,7 +1196,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  console.log(`[NanaChat] v11 Step 1.64 startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.68 STABLE startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
