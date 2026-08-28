@@ -1,5 +1,5 @@
-// NanaChat STEP1_66 network-only development worker
-const BUILD="nanachat-step1-61-network-only";
+// NanaChat STEP1_70 network-only development worker
+const BUILD="nanachat-step1-70-network-only";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys())await caches.delete(k);await self.clients.claim();})()));
 self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request,{cache:"no-store"}));});

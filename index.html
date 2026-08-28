@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./static/style.css?v=11.6.6">
+<link rel="stylesheet" href="./static/style.css?v=11.7.0">
 <link rel="preload" as="image" href="./static/characters/nanako/states/neutral/base.png">
 <style>
 .startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 22%,rgba(109,52,136,.24),transparent 38%),linear-gradient(180deg,#15101d,#0b0910);}
@@ -67,7 +67,7 @@
 <div id="englishSection" class="helper-section" hidden><div class="helper-label">ENGLISH</div><div id="englishReply" class="helper-text"></div></div>
 </section>
 
-<section class="input-row"><input id="messageInput" placeholder="Type in Japanese or English..."><button id="sendButton" class="send-button">➤</button></section>
+<section class="input-row"><button id="cameraButton" class="camera-button" aria-label="Open camera">📷</button><input id="messageInput" placeholder="Type in Japanese or English..."><button id="sendButton" class="send-button">➤</button></section>
 <button id="conversationButton" class="conversation-button">🎤 Start Conversation</button>
 </div>
 <div id="correctionToast" class="correction-toast" hidden><strong>Correction</strong><div id="wrongText" class="wrong-text"></div><div id="correctText" class="correct-text"></div></div>
@@ -83,7 +83,7 @@
 </div></div>
 <div class="settings-block"><div class="settings-row"><span>Conversation score</span><strong id="settingsScore">0 / 100</strong></div><div class="settings-progress"><div id="settingsScoreFill"></div></div></div>
 <div class="settings-block"><div class="settings-label">Voice debug</div><div id="debugMic">Mic: —</div><div id="debugRoom">Room: —</div><div id="debugSpeech">Speech: Waiting</div><div id="debugTurn">Turn: 0.0 sec</div></div>
-<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.68 • stable • laugh closed-mouth hold</div><div id="runtimeStatus">Python runtime: checking…</div></div>
+<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.70 • camera vision object learning</div><div id="runtimeStatus">Python runtime: checking…</div></div>
 <button id="resetButton" class="reset-button">Forget Everything &amp; Start Fresh</button>
 </section></div>
 
@@ -92,5 +92,14 @@
 <div id="historyEmpty" class="history-empty">No conversation yet.</div><div id="historyList" class="history-list"></div>
 </section></div>
 
-<script src="./static/app.js?v=11.6.8" defer></script>
+<div id="cameraModal" class="modal-backdrop camera-modal" hidden><section class="modal-card camera-card">
+<div class="modal-header"><div><h2>Ask Nanako</h2><div class="modal-subtitle">Point the camera at one object</div></div><button id="closeCameraButton" class="close-button">×</button></div>
+<div class="camera-view"><video id="cameraVideo" autoplay muted playsinline></video><div id="cameraGuide" class="camera-guide"><span></span></div></div>
+<div id="cameraStatus" class="camera-status">Camera is off</div>
+<input id="cameraQuestion" class="camera-question" value="これは何？" aria-label="Question for Nanako">
+<button id="askCameraButton" class="conversation-button camera-ask-button">📷 Ask Nanako</button>
+<div class="camera-privacy">One frame is sent only when you tap Ask Nanako.</div>
+</section></div>
+
+<script src="./static/app.js?v=11.7.0" defer></script>
 </body></html>

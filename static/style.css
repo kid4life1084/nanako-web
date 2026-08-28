@@ -141,3 +141,15 @@ html.portrait-lock-landscape .startup-splash,
 html.portrait-lock-landscape .modal-backdrop{
   position:fixed!important;inset:0!important;
 }
+.camera-button{flex:0 0 46px;height:46px;border:1px solid #3b3044;border-radius:14px;background:#211a29;color:#fff;font-size:21px;cursor:pointer}
+.camera-button:disabled{opacity:.55}
+.camera-modal{z-index:420}
+.camera-card{width:min(100%,480px)}
+.camera-view{position:relative;width:100%;aspect-ratio:4/3;margin-top:16px;overflow:hidden;border-radius:18px;background:#08070a;border:1px solid #382e41}
+.camera-view video{width:100%;height:100%;display:block;object-fit:cover}
+.camera-guide{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.camera-guide span{width:46%;aspect-ratio:1;border:2px solid rgba(255,255,255,.72);border-radius:22px;box-shadow:0 0 0 999px rgba(0,0,0,.10)}
+.camera-status{min-height:20px;margin-top:10px;color:#aaa1b1;font-size:13px;text-align:center}
+.camera-question{box-sizing:border-box;width:100%;height:46px;margin-top:12px;padding:0 14px;border:1px solid #3b3044;border-radius:14px;background:#17121d;color:#fff;font-size:17px}
+.camera-ask-button{margin-top:12px}
+.camera-privacy{margin-top:10px;color:#8f8797;font-size:12px;text-align:center}
