@@ -537,20 +537,14 @@ const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session
 const RUNTIME_CHECK=`${API}/runtime-check`;
 const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
 const MEMORY_KEY="nanakoPersistentMemoryV1";
-const MEMORY_HISTORY_MAX=40,MEMORY_SEND_MAX=16,MEMORY_FACT_MAX=30,LEARNER_PREFERENCE_MAX=60,LEARNER_TOPIC_MAX=40,LEARNER_PROGRESS_MAX=50;
-let persistentFacts=[],learnerMemory={preferences:[],topic_affinities:[],language_progress:[]},persistentUserName="",startupGreetingData=null,startupGreetingPlayed=false,startupGreetingLoading=null,startupGreetingPlayPromise=null;
+const MEMORY_HISTORY_MAX=40,MEMORY_SEND_MAX=16,MEMORY_FACT_MAX=30;
+let persistentFacts=[],persistentUserName="",startupGreetingData=null,startupGreetingPlayed=false,startupGreetingLoading=null,startupGreetingPlayPromise=null;
 function loadPersistentMemory(){
   try{
     const raw=JSON.parse(localStorage.getItem(MEMORY_KEY)||"{}");
     const h=Array.isArray(raw.history)?raw.history:[];
     const f=Array.isArray(raw.facts)?raw.facts:[];
     const storedUserName=String(raw?.profile?.user_name||"").trim();
-    const lm=raw?.learner_memory&&typeof raw.learner_memory==="object"?raw.learner_memory:{};
-    learnerMemory={
-      preferences:Array.isArray(lm.preferences)?lm.preferences.slice(-LEARNER_PREFERENCE_MAX):[],
-      topic_affinities:Array.isArray(lm.topic_affinities)?lm.topic_affinities.slice(-LEARNER_TOPIC_MAX):[],
-      language_progress:Array.isArray(lm.language_progress)?lm.language_progress.slice(-LEARNER_PROGRESS_MAX):[]
-    };
     persistentUserName=cleanNameCandidate(storedUserName);
     history.length=0;
     h.slice(-MEMORY_HISTORY_MAX).forEach(item=>{
@@ -560,12 +554,12 @@ function loadPersistentMemory(){
     });
     persistentFacts=f.map(x=>String(x||"").trim()).filter(x=>x&&!memoryFactHasInvalidName(x)).slice(-MEMORY_FACT_MAX);
     if(storedUserName!==persistentUserName||persistentFacts.length!==f.map(x=>String(x||"").trim()).filter(Boolean).slice(-MEMORY_FACT_MAX).length)savePersistentMemory();
-  }catch(err){console.warn("[Nanako Memory] restore failed",err);history.length=0;persistentFacts=[];learnerMemory={preferences:[],topic_affinities:[],language_progress:[]};persistentUserName="";}
+  }catch(err){console.warn("[Nanako Memory] restore failed",err);history.length=0;persistentFacts=[];persistentUserName="";}
 }
 function savePersistentMemory(){
   try{
     const persistedHistory=history.filter(h=>!h.ephemeral).slice(-MEMORY_HISTORY_MAX);
-    const payload={version:3,updated_at:Date.now(),history:persistedHistory,facts:persistentFacts.slice(-MEMORY_FACT_MAX),learner_memory:learnerMemory,profile:{user_name:persistentUserName||""}};
+    const payload={version:2,updated_at:Date.now(),history:persistedHistory,facts:persistentFacts.slice(-MEMORY_FACT_MAX),profile:{user_name:persistentUserName||""}};
     localStorage.setItem(MEMORY_KEY,JSON.stringify(payload));
   }catch(err){console.warn("[Nanako Memory] save failed",err);}
 }
@@ -624,17 +618,6 @@ function mergeMemoryFacts(items){
   if(!persistentUserName)rememberDetectedUserName();
   savePersistentMemory();
 }
-function cleanMemoryText(value,max=180){return String(value||"").replace(/\s+/g," ").trim().slice(0,max)}
-function mergeLearnerMemory(updates){
-  if(!updates||typeof updates!=="object")return;
-  const prefs=Array.isArray(updates.preferences)?updates.preferences:[];
-  for(const raw of prefs){const category=cleanMemoryText(raw?.category,40),item=cleanMemoryText(raw?.item,100),sentiment=cleanMemoryText(raw?.sentiment,16).toLowerCase(),evidence=cleanMemoryText(raw?.evidence);if(!item||!["like","dislike","favorite","avoid"].includes(sentiment))continue;const key=`${category}|${item}`.toLowerCase();const existing=learnerMemory.preferences.find(x=>`${x.category}|${x.item}`.toLowerCase()===key);const next={category,item,sentiment,evidence,observations:Math.min(99,(Number(existing?.observations)||0)+1),successes:0};if(existing)Object.assign(existing,next);else learnerMemory.preferences.push(next)}
-  const topics=Array.isArray(updates.topic_affinities)?updates.topic_affinities:[];
-  for(const raw of topics){const topic=cleanMemoryText(raw?.topic,100),affinity=cleanMemoryText(raw?.affinity,16).toLowerCase(),evidence=cleanMemoryText(raw?.evidence);if(!topic||!["likes","dislikes","avoid"].includes(affinity))continue;const existing=learnerMemory.topic_affinities.find(x=>String(x.topic).toLowerCase()===topic.toLowerCase());const next={topic,affinity,evidence,observations:Math.min(99,(Number(existing?.observations)||0)+1),successes:0};if(existing)Object.assign(existing,next);else learnerMemory.topic_affinities.push(next)}
-  const progress=Array.isArray(updates.language_progress)?updates.language_progress:[];
-  for(const raw of progress){const pattern=cleanMemoryText(raw?.pattern,100),original=cleanMemoryText(raw?.original),corrected=cleanMemoryText(raw?.corrected),category=cleanMemoryText(raw?.category,50),event=cleanMemoryText(raw?.event,16).toLowerCase(),last_evidence=cleanMemoryText(raw?.last_evidence);if(!pattern||!["mistake","improvement"].includes(event))continue;let existing=learnerMemory.language_progress.find(x=>String(x.pattern).toLowerCase()===pattern.toLowerCase()||(corrected&&String(x.corrected).toLowerCase()===corrected.toLowerCase()));if(!existing){existing={pattern,original,corrected,category,last_evidence,observations:0,successes:0};learnerMemory.language_progress.push(existing)}if(event==="mistake"){existing.observations=Math.min(99,(Number(existing.observations)||0)+1);if(original)existing.original=original;if(corrected)existing.corrected=corrected}else{existing.successes=Math.min(99,(Number(existing.successes)||0)+1)}existing.last_evidence=last_evidence||existing.last_evidence;existing.category=category||existing.category}
-  learnerMemory.preferences=learnerMemory.preferences.slice(-LEARNER_PREFERENCE_MAX);learnerMemory.topic_affinities=learnerMemory.topic_affinities.slice(-LEARNER_TOPIC_MAX);learnerMemory.language_progress=learnerMemory.language_progress.slice(-LEARNER_PROGRESS_MAX);savePersistentMemory();
-}
 function memoryPayload(){
   const facts=persistentFacts.slice(-MEMORY_FACT_MAX);
   if(persistentUserName){
@@ -644,7 +627,6 @@ function memoryPayload(){
   return {
     memory_history:history.slice(-MEMORY_SEND_MAX).map(h=>({role:h.role,content:h.text})),
     memory_facts:facts.slice(-MEMORY_FACT_MAX),
-    learner_memory:learnerMemory,
     user_name:persistentUserName||""
   };
 }
@@ -676,7 +658,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.awareness.classList.toggle("active",awarenessActive);e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user,options={}){mergeMemoryFacts(d?.memory_facts);mergeLearnerMemory(d?.memory_updates);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);if(!options.spontaneous)addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=String(d?.animation_plan?.emotion||"neutral").trim().toLowerCase()||"neutral";if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
+async function apply(d,user,options={}){mergeMemoryFacts(d?.memory_facts);e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);if(!options.spontaneous)addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=String(d?.animation_plan?.emotion||"neutral").trim().toLowerCase()||"neutral";if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -1003,7 +985,7 @@ async function ensureMicHardware(){
   };
   if(ctx.audioWorklet&&window.AudioWorkletNode){
     try{
-      await ctx.audioWorklet.addModule("./static/mic-gate-worklet.js?v=11.7.7");
+      await ctx.audioWorklet.addModule("./static/mic-gate-worklet.js?v=11.7.6");
       micWorkletNode=new AudioWorkletNode(ctx,"nanako-mic-gate",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
       micWorkletNode.port.onmessage=ev=>{if(ev.data?.type==="audio"&&ev.data.samples)acceptAudioChunk(ev.data.samples)};
       micSource.connect(micWorkletNode);micWorkletNode.connect(ctx.destination);micWorkletUsing=true;return;
@@ -1221,7 +1203,7 @@ async function startMode(){
 async function stopMode(){
   active=false;await setServerNanakoSpeaking(false);await stopMicBridge();await stopAudio(false);convButton();status("Ready to chat");
 }
-async function reset(){if(!window.confirm("Forget Nanako’s saved conversation, preferences, dislikes, and Japanese progress? This cannot be undone."))return;await stopVisualAwareness({silent:true});await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];learnerMemory={preferences:[],topic_affinities:[],language_progress:[]};persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;startupEnterDone=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;const splash=document.getElementById("startupSplash");if(splash)splash.hidden=false;status("Ready for a fresh start");void fetchStartupGreeting()}
+async function reset(){if(!window.confirm("Forget Nanako’s saved conversation, your name, and all remembered facts? This cannot be undone."))return;await stopVisualAwareness({silent:true});await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;startupEnterDone=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;const splash=document.getElementById("startupSplash");if(splash)splash.hidden=false;status("Ready for a fresh start");void fetchStartupGreeting()}
 
 e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.camera.onclick=openCamera;e.closeCamera.onclick=closeCamera;e.askCamera.onclick=askCamera;e.cameraModal.onclick=x=>{if(x.target===e.cameraModal)void closeCamera()};e.awareness.onclick=toggleVisualAwareness;e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{let b=x.target.closest("[data-level]");if(!b)return;level=b.dataset.level;e.levelGrid.querySelectorAll("[data-level]").forEach(c=>c.classList.toggle("active",c.dataset.level===level));e.levelBadge.textContent=e.levelValue.textContent=label(level)};e.reset.onclick=reset;
 window.addEventListener("beforeunload",()=>{
@@ -1271,7 +1253,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 1.77 STABLE startup ready • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.76 STABLE startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
