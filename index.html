@@ -13,7 +13,18 @@
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./static/style.css?v=11.7.4">
+<script>
+window.__NANAKO_RELEASE_GATE__=(async()=>{
+  const epoch="11.8.0",key="nanako_release_epoch";
+  let previous="";try{previous=localStorage.getItem(key)||""}catch{}
+  if(previous===epoch)return;
+  try{if("serviceWorker" in navigator){for(const registration of await navigator.serviceWorker.getRegistrations())await registration.unregister()}}catch(error){console.warn("Nanako old worker removal failed",error)}
+  try{if(window.caches){for(const name of await caches.keys())await caches.delete(name)}}catch(error){console.warn("Nanako old cache removal failed",error)}
+  try{localStorage.setItem(key,epoch)}catch{}
+  const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);location.replace(url.href);await new Promise(()=>{})}
+})();
+</script>
+<link rel="stylesheet" href="./static/style.css?v=11.8.0">
 <link rel="preload" as="image" href="./static/characters/nanako/states/neutral/base.png">
 <style>
 .startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 22%,rgba(109,52,136,.24),transparent 38%),linear-gradient(180deg,#15101d,#0b0910);}
@@ -84,7 +95,8 @@
 </div></div>
 <div class="settings-block"><div class="settings-row"><span>Conversation score</span><strong id="settingsScore">0 / 100</strong></div><div class="settings-progress"><div id="settingsScoreFill"></div></div></div>
 <div class="settings-block"><div class="settings-label">Voice debug</div><div id="debugMic">Mic: —</div><div id="debugRoom">Room: —</div><div id="debugSpeech">Speech: Waiting</div><div id="debugTurn">Turn: 0.0 sec</div></div>
-<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.74 • responsive Python visual awareness</div><div id="runtimeStatus">Python runtime: checking…</div></div>
+<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.80 • Qwen3.5-Omni-Plus • loading JavaScript runtime…</div><div id="runtimeStatus">Python runtime: checking…</div></div>
+<div class="settings-block"><div class="settings-label">Live resource diagnostics</div><div id="visionDiagnostic">Vision analyses: 0 • image tokens: 0</div><div id="micDiagnostic">Microphone uploaded: 0 KB • gate: waiting</div></div>
 <button id="resetButton" class="reset-button">Forget Everything &amp; Start Fresh</button>
 </section></div>
 
@@ -104,5 +116,5 @@
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<script src="./static/app.js?v=11.7.4" defer></script>
+<script src="./static/app.js?v=11.8.0" defer></script>
 </body></html>
