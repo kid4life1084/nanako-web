@@ -629,11 +629,8 @@ function memoryPayload(){
 async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const ok=!!(d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?"Python runtime: ONLINE • mic + animation + vision loaded":"Python runtime: incomplete — check Alibaba deployment";console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
-const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micFallbackNoise=.006,micFallbackOpen=false,micFallbackHold=0,micFallbackPre=[],micSessionId="",micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
-let micUploadedBytes=0,visionAnalysisCount=0,visionImageTokens=0;
-function updateResourceDiagnostics(){if(e.visionDiagnostic)e.visionDiagnostic.textContent=`Vision analyses: ${visionAnalysisCount} • image tokens: ${visionImageTokens}`;if(e.micDiagnostic)e.micDiagnostic.textContent=`Microphone uploaded: ${(micUploadedBytes/1024).toFixed(1)} KB • gate: ${micWorkletUsing?"AudioWorklet":"compatibility"}`}
-function imageTokensFromUsage(value){let total=0;if(!value||typeof value!=="object")return 0;for(const [key,item] of Object.entries(value)){if(/image.*token/i.test(key)&&Number.isFinite(Number(item)))total+=Number(item);else if(item&&typeof item==="object")total+=imageTokensFromUsage(item)}return total}
+const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
+let level="auto",score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micSessionId="",micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
@@ -695,18 +692,13 @@ async function playStartupGreetingIfReady(fromGesture=false){
 }
 async function send(){let t=e.input.value.trim();if(!t||busy)return;rememberUserNameFromText(t);busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:true,...memoryPayload()})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 
-let awarenessActive=false,awarenessStream=null,awarenessSessionId="",awarenessTimer=0,awarenessCheckBusy=false,awarenessResumeAfterObject=false,awarenessFaceLandmarker=null,awarenessDetectorMode="scene-change",awarenessBaseline=null,awarenessCandidate="",awarenessCandidateCount=0,awarenessLastSubmittedAt=0,awarenessInitialPending=false;
-function scheduleAwarenessCheck(delay=350){clearTimeout(awarenessTimer);if(awarenessActive)awarenessTimer=setTimeout(runAwarenessCheck,Math.max(250,Number(delay)||350))}
+let awarenessActive=false,awarenessStream=null,awarenessSessionId="",awarenessTimer=0,awarenessCheckBusy=false,awarenessResumeAfterObject=false;
+function scheduleAwarenessCheck(delay=3000){clearTimeout(awarenessTimer);if(awarenessActive)awarenessTimer=setTimeout(runAwarenessCheck,Math.max(700,Number(delay)||3000))}
 function captureAwarenessFrame(){const video=e.awarenessVideo;if(!video?.videoWidth||!video?.videoHeight)throw new Error("The visual-awareness camera is not ready.");const maxSide=480,scale=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));canvas.getContext("2d",{alpha:false}).drawImage(video,0,0,canvas.width,canvas.height);return canvas.toDataURL("image/jpeg",.68)}
-function awarenessSceneVector(){const v=e.awarenessVideo,c=document.createElement("canvas");c.width=32;c.height=24;const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(v,0,0,32,24);const p=x.getImageData(0,0,32,24).data,out=new Uint8Array(768);for(let i=0,j=0;i<p.length;i+=4,j++)out[j]=(p[i]*3+p[i+1]*6+p[i+2])/10;return out}
-function awarenessSceneDifference(a,b){if(!a||!b||a.length!==b.length)return 1;let total=0;for(let i=0;i<a.length;i++)total+=Math.abs(a[i]-b[i]);return total/(a.length*255)}
-function blendshapeEvent(){if(!awarenessFaceLandmarker)return"";try{const result=awarenessFaceLandmarker.detectForVideo(e.awarenessVideo,performance.now()),cats=result?.faceBlendshapes?.[0]?.categories||[],s={};for(const c of cats)s[c.categoryName]=Number(c.score)||0;const avg=(a,b)=>((s[a]||0)+(s[b]||0))/2;if(avg("mouthSmileLeft","mouthSmileRight")>.52)return"expression_happy";if((s.jawOpen||0)>.52&&avg("eyeWideLeft","eyeWideRight")>.25)return"expression_surprised";if(avg("browDownLeft","browDownRight")>.48)return"expression_angry";if(avg("mouthFrownLeft","mouthFrownRight")>.34&&(s.browInnerUp||0)>.2)return"expression_sad";}catch(x){console.warn("[Nanako Vision] face detector frame failed",x)}return""}
-async function loadAwarenessDetector(){if(awarenessFaceLandmarker)return;try{const mp=await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm"),files=await mp.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm");awarenessFaceLandmarker=await mp.FaceLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",delegate:"GPU"},runningMode:"VIDEO",numFaces:1,outputFaceBlendshapes:true,minFaceDetectionConfidence:.55,minTrackingConfidence:.55});awarenessDetectorMode="face+scene"}catch(x){awarenessDetectorMode="scene-change fallback";console.warn("[Nanako Vision] MediaPipe unavailable; safe scene-change fallback remains active.",x)}}
-async function submitAwarenessEvent(trigger){if(!awarenessActive||awarenessCheckBusy||busy||currentAudio||userSpeechActive||cameraVoiceMode)return false;const now=Date.now();if(trigger!=="initial_view"&&now-awarenessLastSubmittedAt<10000)return false;awarenessCheckBusy=true;try{const image_data_url=captureAwarenessFrame(),r=await fetch(AWARENESS_ANALYZE,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:awarenessSessionId,image_data_url,trigger})}),d=await jsonResp(r);if(trigger!=="initial_view")awarenessLastSubmittedAt=now;if(d.model_called!==false){visionAnalysisCount++;visionImageTokens+=imageTokensFromUsage(d.model_usage);updateResourceDiagnostics()}if(d.reaction){busy=true;micCapturePaused=true;micQueue=[];micBatch=[];status("Nanako noticed something...");await apply(d,"",{spontaneous:true});busy=false;if(!currentAudio&&active)setTimeout(begin,40);else if(!currentAudio&&!active)status("Visual awareness on")}return true}catch(x){console.error("[Nanako visual awareness event]",x);if(/not loaded/i.test(String(x.message||""))){error(x.message);await stopVisualAwareness({silent:true})}return false}finally{awarenessCheckBusy=false}}
-async function startVisualAwareness(){if(awarenessActive||busy)return;if(!navigator.mediaDevices?.getUserMedia){error("Visual awareness requires camera access over HTTPS.");return}status("Starting visual awareness...");try{const videoConstraints={facingMode:{ideal:"user"},width:{ideal:320},height:{ideal:240},frameRate:{ideal:5,max:8}};awarenessStream=await navigator.mediaDevices.getUserMedia({video:videoConstraints,audio:false});e.awarenessVideo.srcObject=awarenessStream;await e.awarenessVideo.play();const r=await fetch(AWARENESS_START,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}),d=await jsonResp(r);awarenessSessionId=String(d.session_id||"");if(!awarenessSessionId)throw new Error("Python visual awareness did not start.");awarenessBaseline=awarenessSceneVector();awarenessCandidate="";awarenessCandidateCount=0;awarenessInitialPending=true;awarenessActive=true;quick();status("Visual awareness on — event driven");void loadAwarenessDetector();scheduleAwarenessCheck(700)}catch(x){console.error(x);try{awarenessStream?.getTracks().forEach(t=>t.stop())}catch{}awarenessStream=null;e.awarenessVideo.srcObject=null;awarenessSessionId="";awarenessActive=false;quick();error("Allow front-camera access and check the Step 1.75 Python backend.");status(active?"Listening...":"Ready to chat")}}
-async function stopVisualAwareness(options={}){clearTimeout(awarenessTimer);awarenessTimer=0;const sid=awarenessSessionId;awarenessSessionId="";awarenessActive=false;awarenessCheckBusy=false;awarenessBaseline=null;awarenessCandidate="";awarenessCandidateCount=0;awarenessInitialPending=false;try{awarenessStream?.getTracks().forEach(t=>t.stop())}catch{}awarenessStream=null;if(e.awarenessVideo)e.awarenessVideo.srcObject=null;quick();if(sid){try{await fetch(AWARENESS_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid})})}catch{}}if(!options.silent)status(active?"Listening...":"Visual awareness off")}
+async function startVisualAwareness(){if(awarenessActive||busy)return;if(!navigator.mediaDevices?.getUserMedia){error("Visual awareness requires camera access over HTTPS.");return}status("Starting visual awareness...");try{const supported=navigator.mediaDevices.getSupportedConstraints?.()||{};const videoConstraints={facingMode:{ideal:"user"},width:{ideal:640},height:{ideal:480},frameRate:{ideal:15,max:24}};awarenessStream=await navigator.mediaDevices.getUserMedia({video:videoConstraints,audio:false});e.awarenessVideo.srcObject=awarenessStream;await e.awarenessVideo.play();const r=await fetch(AWARENESS_START,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});const d=await jsonResp(r);awarenessSessionId=String(d.session_id||"");if(!awarenessSessionId)throw new Error("Python visual awareness did not start.");awarenessActive=true;quick();status("Visual awareness on");scheduleAwarenessCheck(900)}catch(x){console.error(x);try{awarenessStream?.getTracks().forEach(t=>t.stop())}catch{}awarenessStream=null;e.awarenessVideo.srcObject=null;awarenessSessionId="";awarenessActive=false;quick();error("Allow front-camera access and check the Step 1.74 Python backend.");status(active?"Listening...":"Ready to chat")}}
+async function stopVisualAwareness(options={}){clearTimeout(awarenessTimer);awarenessTimer=0;const sid=awarenessSessionId;awarenessSessionId="";awarenessActive=false;awarenessCheckBusy=false;try{awarenessStream?.getTracks().forEach(t=>t.stop())}catch{}awarenessStream=null;if(e.awarenessVideo)e.awarenessVideo.srcObject=null;quick();if(sid){try{await fetch(AWARENESS_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid})})}catch{}}if(!options.silent)status(active?"Listening...":"Visual awareness off")}
 async function toggleVisualAwareness(){if(awarenessActive)await stopVisualAwareness();else await startVisualAwareness()}
-async function runAwarenessCheck(){if(!awarenessActive)return;if(document.visibilityState!=="visible"){scheduleAwarenessCheck(1000);return}try{if(awarenessInitialPending){awarenessInitialPending=false;await submitAwarenessEvent("initial_view");scheduleAwarenessCheck(500);return}const vector=awarenessSceneVector(),faceEvent=blendshapeEvent(),sceneScore=awarenessSceneDifference(awarenessBaseline,vector),event=faceEvent||(sceneScore>.14?"scene_change":"");if(event&&event===awarenessCandidate)awarenessCandidateCount++;else{awarenessCandidate=event;awarenessCandidateCount=event?1:0}if(event&&awarenessCandidateCount>=2){const submitted=await submitAwarenessEvent(event);if(submitted){awarenessBaseline=vector;awarenessCandidate="";awarenessCandidateCount=0}}else if(!event&&awarenessBaseline){for(let i=0;i<vector.length;i++)awarenessBaseline[i]=awarenessBaseline[i]*.96+vector[i]*.04}}catch(x){console.warn("[Nanako local vision gate]",x)}finally{if(awarenessActive)scheduleAwarenessCheck(350)}}
+async function runAwarenessCheck(){if(!awarenessActive||awarenessCheckBusy)return;if(document.visibilityState!=="visible"||busy||currentAudio||userSpeechActive||cameraVoiceMode){scheduleAwarenessCheck(userSpeechActive?700:1500);return}awarenessCheckBusy=true;let next=3000;try{const image_data_url=captureAwarenessFrame();const r=await fetch(AWARENESS_ANALYZE,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:awarenessSessionId,image_data_url})});const d=await jsonResp(r);next=Number(d.next_check_ms)||3000;if(d.reaction){busy=true;micCapturePaused=true;micQueue=[];micBatch=[];status("Nanako noticed something...");await apply(d,"",{spontaneous:true});busy=false;if(!currentAudio&&active)setTimeout(begin,40);else if(!currentAudio&&!active)status("Visual awareness on")}}catch(x){console.error("[Nanako visual awareness]",x);if(/not loaded/i.test(String(x.message||""))){error(x.message);await stopVisualAwareness({silent:true})}else{next=1500}}finally{awarenessCheckBusy=false;if(awarenessActive)scheduleAwarenessCheck(next)}}
 
 let cameraStream=null,cameraVoiceMode=false,cameraStartedMic=false;
 async function closeCamera(){cameraVoiceMode=false;if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null}if(e.cameraVideo)e.cameraVideo.srcObject=null;if(e.cameraModal)e.cameraModal.hidden=true;if(e.cameraStatus)e.cameraStatus.textContent="Camera is off";if(cameraStartedMic){cameraStartedMic=false;await stopMode()}if(awarenessResumeAfterObject){awarenessResumeAfterObject=false;await startVisualAwareness()}}
@@ -966,7 +958,7 @@ async function play(b,m,animationPlan=null,options={}){
 //   barge-in, completed-turn buffering and conversation processing.
 // ============================================================
 async function ensureMicHardware(){
-  if(stream&&stream.getTracks().some(t=>t.readyState==="live")&&ctx&&(micProcessor||micWorkletNode))return;
+  if(stream&&stream.getTracks().some(t=>t.readyState==="live")&&ctx&&micProcessor)return;
   if(!navigator.mediaDevices?.getUserMedia)throw new Error("Microphone access requires HTTPS.");
   const supported=navigator.mediaDevices.getSupportedConstraints?.()||{};
   const audioConstraints={echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1};
@@ -980,31 +972,19 @@ async function ensureMicHardware(){
   ctx=new AC();
   if(ctx.state==="suspended")await ctx.resume();
   micSource=ctx.createMediaStreamSource(stream);
-  const acceptAudioChunk=input=>{
-    if(!active||micCapturePaused||!micSessionId)return;
-    const samples=resampleMono(input,ctx.sampleRate,MIC_TARGET_RATE);
-    for(let i=0;i<samples.length;i++)micBatch.push(samples[i]);
-    while(micBatch.length>=MIC_BATCH_SAMPLES){const batch=micBatch.splice(0,MIC_BATCH_SAMPLES);micQueue.push(floatToPcm16(batch));}
-    if(micQueue.length>8)micQueue.splice(0,micQueue.length-8);pumpMicQueue();
-  };
-  if(ctx.audioWorklet&&window.AudioWorkletNode){
-    try{
-      await ctx.audioWorklet.addModule("./static/mic-gate-worklet.js?v=11.7.5");
-      micWorkletNode=new AudioWorkletNode(ctx,"nanako-mic-gate",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
-      micWorkletNode.port.onmessage=ev=>{if(ev.data?.type==="audio"&&ev.data.samples)acceptAudioChunk(ev.data.samples)};
-      micSource.connect(micWorkletNode);micWorkletNode.connect(ctx.destination);micWorkletUsing=true;return;
-    }catch(workletError){console.warn("[Nanako Mic] AudioWorklet gate unavailable; using compatibility capture.",workletError);micWorkletNode=null;micWorkletUsing=false;}
-  }
   micProcessor=ctx.createScriptProcessor(2048,1,1);
   micProcessor.onaudioprocess=ev=>{
     try{ev.outputBuffer.getChannelData(0).fill(0)}catch{}
     if(!active||micCapturePaused||!micSessionId)return;
-    const input=Float32Array.from(ev.inputBuffer.getChannelData(0));let sum=0;for(const v of input)sum+=v*v;
-    const rms=Math.sqrt(sum/input.length),threshold=Math.max(.011,micFallbackNoise*2.8);
-    if(!micFallbackOpen&&rms<threshold)micFallbackNoise=micFallbackNoise*.97+rms*.03;
-    if(rms>=threshold){if(!micFallbackOpen){micFallbackOpen=true;for(const old of micFallbackPre)acceptAudioChunk(old);micFallbackPre=[];}micFallbackHold=Math.round(ctx.sampleRate*1.1/2048);}
-    else if(micFallbackOpen&&micFallbackHold>0)micFallbackHold--;else if(micFallbackOpen)micFallbackOpen=false;
-    if(micFallbackOpen)acceptAudioChunk(input);else{micFallbackPre.push(input);while(micFallbackPre.length>Math.ceil(ctx.sampleRate*.4/2048))micFallbackPre.shift();}
+    const input=ev.inputBuffer.getChannelData(0);
+    const samples=resampleMono(input,ctx.sampleRate,MIC_TARGET_RATE);
+    for(let i=0;i<samples.length;i++)micBatch.push(samples[i]);
+    while(micBatch.length>=MIC_BATCH_SAMPLES){
+      const batch=micBatch.splice(0,MIC_BATCH_SAMPLES);
+      micQueue.push(floatToPcm16(batch));
+    }
+    if(micQueue.length>8)micQueue.splice(0,micQueue.length-8);
+    pumpMicQueue();
   };
   micSource.connect(micProcessor);
   micProcessor.connect(ctx.destination);
@@ -1075,7 +1055,7 @@ async function pumpMicQueue(){
   try{
     while(active&&micSessionId&&micQueue.length){
       const pcm=micQueue.shift();
-      const r=await fetch(`${MIC_FRAME}?session_id=${encodeURIComponent(micSessionId)}`,{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:pcm.buffer});micUploadedBytes+=pcm.byteLength;updateResourceDiagnostics();
+      const r=await fetch(`${MIC_FRAME}?session_id=${encodeURIComponent(micSessionId)}`,{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:pcm.buffer});
       const d=await r.json();
       if(!r.ok||d?.ok===false){
         if(d?.restart_session){await restartPythonMicSession();continue}
@@ -1128,7 +1108,6 @@ async function begin(){
   if(!active)return;
   await startPythonMicSession();
   await ensureMicHardware();
-  try{micWorkletNode?.port.postMessage({type:"reset"})}catch{}micFallbackOpen=false;micFallbackHold=0;micFallbackPre=[];
   micCapturePaused=false;
   userSpeechActive=false;
   status("Listening...");
@@ -1136,12 +1115,11 @@ async function begin(){
 }
 
 async function stopMicBridge(){
-  micCapturePaused=true;userSpeechActive=false;micQueue=[];micBatch=[];micFallbackOpen=false;micFallbackHold=0;micFallbackPre=[];
+  micCapturePaused=true;userSpeechActive=false;micQueue=[];micBatch=[];
   const sid=micSessionId;micSessionId="";
   try{micProcessor?.disconnect()}catch{}
-  try{micWorkletNode?.disconnect()}catch{}
   try{micSource?.disconnect()}catch{}
-  micProcessor=null;micWorkletNode=null;micWorkletUsing=false;micSource=null;
+  micProcessor=null;micSource=null;
   try{await ctx?.close()}catch{}ctx=null;
   try{stream?.getTracks().forEach(t=>t.stop())}catch{}stream=null;
   if(sid){try{await fetch(MIC_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid})})}catch{}}
@@ -1206,7 +1184,6 @@ window.addEventListener("beforeunload",()=>{
   stopAnimationPlan();
   active=false;micCapturePaused=true;
   try{micProcessor?.disconnect()}catch{}
-  try{micWorkletNode?.disconnect()}catch{}
   try{micSource?.disconnect()}catch{}
   try{stream?.getTracks().forEach(t=>t.stop())}catch{}
   try{cameraStream?.getTracks().forEach(t=>t.stop())}catch{}
@@ -1248,8 +1225,7 @@ async function boot(){
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
-  updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 1.75 STABLE startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.74 STABLE startup ready • memory: ${history.length} messages, ${persistentFacts.length} facts • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
