@@ -12,19 +12,20 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
-<link rel="manifest" href="./manifest.webmanifest">
+<link rel="manifest" href="./manifest.webmanifest?v=11.8.3">
 <script>
 window.__NANAKO_RELEASE_GATE__=(async()=>{
-  const epoch="11.8.0",key="nanako_release_epoch";
-  let previous="";try{previous=localStorage.getItem(key)||""}catch{}
-  if(previous===epoch)return;
-  try{if("serviceWorker" in navigator){for(const registration of await navigator.serviceWorker.getRegistrations())await registration.unregister()}}catch(error){console.warn("Nanako old worker removal failed",error)}
-  try{if(window.caches){for(const name of await caches.keys())await caches.delete(name)}}catch(error){console.warn("Nanako old cache removal failed",error)}
+  const epoch="11.8.3",key="nanako_release_epoch";
+  // Run cleanup on every document load. This deliberately does not trust a
+  // previously stored epoch because iOS/Chrome can restore an old page while
+  // keeping newer localStorage.
+  try{if("serviceWorker" in navigator){const appScope=new URL("./",location.href).href;for(const registration of await navigator.serviceWorker.getRegistrations()){if(registration.scope===appScope)await registration.unregister()}}}catch(error){console.warn("Nanako worker cleanup failed",error)}
+  try{if(window.caches){for(const name of await caches.keys()){if(/^(?:nanachat|nanako)/i.test(name))await caches.delete(name)}}}catch(error){console.warn("Nanako cache cleanup failed",error)}
   try{localStorage.setItem(key,epoch)}catch{}
-  const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);location.replace(url.href);await new Promise(()=>{})}
+  try{const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);history.replaceState(null,"",url.href)}}catch{}
 })();
 </script>
-<link rel="stylesheet" href="./static/style.css?v=11.8.0">
+<link rel="stylesheet" href="./static/style.css?v=11.8.3">
 <link rel="preload" as="image" href="./static/characters/nanako/states/neutral/base.png">
 <style>
 .startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 22%,rgba(109,52,136,.24),transparent 38%),linear-gradient(180deg,#15101d,#0b0910);}
@@ -33,6 +34,7 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 .startup-title-ja{margin-top:18px;font-size:34px;font-weight:900;letter-spacing:.08em;color:#fff;}
 .startup-title-en{margin-top:6px;font-size:18px;font-weight:800;color:#d56ff0;}
 .startup-subtitle{margin-top:8px;color:#9a92a2;font-size:13px;}
+.startup-version{margin-top:10px;padding:6px 12px;border:1px solid #4a3858;border-radius:999px;background:#1d1625;color:#e4b8ef;font-size:13px;font-weight:800;letter-spacing:.04em;}
 .startup-enter-button{margin-top:26px;min-width:180px;height:50px;border:0;border-radius:16px;background:#c75ae4;color:#fff;font-size:18px;font-weight:800;box-shadow:0 12px 28px rgba(199,90,228,.28);}
 .startup-enter-button:disabled{opacity:.72}
 </style>
@@ -42,6 +44,7 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   <div class="startup-card">
     <div class="startup-logo-circle">N</div>
     <div class="startup-title-ja">NanaChat</div>
+    <div id="startupVersion" class="startup-version">Version 1.83</div>
     <button id="startupEnterButton" class="startup-enter-button">Enter</button>
   </div>
 </div>
@@ -95,7 +98,7 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 </div></div>
 <div class="settings-block"><div class="settings-row"><span>Conversation score</span><strong id="settingsScore">0 / 100</strong></div><div class="settings-progress"><div id="settingsScoreFill"></div></div></div>
 <div class="settings-block"><div class="settings-label">Voice debug</div><div id="debugMic">Mic: —</div><div id="debugRoom">Room: —</div><div id="debugSpeech">Speech: Waiting</div><div id="debugTurn">Turn: 0.0 sec</div></div>
-<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.80 • Qwen3.5-Omni-Plus • loading JavaScript runtime…</div><div id="runtimeStatus">Python runtime: checking…</div></div>
+<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.83 • Qwen3.5-Omni-Plus • loading JavaScript runtime…</div><div id="runtimeStatus">Python runtime: checking…</div></div>
 <div class="settings-block"><div class="settings-label">Live resource diagnostics</div><div id="visionDiagnostic">Vision analyses: 0 • image tokens: 0</div><div id="micDiagnostic">Microphone uploaded: 0 KB • gate: waiting</div></div>
 <button id="resetButton" class="reset-button">Forget Everything &amp; Start Fresh</button>
 </section></div>
@@ -116,5 +119,5 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<script src="./static/app.js?v=11.8.0" defer></script>
+<script src="./static/app.js?v=11.8.3" defer></script>
 </body></html>
