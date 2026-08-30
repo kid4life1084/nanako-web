@@ -2,7 +2,7 @@
   "name": "NanaChat",
   "short_name": "NanaChat",
   "id": "./index.html",
-  "start_url": "./index.html?nanako_release=11.8.9",
+  "start_url": "./index.html?nanako_release=11.9.0",
   "scope": "./",
   "display": "standalone",
   "display_override": [
