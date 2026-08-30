@@ -1,7 +1,7 @@
 (async()=>{
 "use strict";
 
-// Step 1.86 release gate is created inline by index.html, before any external
+// Step 1.88 release gate is created inline by index.html, before any external
 // JavaScript is loaded. It removes an older cache-first worker exactly once.
 if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 
@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.8.6",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.8.8",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -123,217 +123,10 @@ try{
   }
 }catch{}
 // ============================================================
-// NANAKO v11 STEP 1.4 — AUDIO-CLOCK-SYNCED THIN RENDERER
-//
-// IMPORTANT:
-// Python on Alibaba decides blink timing, mouth timing, emotion,
-// idle/talking state and breathing values.
-// This browser code ONLY displays the animation protocol it receives.
-// STEP 1.7 ALIGNMENT RULE: no JS per-emotion/per-layer x/y/scale/rotate controls.
-// Eye/mouth placement must come entirely from the prepared PNG artwork/CSS authored by Leo.
-// Character-art URLs are versioned only to defeat stale phone/browser image cache.
-// ============================================================
-const ANIMATION_ASSETS = {
-  neutral: {
-    base: "./static/characters/nanako/states/neutral/base.png?v=step1_61_confused_realign",
-    eyes: {
-      open: "./static/characters/nanako/states/neutral/eyes/open.png?v=step1_61_confused_realign",
-      half: "./static/characters/nanako/states/neutral/eyes/half.png?v=step1_61_confused_realign",
-      closed: "./static/characters/nanako/states/neutral/eyes/closed.png?v=step1_61_confused_realign"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/neutral/mouth/closed.png?v=step1_61_confused_realign",
-      small: "./static/characters/nanako/states/neutral/mouth/small.png?v=step1_61_confused_realign",
-      medium: "./static/characters/nanako/states/neutral/mouth/medium.png?v=step1_61_confused_realign",
-      wide: "./static/characters/nanako/states/neutral/mouth/wide.png?v=step1_61_confused_realign",
-      round: "./static/characters/nanako/states/neutral/mouth/round.png?v=step1_61_confused_realign"
-    }
-  },
-  disgust: {
-    base: "./static/characters/nanako/states/disgust/base.png?v=step1_57_disgust_round",
-    eyes: {
-      open: "./static/characters/nanako/states/disgust/eyes/open.png?v=step1_57_disgust_round",
-      half: "./static/characters/nanako/states/disgust/eyes/half.png?v=step1_57_disgust_round",
-      closed: "./static/characters/nanako/states/disgust/eyes/closed.png?v=step1_57_disgust_round"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/disgust/mouth/closed.png?v=step1_57_disgust_round",
-      small: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_57_disgust_round",
-      medium: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_57_disgust_round",
-      half: "./static/characters/nanako/states/disgust/mouth/half.png?v=step1_57_disgust_round",
-      wide: "./static/characters/nanako/states/disgust/mouth/full.png?v=step1_57_disgust_round",
-      round: "./static/characters/nanako/states/disgust/mouth/round.png?v=step1_57_disgust_round",
-      full: "./static/characters/nanako/states/disgust/mouth/full.png?v=step1_57_disgust_round"
-    }
-  },
-  sad: {
-    base: "./static/characters/nanako/states/sad/base.png?v=step1_57_sad",
-    eyes: {
-      open: "./static/characters/nanako/states/sad/eyes/open.png?v=step1_57_sad",
-      half: "./static/characters/nanako/states/sad/eyes/half.png?v=step1_57_sad",
-      closed: "./static/characters/nanako/states/sad/eyes/closed.png?v=step1_57_sad"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/sad/mouth/close.png?v=step1_57_sad",
-      close: "./static/characters/nanako/states/sad/mouth/close.png?v=step1_57_sad",
-      small: "./static/characters/nanako/states/sad/mouth/half.png?v=step1_57_sad",
-      half: "./static/characters/nanako/states/sad/mouth/half.png?v=step1_57_sad",
-      medium: "./static/characters/nanako/states/sad/mouth/half.png?v=step1_57_sad",
-      wide: "./static/characters/nanako/states/sad/mouth/open.png?v=step1_57_sad",
-      open: "./static/characters/nanako/states/sad/mouth/open.png?v=step1_57_sad",
-      round: "./static/characters/nanako/states/sad/mouth/round.png?v=step1_57_sad"
-    }
-  },
-  scared: {
-    base: "./static/characters/nanako/states/scared/base.png?v=step1_58_scared",
-    eyes: {
-      open: "./static/characters/nanako/states/scared/eyes/open.png?v=step1_58_scared",
-      half: "./static/characters/nanako/states/scared/eyes/half.png?v=step1_58_scared",
-      closed: "./static/characters/nanako/states/scared/eyes/close.png?v=step1_58_scared"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/scared/mouth/none.png?v=step1_58_scared",
-      none: "./static/characters/nanako/states/scared/mouth/none.png?v=step1_58_scared",
-      small: "./static/characters/nanako/states/scared/mouth/none.png?v=step1_58_scared",
-      medium: "./static/characters/nanako/states/scared/mouth/none.png?v=step1_58_scared",
-      wide: "./static/characters/nanako/states/scared/mouth/none.png?v=step1_58_scared",
-      round: "./static/characters/nanako/states/scared/mouth/none.png?v=step1_58_scared"
-    }
-  },
-  embarrassed: {
-    base: "./static/characters/nanako/states/embarrassed/base.png?v=step1_59_embarrassed",
-    eyes: {
-      open: "./static/characters/nanako/states/embarrassed/eyes/open.png?v=step1_59_embarrassed",
-      half: "./static/characters/nanako/states/embarrassed/eyes/half.png?v=step1_59_embarrassed",
-      closed: "./static/characters/nanako/states/embarrassed/eyes/close.png?v=step1_59_embarrassed"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/embarrassed/mouth/close.png?v=step1_59_embarrassed",
-      close: "./static/characters/nanako/states/embarrassed/mouth/close.png?v=step1_59_embarrassed",
-      small: "./static/characters/nanako/states/embarrassed/mouth/half.png?v=step1_59_embarrassed",
-      half: "./static/characters/nanako/states/embarrassed/mouth/half.png?v=step1_59_embarrassed",
-      medium: "./static/characters/nanako/states/embarrassed/mouth/half.png?v=step1_59_embarrassed",
-      wide: "./static/characters/nanako/states/embarrassed/mouth/open.png?v=step1_59_embarrassed",
-      open: "./static/characters/nanako/states/embarrassed/mouth/open.png?v=step1_59_embarrassed",
-      round: "./static/characters/nanako/states/embarrassed/mouth/round.png?v=step1_59_embarrassed"
-    }
-  },
-  thinking: {
-    base: "./static/characters/nanako/states/thinking/base.png?v=step1_62_thinking",
-    eyes: {
-      open: "./static/characters/nanako/states/thinking/eyes/open.png?v=step1_62_thinking",
-      half: "./static/characters/nanako/states/thinking/eyes/half.png?v=step1_62_thinking",
-      closed: "./static/characters/nanako/states/thinking/eyes/close.png?v=step1_62_thinking"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/thinking/mouth/close.png?v=step1_62_thinking",
-      close: "./static/characters/nanako/states/thinking/mouth/close.png?v=step1_62_thinking",
-      small: "./static/characters/nanako/states/thinking/mouth/half.png?v=step1_62_thinking",
-      half: "./static/characters/nanako/states/thinking/mouth/half.png?v=step1_62_thinking",
-      medium: "./static/characters/nanako/states/thinking/mouth/half.png?v=step1_62_thinking",
-      wide: "./static/characters/nanako/states/thinking/mouth/open.png?v=step1_62_thinking",
-      open: "./static/characters/nanako/states/thinking/mouth/open.png?v=step1_62_thinking",
-      round: "./static/characters/nanako/states/thinking/mouth/round.png?v=step1_62_thinking"
-    }
-  },
-  angry: {
-    base: "./static/characters/nanako/states/angry/base.png?v=step1_48_angry",
-    eyes: {
-      open: "./static/characters/nanako/states/angry/eyes/open.png?v=step1_48_angry",
-      half: "./static/characters/nanako/states/angry/eyes/half.png?v=step1_48_angry",
-      closed: "./static/characters/nanako/states/angry/eyes/closed.png?v=step1_48_angry"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/angry/mouth/closed.png?v=step1_48_angry",
-      small: "./static/characters/nanako/states/angry/mouth/medium.png?v=step1_51_angry_no_teeth_during_speech",
-      medium: "./static/characters/nanako/states/angry/mouth/medium.png?v=step1_51_angry_no_teeth_during_speech",
-      wide: "./static/characters/nanako/states/angry/mouth/wide.png?v=step1_51_angry_no_teeth_during_speech",
-      round: "./static/characters/nanako/states/angry/mouth/round.png?v=step1_60_angry_round",
-      teeth: "./static/characters/nanako/states/angry/mouth/teeth.png?v=step1_51_angry_end_only"
-    }
-  },
-  cheeky: {
-    base: "./static/characters/nanako/states/cheeky/base.png?v=step1_47_cheeky",
-    eyes: {
-      open: "./static/characters/nanako/states/cheeky/eyes/full.png?v=step1_47_cheeky",
-      half: "./static/characters/nanako/states/cheeky/eyes/half.png?v=step1_47_cheeky",
-      closed: "./static/characters/nanako/states/cheeky/eyes/closed.png?v=step1_47_cheeky",
-      wink: "./static/characters/nanako/states/cheeky/eyes/half_closed.png?v=step1_47_cheeky"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/cheeky/mouth/closed.png?v=step1_47_cheeky",
-      small: "./static/characters/nanako/states/cheeky/mouth/small.png?v=step1_47_cheeky",
-      medium: "./static/characters/nanako/states/cheeky/mouth/medium.png?v=step1_47_cheeky",
-      wide: "./static/characters/nanako/states/cheeky/mouth/wide.png?v=step1_47_cheeky",
-      round: "./static/characters/nanako/states/cheeky/mouth/round.png?v=step1_47_cheeky"
-    }
-  },
-  confused: {
-    base: "./static/characters/nanako/states/confused/base.png?v=step1_61_confused_realign",
-    eyes: {
-      open: "./static/characters/nanako/states/confused/eyes/open.png?v=step1_61_confused_realign",
-      half: "./static/characters/nanako/states/confused/eyes/half.png?v=step1_61_confused_realign",
-      closed: "./static/characters/nanako/states/confused/eyes/closed.png?v=step1_61_confused_realign"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/confused/mouth/closed.png?v=step1_61_confused_realign",
-      small: "./static/characters/nanako/states/confused/mouth/small.png?v=step1_61_confused_realign",
-      medium: "./static/characters/nanako/states/confused/mouth/medium.png?v=step1_61_confused_realign",
-      wide: "./static/characters/nanako/states/confused/mouth/wide.png?v=step1_61_confused_realign",
-      round: "./static/characters/nanako/states/confused/mouth/round.png?v=step1_61_confused_realign"
-    }
-  },
-  laughing: {
-    base: "./static/characters/nanako/states/laughing/base.png?v=step1_44_laugh5mouth",
-    eyes: {
-      open: "./static/characters/nanako/states/laughing/base_head.png?v=step1_44_laugh5mouth",
-      half: "./static/characters/nanako/states/laughing/base_head.png?v=step1_44_laugh5mouth",
-      closed: "./static/characters/nanako/states/laughing/base_head.png?v=step1_44_laugh5mouth"
-    },
-    mouth: {
-      closed: "./static/characters/nanako/states/laughing/mouth/closed.png?v=step1_44_laugh5mouth",
-      small: "./static/characters/nanako/states/laughing/mouth/small.png?v=step1_44_laugh5mouth",
-      medium: "./static/characters/nanako/states/laughing/mouth/medium.png?v=step1_44_laugh5mouth",
-      wide: "./static/characters/nanako/states/laughing/mouth/wide.png?v=step1_44_laugh5mouth",
-      round: "./static/characters/nanako/states/laughing/mouth/round.png?v=step1_44_laugh5mouth"
-    }
-  }
-};
-
-
-
-// Renderer-only asset warmup. Python still decides WHICH frame is used and WHEN.
-// Preloading prevents first-use PNG fetches from making the lips appear late on phones.
-const animationPreloadImages=[];
-async function preloadAnimationAssets(){
-  const urls=new Set();
-  for(const state of Object.values(ANIMATION_ASSETS)){
-    if(state?.base)urls.add(state.base);
-    for(const groupName of ["eyes","mouth"]){
-      const group=state?.[groupName]||{};
-      for(const url of Object.values(group))if(url)urls.add(url);
-    }
-  }
-  const jobs=[];
-  for(const url of urls){
-    const img=new Image();
-    img.decoding="async";
-    img.src=url;
-    animationPreloadImages.push(img);
-    jobs.push((async()=>{
-      try{
-        if(img.decode) await img.decode();
-        else if(!img.complete) await new Promise(resolve=>{
-          img.onload=resolve; img.onerror=resolve;
-        });
-      }catch{}
-    })());
-  }
-  await Promise.allSettled(jobs);
-}
-const animationAssetsReady=preloadAnimationAssets();
-
-let nanakoBase=null,nanakoEyes=null,nanakoMouth=null,nanakoMotion=null,nanakoAvatar=null;
+// NANAKO v11 STEP 1.88 — PYTHON-DIRECTED VRM-ONLY RENDERER
+// Python selects every semantic frame and its timing. JavaScript only applies
+// that plan to the VRM canvas; there is no image renderer or fallback.
+let nanakoMotion=null,nanakoAvatar=null;
 let animationRaf=0;
 let animationToken=0;
 let idlePlanTimer=0;
@@ -341,52 +134,14 @@ let postSpeechHoldTimer=0;
 let currentAnimationPlan=null;
 let cachedPythonIdlePlan=null;
 
-// Renderer cache: eye/base assets are written only when the semantic frame
-// actually changes. Mouth swaps must never cause Safari to reassign/repaint the
-// confused eye layer.
-let renderedBaseAsset="";
-let renderedEyeAsset="";
-let renderedMouthAsset="";
-
-function animationAsset(state, part, frame){
-  const emotion=ANIMATION_ASSETS[state]?state:"neutral";
-  if(part==="base")return ANIMATION_ASSETS[emotion].base;
-  const table=ANIMATION_ASSETS[emotion][part]||ANIMATION_ASSETS.neutral[part];
-  return table[frame]||table.open||table.closed;
-}
-
 function renderAnimationFrame(frame){
   if(!frame)return;
-  const emotion=ANIMATION_ASSETS[frame.emotion]?frame.emotion:"neutral";
-  const base=animationAsset(emotion,"base");
-  const eyes=animationAsset(emotion,"eyes",frame.eyes||"open");
-  const mouth=animationAsset(emotion,"mouth",frame.mouth||"closed");
-  if(nanakoBase&&renderedBaseAsset!==base){
-    nanakoBase.src=base;
-    renderedBaseAsset=base;
-  }
-  if(nanakoEyes&&renderedEyeAsset!==eyes){
-    nanakoEyes.src=eyes;
-    renderedEyeAsset=eyes;
-  }
-  if(nanakoMouth&&renderedMouthAsset!==mouth){
-    nanakoMouth.src=mouth;
-    renderedMouthAsset=mouth;
-  }
-
-  // These transform NUMBERS are generated by Python.
-  // JS only applies them to the display surface.
+  window.__nanakoPending3DFrame=frame;
+  if(window.nanako3DRenderer?.applyFrame)window.nanako3DRenderer.applyFrame(frame);
+  const emotion=String(frame.emotion||"neutral").trim().toLowerCase()||"neutral";
   const scale=Number.isFinite(Number(frame.scale))?Number(frame.scale):1;
   const y=Number.isFinite(Number(frame.translate_y))?Number(frame.translate_y):0;
   if(nanakoMotion)nanakoMotion.style.transform=`translateY(${y}px) scale(${scale})`;
-
-  // Step 1.38: Python alone chooses the laugh head bob. The full-canvas
-  // head and mouth PNGs share the same transform so lip alignment stays locked.
-  const headY=(emotion==="laughing"&&Number.isFinite(Number(frame.head_translate_y)))?Number(frame.head_translate_y):0;
-  const headTransform=headY?`translateY(${headY}px)`:"";
-  if(nanakoEyes)nanakoEyes.style.transform=headTransform;
-  if(nanakoMouth)nanakoMouth.style.transform=headTransform;
-
   if(nanakoAvatar){
     nanakoAvatar.dataset.emotion=emotion;
     nanakoAvatar.dataset.action=frame.action||"idle";
@@ -536,8 +291,8 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="11.8.6",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
-const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.86 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
+const CLIENT_BUILD="11.8.8",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
+const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.88 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_INSPECT=`${API}/api/mic/session/inspect`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
 const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
@@ -654,7 +409,7 @@ function memoryPayload(){
     user_name:persistentUserName||""
   };
 }
-async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,ok=!!(matched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • mic + animation + vision loaded`:matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
+async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.0-python-plan",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • 3D + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 1.88 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),styleValue:$("styleValue"),styleGrid:$("styleGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
@@ -1011,7 +766,7 @@ async function ensureMicHardware(){
   };
   if(ctx.audioWorklet&&window.AudioWorkletNode){
     try{
-      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.8.6");
+      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.8.8");
       micWorkletNode=new AudioWorkletNode(ctx,"nanako-mic-transport",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
       micWorkletNode.port.onmessage=ev=>{if(ev.data?.type==="audio"&&ev.data.samples)acceptAudioChunk(ev.data.samples)};
       micSource.connect(micWorkletNode);micWorkletNode.connect(ctx.destination);micWorkletUsing=true;return;
@@ -1157,7 +912,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.8.6] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.8.8] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1223,11 +978,7 @@ async function enterStartupSplash(){
   status("Nanako is greeting you...");
   cachedPythonIdlePlan=null;
   try{
-    await animationAssetsReady;
     nanakoAvatar=nanakoAvatar||document.getElementById("nanakoAvatar");
-    nanakoBase=nanakoBase||document.getElementById("nanakoBase");
-    nanakoEyes=nanakoEyes||document.getElementById("nanakoEyes");
-    nanakoMouth=nanakoMouth||document.getElementById("nanakoMouth");
     nanakoMotion=nanakoMotion||document.querySelector(".nanako-motion");
     renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
     if(!startupGreetingData)await fetchStartupGreeting();
@@ -1351,21 +1102,16 @@ async function boot(){
   setScore(0);quick();convButton();renderHistory();
   syncInstalledViewport();
   nanakoAvatar=document.getElementById("nanakoAvatar");
-  nanakoBase=document.getElementById("nanakoBase");
-  nanakoEyes=document.getElementById("nanakoEyes");
-  nanakoMouth=document.getElementById("nanakoMouth");
   nanakoMotion=document.querySelector(".nanako-motion");
-  await animationAssetsReady;
   if(e.jp)e.jp.textContent=rememberDetectedUserName()?`おかえり、${rememberDetectedUserName()}！`:`はじめまして！ななこです。`;
   renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
-  if(nanakoAvatar)nanakoAvatar.classList.add("face-ready");
   await requestIdleAnimation({preferCache:false});
   // Prepare and display the randomized greeting immediately, but the explicit
   // splash-screen Enter button provides the Safari-safe user gesture that lets
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 1.86 QWEN3.5-OMNI-PLUS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.88 QWEN3.5-OMNI-PLUS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();

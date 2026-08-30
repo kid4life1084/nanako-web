@@ -7,9 +7,10 @@
 .character-stage{position:relative;flex:1 1 auto;min-height:245px;border:1px solid #251d2e;border-radius:23px;overflow:hidden;background:radial-gradient(ellipse at 50% 38%,rgba(142,80,177,.34),transparent 62%),#16101f}
 .nanako-motion{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;transform-origin:50% 91%;will-change:transform}
 .nanako-avatar{position:relative;height:100%;width:min(100%,627px);max-width:100%;align-self:flex-end}
-.nanako-base{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none}
-.nanako-part{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;visibility:hidden;opacity:0;user-select:none;-webkit-user-drag:none;pointer-events:none}
-.nanako-avatar.face-ready .nanako-part{visibility:visible;opacity:1}
+.nanako-3d-canvas{position:absolute;z-index:5;inset:0;width:100%;height:100%;display:block;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.nanako-avatar.vrm-ready .nanako-3d-canvas{opacity:1}
+.nanako-avatar.vrm-error .nanako-3d-canvas{opacity:0}
+.nanako-3d-status{position:absolute;z-index:6;left:50%;bottom:14px;transform:translateX(-50%);max-width:88%;padding:6px 10px;border-radius:12px;background:rgba(10,7,14,.72);color:#cdbfd2;font-size:10px;white-space:nowrap;pointer-events:none}
 
 
 .user-transcript{position:absolute;left:16px;right:16px;bottom:13px;padding:10px 14px;border:1px solid #3c3045;border-radius:17px;background:rgba(11,9,16,.91);transition:opacity .45s}.user-transcript strong{display:block;color:#dc69f6;font-size:12px}.user-transcript span{color:#e7e2ea;font-size:14px}
@@ -56,10 +57,6 @@ html.app-layout .nanako-avatar{
   max-width:100%!important;max-height:100%!important;aspect-ratio:627/640!important;
   align-self:flex-end!important;
 }
-html.app-layout .nanako-base,
-html.app-layout .nanako-part{
-  width:100%!important;height:100%!important;object-fit:contain!important;object-position:center bottom!important;
-}
 
 /* Anchored inside NanaChat's fixed app canvas. During keyboard entry that canvas
    becomes the actual iOS visual viewport, so nothing can extend below it. */
@@ -94,9 +91,6 @@ html.app-layout.screen-short .conversation-stack .input-row{height:44px;}
 html.app-layout.screen-short .conversation-stack .conversation-button{height:46px;}
 html.app-layout.screen-short .conversation-stack .send-button{width:50px;}
 
-
-/* Step 1.38 layered laugh: Python drives head/mouth bob; artwork owns alignment. */
-.nanako-eyes,.nanako-mouth{transform-origin:50% 74%;will-change:transform;}
 
 /* Step 1.40: keyboard mode is a self-contained visible-viewport canvas. */
 html.app-layout.keyboard-open,html.app-layout.keyboard-open body{width:100%!important;height:100%!important;overflow:hidden!important;overscroll-behavior:none!important;}
@@ -154,3 +148,4 @@ html.portrait-lock-landscape .modal-backdrop{
 .camera-ask-button{margin-top:12px}
 .camera-privacy{margin-top:10px;color:#8f8797;font-size:12px;text-align:center}
 .awareness-video-sink{position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.001;pointer-events:none;z-index:0}
+.avatar-credit{margin-top:8px;padding-top:8px;border-top:1px solid #352b3e;color:#817889;font-size:9px}
