@@ -1,7 +1,7 @@
 (async()=>{
 "use strict";
 
-// Step 1.84 release gate is created inline by index.html, before any external
+// Step 1.85 release gate is created inline by index.html, before any external
 // JavaScript is loaded. It removes an older cache-first worker exactly once.
 if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 
@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.8.4",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.8.5",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -536,8 +536,8 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="11.8.4",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
-const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.84 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
+const CLIENT_BUILD="11.8.5",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
+const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.85 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_INSPECT=`${API}/api/mic/session/inspect`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
 const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
@@ -657,14 +657,15 @@ function memoryPayload(){
 async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,ok=!!(matched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • mic + animation + vision loaded`:matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
-const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",autoEffectiveLevel="",levelSwitchBusy=false,score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micSessionId="",micSessionGeneration=0,micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),styleValue:$("styleValue"),styleGrid:$("styleGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
+let level="auto",autoEffectiveLevel="",speechStyle="auto",autoEffectiveStyle="",settingSwitchBusy=false,score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micSessionId="",micSessionGeneration=0,micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 let micUploadedBytes=0,visionAnalysisCount=0,visionImageTokens=0;
 function updateResourceDiagnostics(){if(e.visionDiagnostic)e.visionDiagnostic.textContent=`Vision analyses: ${visionAnalysisCount} • image tokens: ${visionImageTokens}`;if(e.micDiagnostic)e.micDiagnostic.textContent=`Microphone uploaded: ${(micUploadedBytes/1024).toFixed(1)} KB • capture: ${micWorkletUsing?"continuous AudioWorklet":"continuous compatibility"} • VAD: Python`}
 function imageTokensFromUsage(value){let total=0;if(!value||typeof value!=="object")return 0;for(const [key,item] of Object.entries(value)){if(/image.*token/i.test(key)&&Number.isFinite(Number(item)))total+=Number(item);else if(item&&typeof item==="object")total+=imageTokensFromUsage(item)}return total}
 const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 const status=t=>e.status.textContent=t,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),label=l=>l==="auto"?"Auto":l.toUpperCase();
 function updateLevelDisplay(){const shown=level==="auto"&&autoEffectiveLevel?`Auto · ${autoEffectiveLevel.toUpperCase()}`:label(level);e.levelBadge.textContent=e.levelValue.textContent=shown}
+function updateStyleDisplay(){e.styleValue.textContent=speechStyle==="auto"&&autoEffectiveStyle?`Auto · ${autoEffectiveStyle[0].toUpperCase()}${autoEffectiveStyle.slice(1)}`:`${speechStyle[0].toUpperCase()}${speechStyle.slice(1)}`}
 function setScore(v){score=clamp(Math.round(Number(v)||0),0,100);let w=`${score}%`;e.scoreText.textContent=score;e.scoreFill.style.width=w;e.settingsScore.textContent=`${score} / 100`;e.settingsScoreFill.style.width=w}
 function error(m){e.err.textContent=String(m||"Something went wrong.");e.err.hidden=false;clearTimeout(error.t);error.t=setTimeout(()=>e.err.hidden=true,6000)}
 function transcript(t){clearTimeout(transcriptTimer);if(!t){e.userTranscript.hidden=true;return}e.userTranscriptText.textContent=t;e.userTranscript.style.opacity="1";e.userTranscript.hidden=false;transcriptTimer=setTimeout(()=>{e.userTranscript.style.opacity="0";setTimeout(()=>e.userTranscript.hidden=true,420)},2200)}
@@ -683,7 +684,7 @@ function renderHistory(){e.historyList.innerHTML="";e.historyEmpty.hidden=histor
 function quick(){e.awareness.classList.toggle("active",awarenessActive);e.ro.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊"}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user,options={}){mergeMemoryFacts(d?.memory_facts);mergeLearnerMemory(d?.memory_updates);if(level==="auto"){const inferred=String(d?.effective_response_level||d?.analysis?.estimated_jlpt_level||"").toLowerCase();autoEffectiveLevel=/^n[1-5]$/.test(inferred)?inferred:"";updateLevelDisplay()}e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);if(!options.spontaneous)addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=String(d?.animation_plan?.emotion||"neutral").trim().toLowerCase()||"neutral";if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
+async function apply(d,user,options={}){mergeMemoryFacts(d?.memory_facts);mergeLearnerMemory(d?.memory_updates);if(level==="auto"){const inferred=String(d?.effective_response_level||d?.analysis?.estimated_jlpt_level||"").toLowerCase();autoEffectiveLevel=/^n[1-5]$/.test(inferred)?inferred:"";updateLevelDisplay()}if(speechStyle==="auto"){const inferredStyle=String(d?.effective_speech_style||d?.analysis?.estimated_speech_style||"").toLowerCase();autoEffectiveStyle=/^(?:casual|formal)$/.test(inferredStyle)?inferredStyle:"";updateStyleDisplay()}e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");let s=Number(d?.conversation_score??d?.score??d?.analysis?.conversation_score);if(Number.isFinite(s))setScore(s);let x=correction(d);showCorrection(x);if(!options.spontaneous)addHistory("user",user,x);addHistory("assistant",d?.reply||"");let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";const idleEmotion=String(d?.animation_plan?.emotion||"neutral").trim().toLowerCase()||"neutral";if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -722,7 +723,7 @@ async function playStartupGreetingIfReady(fromGesture=false){
   })();
   try{return await startupGreetingPlayPromise;}finally{startupGreetingPlayPromise=null;}
 }
-async function send(){let t=e.input.value.trim();if(!t||busy)return;rememberUserNameFromText(t);busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,voice_output:true,...memoryPayload()})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
+async function send(){let t=e.input.value.trim();if(!t||busy)return;rememberUserNameFromText(t);busy=true;status("Nanako is thinking...");try{let r=await fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,level,speech_style:speechStyle,voice_output:true,...memoryPayload()})}),d=await jsonResp(r);e.input.value="";transcript(t);await apply(d,t)}catch(x){console.error(x);error(x.message);status("Chat failed.")}finally{busy=false;if(!currentAudio&&!active)status("Ready to chat")}}
 
 let awarenessActive=false,awarenessStream=null,awarenessResumeAfterObject=false;
 function captureAwarenessFrame(){const video=e.awarenessVideo;if(!video?.videoWidth||!video?.videoHeight)throw new Error("The visual-awareness camera is not ready.");const maxSide=480,scale=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));canvas.getContext("2d",{alpha:false}).drawImage(video,0,0,canvas.width,canvas.height);return canvas.toDataURL("image/jpeg",.68)}
@@ -734,7 +735,7 @@ let cameraStream=null,cameraVoiceMode=false,cameraStartedMic=false;
 async function closeCamera(){cameraVoiceMode=false;if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null}if(e.cameraVideo)e.cameraVideo.srcObject=null;if(e.cameraModal)e.cameraModal.hidden=true;if(e.cameraStatus)e.cameraStatus.textContent="Camera is off";if(cameraStartedMic){cameraStartedMic=false;await stopMode()}if(awarenessResumeAfterObject){awarenessResumeAfterObject=false;await startVisualAwareness()}}
 async function openCamera(){if(busy)return;if(!navigator.mediaDevices?.getUserMedia){error("Camera access is not supported in this browser.");return}if(awarenessActive){awarenessResumeAfterObject=true;await stopVisualAwareness({silent:true})}e.cameraModal.hidden=false;e.cameraStatus.textContent="Starting camera...";try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:960}},audio:false});e.cameraVideo.srcObject=cameraStream;await e.cameraVideo.play()}catch(x){console.error(x);e.cameraStatus.textContent="Camera permission was not granted";error("Allow camera access, then try again.");if(awarenessResumeAfterObject){awarenessResumeAfterObject=false;await startVisualAwareness()}return}cameraVoiceMode=true;cameraStartedMic=!active;if(!active){e.cameraStatus.textContent="Starting microphone...";await startMode()}if(active){e.cameraStatus.textContent="Listening — say これは何？ or tap Ask Nanako"}else{e.cameraStatus.textContent="Microphone unavailable — tap Ask Nanako"}}
 function captureCameraFrame(){const video=e.cameraVideo;if(!video?.videoWidth||!video?.videoHeight)throw new Error("The camera is not ready yet.");const maxSide=960,scale=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));canvas.getContext("2d",{alpha:false}).drawImage(video,0,0,canvas.width,canvas.height);return canvas.toDataURL("image/jpeg",.82)}
-async function askCamera(){if(busy)return;let question=String(e.cameraQuestion?.value||"").trim()||"これは何？";busy=true;micCapturePaused=true;micQueue=[];micBatch=[];e.askCamera.disabled=true;e.cameraStatus.textContent="Nanako is looking...";status("Nanako is looking...");try{if(active&&micSessionId)await restartPythonMicSession();const image_data_url=captureCameraFrame();const r=await fetch(VISION_IDENTIFY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image_data_url,question,level,client_build:CLIENT_BUILD})});const d=await jsonResp(r);transcript(question);e.cameraStatus.textContent="Nanako is answering...";await apply(d,question)}catch(x){console.error(x);error(x.message);e.cameraStatus.textContent="Could not identify the object. Try again.";status("Vision failed.");micCapturePaused=false}finally{busy=false;e.askCamera.disabled=false;if(!currentAudio&&active)setTimeout(begin,40);else if(!currentAudio&&!active)status("Ready to chat")}}
+async function askCamera(){if(busy)return;let question=String(e.cameraQuestion?.value||"").trim()||"これは何？";busy=true;micCapturePaused=true;micQueue=[];micBatch=[];e.askCamera.disabled=true;e.cameraStatus.textContent="Nanako is looking...";status("Nanako is looking...");try{if(active&&micSessionId)await restartPythonMicSession();const image_data_url=captureCameraFrame();const r=await fetch(VISION_IDENTIFY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image_data_url,question,level,speech_style:speechStyle,client_build:CLIENT_BUILD})});const d=await jsonResp(r);transcript(question);e.cameraStatus.textContent="Nanako is answering...";await apply(d,question)}catch(x){console.error(x);error(x.message);e.cameraStatus.textContent="Could not identify the object. Try again.";status("Vision failed.");micCapturePaused=false}finally{busy=false;e.askCamera.disabled=false;if(!currentAudio&&active)setTimeout(begin,40);else if(!currentAudio&&!active)status("Ready to chat")}}
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
 function audioBlobUrlFromBase64(b,m){let v=String(b||"").trim();if(!v)return"";if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);const bin=atob(v);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:m||"audio/wav"}))}
 function revokeCurrentAudioObjectUrl(){if(currentAudioObjectUrl){try{URL.revokeObjectURL(currentAudioObjectUrl)}catch{}currentAudioObjectUrl=""}}
@@ -1010,7 +1011,7 @@ async function ensureMicHardware(){
   };
   if(ctx.audioWorklet&&window.AudioWorkletNode){
     try{
-      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.8.4");
+      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.8.5");
       micWorkletNode=new AudioWorkletNode(ctx,"nanako-mic-transport",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
       micWorkletNode.port.onmessage=ev=>{if(ev.data?.type==="audio"&&ev.data.samples)acceptAudioChunk(ev.data.samples)};
       micSource.connect(micWorkletNode);micWorkletNode.connect(ctx.destination);micWorkletUsing=true;return;
@@ -1125,7 +1126,7 @@ async function processPythonMicTurn(turnId){
   if(!active||!micSessionId)return;
   busy=true;status("Nanako is thinking...");
   try{
-    const payload={session_id:micSessionId,turn_id:turnId,level,...memoryPayload()};let frontVisionAttached=false;
+    const payload={session_id:micSessionId,turn_id:turnId,level,speech_style:speechStyle,...memoryPayload()};let frontVisionAttached=false;
     const inspectResponse=await fetch(MIC_INSPECT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:micSessionId,turn_id:turnId,client_build:CLIENT_BUILD})});
     const inspection=await jsonResp(inspectResponse),inspectedTranscript=String(inspection?.transcript||"").trim();
     console.log(`[Nanako Mic inspect] provider=${inspection?.asr_provider||"unknown"} • visual=${!!inspection?.visual_request} • transcript=${JSON.stringify(inspectedTranscript)}`);
@@ -1135,7 +1136,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.8.4] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.8.5] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1233,36 +1234,61 @@ async function stopMode(){
 }
 async function reset(){if(!window.confirm("Forget Nanako’s saved conversation, preferences, dislikes, and Japanese progress? This cannot be undone."))return;await stopVisualAwareness({silent:true});await stopMode();try{await fetch(RESET,{method:"POST"})}catch{}history.length=0;persistentFacts=[];learnerMemory={preferences:[],topic_affinities:[],language_progress:[]};persistentUserName="";startupGreetingData=null;startupGreetingPlayed=false;startupGreetingLoading=null;startupGreetingPlayPromise=null;startupGestureArmed=false;startupEnterDone=false;try{localStorage.removeItem(MEMORY_KEY)}catch{}renderHistory();setScore(0);e.jp.textContent="はじめまして！ななこです。今日は元気？";e.roText.textContent=e.enText.textContent="";e.corr.hidden=e.settings.hidden=e.historyModal.hidden=true;const splash=document.getElementById("startupSplash");if(splash)splash.hidden=false;status("Ready for a fresh start");void fetchStartupGreeting()}
 
+async function restartMicForSettingChange(settingLabel){
+  if(!active)return;
+  status(`Switching ${settingLabel}...`);
+  userSpeechActive=false;micCapturePaused=true;micQueue=[];micBatch=[];
+  await stopAudio(false);
+  micCapturePaused=true;
+  await restartPythonMicSession();
+  await ensureMicHardware();
+  try{micWorkletNode?.port.postMessage({type:"reset"})}catch{}
+  micCapturePaused=false;
+  status("Listening...");
+}
+
+function disableSettingButtons(disabled){
+  e.levelGrid.querySelectorAll("[data-level]").forEach(button=>button.disabled=disabled);
+  e.styleGrid.querySelectorAll("[data-style]").forEach(button=>button.disabled=disabled);
+}
+
 async function selectJapaneseLevel(nextLevel){
   const next=String(nextLevel||"auto").toLowerCase();
-  if(!/^(?:auto|n[1-5])$/.test(next)||levelSwitchBusy)return;
+  if(!/^(?:auto|n[1-5])$/.test(next)||settingSwitchBusy)return;
   if(next===level){updateLevelDisplay();return}
-  levelSwitchBusy=true;
-  e.levelGrid.querySelectorAll("[data-level]").forEach(button=>button.disabled=true);
+  settingSwitchBusy=true;disableSettingButtons(true);
   try{
     level=next;autoEffectiveLevel="";
     e.levelGrid.querySelectorAll("[data-level]").forEach(button=>button.classList.toggle("active",button.dataset.level===level));
     updateLevelDisplay();
-    if(!active)return;
-    status(`Switching to ${label(level)}...`);
-    userSpeechActive=false;micCapturePaused=true;micQueue=[];micBatch=[];
-    await stopAudio(false);
-    micCapturePaused=true;
-    await restartPythonMicSession();
-    await ensureMicHardware();
-    try{micWorkletNode?.port.postMessage({type:"reset"})}catch{}
-    micCapturePaused=false;
-    status("Listening...");
+    await restartMicForSettingChange(`to ${label(level)}`);
     console.log(`[Nanako Level] ${label(level)} active • microphone session restarted safely`);
   }catch(err){
     console.error("[Nanako Level switch]",err);error("The level changed, but the microphone could not restart. Tap End Conversation, then Start Conversation.");status("Microphone restart needed");
   }finally{
-    levelSwitchBusy=false;
-    e.levelGrid.querySelectorAll("[data-level]").forEach(button=>button.disabled=false);
+    settingSwitchBusy=false;disableSettingButtons(false);
   }
 }
 
-e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.camera.onclick=openCamera;e.closeCamera.onclick=closeCamera;e.askCamera.onclick=askCamera;e.cameraModal.onclick=x=>{if(x.target===e.cameraModal)void closeCamera()};e.awareness.onclick=toggleVisualAwareness;e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{const button=x.target.closest("[data-level]");if(button)void selectJapaneseLevel(button.dataset.level)};e.reset.onclick=reset;
+async function selectSpeechStyle(nextStyle){
+  const next=String(nextStyle||"auto").toLowerCase();
+  if(!/^(?:auto|casual|formal)$/.test(next)||settingSwitchBusy)return;
+  if(next===speechStyle){updateStyleDisplay();return}
+  settingSwitchBusy=true;disableSettingButtons(true);
+  try{
+    speechStyle=next;autoEffectiveStyle="";
+    e.styleGrid.querySelectorAll("[data-style]").forEach(button=>button.classList.toggle("active",button.dataset.style===speechStyle));
+    updateStyleDisplay();
+    await restartMicForSettingChange(`style to ${speechStyle}`);
+    console.log(`[Nanako Style] ${speechStyle} active • microphone session restarted safely`);
+  }catch(err){
+    console.error("[Nanako Style switch]",err);error("The speaking style changed, but the microphone could not restart. Tap End Conversation, then Start Conversation.");status("Microphone restart needed");
+  }finally{
+    settingSwitchBusy=false;disableSettingButtons(false);
+  }
+}
+
+e.send.onclick=send;e.input.onkeydown=x=>{if(x.key==="Enter"){x.preventDefault();send()}};e.camera.onclick=openCamera;e.closeCamera.onclick=closeCamera;e.askCamera.onclick=askCamera;e.cameraModal.onclick=x=>{if(x.target===e.cameraModal)void closeCamera()};e.awareness.onclick=toggleVisualAwareness;e.ro.onclick=()=>{showRO=!showRO;quick()};e.en.onclick=()=>{showEN=!showEN;quick()};e.mute.onclick=async()=>{muted=!muted;quick();if(muted&&currentAudio)await stopAudio(active)};e.conv.onclick=async()=>{active?await stopMode():await startMode()};e.menu.onclick=()=>e.settings.hidden=false;e.closeSettings.onclick=()=>e.settings.hidden=true;e.historyBtn.onclick=()=>{e.settings.hidden=true;e.historyModal.hidden=false};e.closeHistory.onclick=()=>e.historyModal.hidden=true;e.settings.onclick=x=>{if(x.target===e.settings)e.settings.hidden=true};e.historyModal.onclick=x=>{if(x.target===e.historyModal)e.historyModal.hidden=true};e.levelGrid.onclick=x=>{const button=x.target.closest("[data-level]");if(button)void selectJapaneseLevel(button.dataset.level)};e.styleGrid.onclick=x=>{const button=x.target.closest("[data-style]");if(button)void selectSpeechStyle(button.dataset.style)};e.reset.onclick=reset;
 window.addEventListener("beforeunload",()=>{
   stopAnimationPlan();
   active=false;micCapturePaused=true;
@@ -1310,7 +1336,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 1.84 QWEN3.5-OMNI-PLUS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.85 QWEN3.5-OMNI-PLUS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();

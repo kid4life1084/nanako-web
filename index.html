@@ -12,10 +12,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
-<link rel="manifest" href="./manifest.webmanifest?v=11.8.4">
+<link rel="manifest" href="./manifest.webmanifest?v=11.8.5">
 <script>
 window.__NANAKO_RELEASE_GATE__=(async()=>{
-  const epoch="11.8.4",key="nanako_release_epoch";
+  const epoch="11.8.5",key="nanako_release_epoch";
   // Run cleanup on every document load. This deliberately does not trust a
   // previously stored epoch because iOS/Chrome can restore an old page while
   // keeping newer localStorage.
@@ -25,7 +25,7 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   try{const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);history.replaceState(null,"",url.href)}}catch{}
 })();
 </script>
-<link rel="stylesheet" href="./static/style.css?v=11.8.4">
+<link rel="stylesheet" href="./static/style.css?v=11.8.5">
 <link rel="preload" as="image" href="./static/characters/nanako/states/neutral/base.png">
 <style>
 .startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 22%,rgba(109,52,136,.24),transparent 38%),linear-gradient(180deg,#15101d,#0b0910);}
@@ -44,7 +44,7 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   <div class="startup-card">
     <div class="startup-logo-circle">N</div>
     <div class="startup-title-ja">NanaChat</div>
-    <div id="startupVersion" class="startup-version">Version 1.84</div>
+    <div id="startupVersion" class="startup-version">Version 1.85</div>
     <button id="startupEnterButton" class="startup-enter-button">Enter</button>
   </div>
 </div>
@@ -96,9 +96,13 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 <div id="levelGrid" class="level-grid">
 <button data-level="auto" class="level-choice active">Auto</button><button data-level="n5" class="level-choice">N5</button><button data-level="n4" class="level-choice">N4</button><button data-level="n3" class="level-choice">N3</button><button data-level="n2" class="level-choice">N2</button><button data-level="n1" class="level-choice">N1</button>
 </div></div>
+<div class="settings-block"><div class="settings-row"><span>Speaking style</span><strong id="styleValue">Auto</strong></div>
+<div id="styleGrid" class="level-grid">
+<button data-style="auto" class="level-choice active">Auto</button><button data-style="casual" class="level-choice">Casual</button><button data-style="formal" class="level-choice">Formal</button>
+</div></div>
 <div class="settings-block"><div class="settings-row"><span>Conversation score</span><strong id="settingsScore">0 / 100</strong></div><div class="settings-progress"><div id="settingsScoreFill"></div></div></div>
 <div class="settings-block"><div class="settings-label">Voice debug</div><div id="debugMic">Mic: —</div><div id="debugRoom">Room: —</div><div id="debugSpeech">Speech: Waiting</div><div id="debugTurn">Turn: 0.0 sec</div></div>
-<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.84 • Qwen3.5-Omni-Plus • loading JavaScript runtime…</div><div id="runtimeStatus">Python runtime: checking…</div></div>
+<div class="settings-block"><div class="settings-label">Build</div><div id="buildMarker">v11 Step 1.85 • Qwen3.5-Omni-Plus • loading JavaScript runtime…</div><div id="runtimeStatus">Python runtime: checking…</div></div>
 <div class="settings-block"><div class="settings-label">Live resource diagnostics</div><div id="visionDiagnostic">Vision analyses: 0 • image tokens: 0</div><div id="micDiagnostic">Microphone uploaded: 0 KB • gate: waiting</div></div>
 <button id="resetButton" class="reset-button">Forget Everything &amp; Start Fresh</button>
 </section></div>
@@ -119,5 +123,5 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<script src="./static/app.js?v=11.8.4" defer></script>
+<script src="./static/app.js?v=11.8.5" defer></script>
 </body></html>
