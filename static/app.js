@@ -1,7 +1,7 @@
 (async()=>{
 "use strict";
 
-// Step 1.85 release gate is created inline by index.html, before any external
+// Step 1.86 release gate is created inline by index.html, before any external
 // JavaScript is loaded. It removes an older cache-first worker exactly once.
 if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 
@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.8.5",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.8.6",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -536,8 +536,8 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="11.8.5",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
-const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.85 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
+const CLIENT_BUILD="11.8.6",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
+const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.86 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_INSPECT=`${API}/api/mic/session/inspect`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
 const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
@@ -658,7 +658,7 @@ async function checkPythonRuntime(){const el=document.getElementById("runtimeSta
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),styleValue:$("styleValue"),styleGrid:$("styleGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",autoEffectiveLevel="",speechStyle="auto",autoEffectiveStyle="",settingSwitchBusy=false,score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micSessionId="",micSessionGeneration=0,micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+let level="auto",autoEffectiveLevel="",speechStyle="auto",autoEffectiveStyle="",settingSwitchBusy=false,score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micSessionId="",micSessionGeneration=0,activeMicTurnController=null,micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 let micUploadedBytes=0,visionAnalysisCount=0,visionImageTokens=0;
 function updateResourceDiagnostics(){if(e.visionDiagnostic)e.visionDiagnostic.textContent=`Vision analyses: ${visionAnalysisCount} • image tokens: ${visionImageTokens}`;if(e.micDiagnostic)e.micDiagnostic.textContent=`Microphone uploaded: ${(micUploadedBytes/1024).toFixed(1)} KB • capture: ${micWorkletUsing?"continuous AudioWorklet":"continuous compatibility"} • VAD: Python`}
 function imageTokensFromUsage(value){let total=0;if(!value||typeof value!=="object")return 0;for(const [key,item] of Object.entries(value)){if(/image.*token/i.test(key)&&Number.isFinite(Number(item)))total+=Number(item);else if(item&&typeof item==="object")total+=imageTokensFromUsage(item)}return total}
@@ -1011,7 +1011,7 @@ async function ensureMicHardware(){
   };
   if(ctx.audioWorklet&&window.AudioWorkletNode){
     try{
-      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.8.5");
+      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.8.6");
       micWorkletNode=new AudioWorkletNode(ctx,"nanako-mic-transport",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
       micWorkletNode.port.onmessage=ev=>{if(ev.data?.type==="audio"&&ev.data.samples)acceptAudioChunk(ev.data.samples)};
       micSource.connect(micWorkletNode);micWorkletNode.connect(ctx.destination);micWorkletUsing=true;return;
@@ -1081,6 +1081,12 @@ function updateServerMicDebug(m){
 }
 
 async function restartPythonMicSession(){
+  // Invalidate the whole inspect/respond chain, not only queued PCM. Otherwise
+  // an old-level answer can arrive after a settings switch and overwrite/play
+  // on top of the current conversation.
+  try{activeMicTurnController?.abort()}catch{}
+  activeMicTurnController=null;
+  busy=false;
   const old=micSessionId;micSessionGeneration++;micSessionId="";micQueue=[];micBatch=[];
   if(old){try{await fetch(MIC_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:old})})}catch{}}
   await startPythonMicSession();
@@ -1124,24 +1130,40 @@ async function pumpMicQueue(){
 
 async function processPythonMicTurn(turnId){
   if(!active||!micSessionId)return;
+  const sessionAtTurn=micSessionId,generationAtTurn=micSessionGeneration;
+  try{activeMicTurnController?.abort()}catch{}
+  const turnController=new AbortController();activeMicTurnController=turnController;
+  const turnIsCurrent=()=>active&&micSessionId===sessionAtTurn&&micSessionGeneration===generationAtTurn&&activeMicTurnController===turnController&&!turnController.signal.aborted;
   busy=true;status("Nanako is thinking...");
   try{
-    const payload={session_id:micSessionId,turn_id:turnId,level,speech_style:speechStyle,...memoryPayload()};let frontVisionAttached=false;
-    const inspectResponse=await fetch(MIC_INSPECT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:micSessionId,turn_id:turnId,client_build:CLIENT_BUILD})});
-    const inspection=await jsonResp(inspectResponse),inspectedTranscript=String(inspection?.transcript||"").trim();
-    console.log(`[Nanako Mic inspect] provider=${inspection?.asr_provider||"unknown"} • visual=${!!inspection?.visual_request} • transcript=${JSON.stringify(inspectedTranscript)}`);
-    if(inspectedTranscript)payload.transcript_override=inspectedTranscript;
+    const payload={session_id:sessionAtTurn,turn_id:turnId,level,speech_style:speechStyle,...memoryPayload()};let frontVisionAttached=false;
+    let inspection=null;
+    // Inspection exists only to detect the explicit front-camera look phrase.
+    // With the eye off (including normal and rear-object-camera conversation),
+    // send the original audio directly to Omni in one pass: lower latency,
+    // lower cost, and no lossy intermediate transcript.
+    if(awarenessActive&&!cameraVoiceMode){
+      const inspectResponse=await fetch(MIC_INSPECT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sessionAtTurn,turn_id:turnId,client_build:CLIENT_BUILD}),signal:turnController.signal});
+      inspection=await jsonResp(inspectResponse);
+      const inspectedTranscript=String(inspection?.transcript||"").trim();
+      if(!turnIsCurrent())throw new DOMException("Stale microphone turn","AbortError");
+      console.log(`[Nanako Mic inspect] provider=${inspection?.asr_provider||"unknown"} • visual=${!!inspection?.visual_request} • transcript=${JSON.stringify(inspectedTranscript)}`);
+      if(inspectedTranscript)payload.transcript_override=inspectedTranscript;
+    }else{
+      console.log("[Nanako Mic] direct single-pass audio turn (vision inspection not required)");
+    }
     if(cameraVoiceMode&&!e.cameraModal.hidden){payload.image_data_url=captureCameraFrame();payload.trigger="rear_object_camera";e.cameraStatus.textContent="Nanako is looking and listening..."}
     else if(inspection?.visual_request){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.8.5] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.8.6] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
-    const r=await fetch(MIC_RESPOND,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    const r=await fetch(MIC_RESPOND,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:turnController.signal});
     const d=await jsonResp(r);
+    if(!turnIsCurrent())throw new DOMException("Stale microphone turn","AbortError");
     if(frontVisionAttached&&d?.mic?.camera_frame_attached!==true)throw new Error("Vision safety check failed: the backend did not confirm the captured frame.");
     if(frontVisionAttached){visionAnalysisCount++;visionImageTokens+=imageTokensFromUsage(d?.omni_usage||d?.model_usage);updateResourceDiagnostics()}
     const t=String(d?.transcript||"");
@@ -1153,8 +1175,11 @@ async function processPythonMicTurn(turnId){
     if(cameraVoiceMode)e.cameraStatus.textContent="Nanako is answering...";
     await apply(d,t);
   }catch(x){
+    if(x?.name==="AbortError"||!turnIsCurrent()){console.log("[Nanako Mic] discarded stale turn after session/setting change");return}
     console.error(x);error(x.message);status("Voice turn failed");if(cameraVoiceMode)e.cameraStatus.textContent="Please try saying これは何？ again";micCapturePaused=false;
-  }finally{busy=false;if(active&&!currentAudio){status("Listening...");setTimeout(begin,40)}}
+  }finally{
+    if(activeMicTurnController===turnController){activeMicTurnController=null;busy=false;if(active&&!currentAudio){status("Listening...");setTimeout(begin,40)}}
+  }
 }
 
 async function begin(){
@@ -1169,6 +1194,7 @@ async function begin(){
 }
 
 async function stopMicBridge(){
+  try{activeMicTurnController?.abort()}catch{}activeMicTurnController=null;micSessionGeneration++;busy=false;
   micCapturePaused=true;userSpeechActive=false;micQueue=[];micBatch=[];
   const sid=micSessionId;micSessionId="";
   try{micProcessor?.disconnect()}catch{}
@@ -1243,6 +1269,9 @@ async function restartMicForSettingChange(settingLabel){
   await restartPythonMicSession();
   await ensureMicHardware();
   try{micWorkletNode?.port.postMessage({type:"reset"})}catch{}
+  // A language-setting change is not an emotional event. Do not carry an old
+  // embarrassed/scared/etc. idle pose into the newly configured session.
+  returnToPythonIdle({emotion:"neutral"});
   micCapturePaused=false;
   status("Listening...");
 }
@@ -1336,7 +1365,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 1.85 QWEN3.5-OMNI-PLUS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.86 QWEN3.5-OMNI-PLUS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
