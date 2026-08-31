@@ -1,4 +1,4 @@
-// NanaChat Step 1.90 stale-turn-safe adaptive-JLPT/register network-only worker.
+// NanaChat Step 1.92 baked-preset-only network-first worker.
 const BUILD="nanachat-step1-90-vrm-terminal-close-network-only";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys()){if(/^(?:nanachat|nanako)/i.test(k))await caches.delete(k)}await self.clients.claim();})()));
