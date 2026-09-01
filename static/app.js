@@ -1,7 +1,7 @@
 (async()=>{
 "use strict";
 
-// Step 2.01 release gate is created inline by index.html, before any external
+// Step 2.02 release gate is created inline by index.html, before any external
 // JavaScript is loaded. It removes an older cache-first worker exactly once.
 if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 
@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.1",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.2",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -123,7 +123,7 @@ try{
   }
 }catch{}
 // ============================================================
-// NANAKO v11 STEP 2.01 — STABLE VOICE RECOVERY
+// NANAKO v11 STEP 2.02 — STABLE VOICE RECOVERY
 // Python selects every semantic frame and its timing. JavaScript only applies
 // that plan to the VRM canvas; there is no image renderer or fallback.
 let nanakoMotion=null,nanakoAvatar=null;
@@ -161,17 +161,17 @@ async function loadProductionBodyAnimations(){
   if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
   bodyAnimationsLoading=(async()=>{
     const result=await window.nanako3DRenderer.loadBodyAnimations({
-      neutral:"./static/animations/nanako_idle.fbx?v=12.0.1",
-      angry:"./static/animations/nanako_angry.fbx?v=12.0.1",
-      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.1",
-      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.1"
+      neutral:"./static/animations/nanako_idle.fbx?v=12.0.2",
+      angry:"./static/animations/nanako_angry.fbx?v=12.0.2",
+      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.2",
+      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.2"
     });
     const loaded=new Set((result?.loaded||[]).map(item=>item.name));
     bodyAnimationsLoaded=["neutral","angry","thinking","clapping"].every(name=>loaded.has(name));
     if(!bodyAnimationsLoaded)throw new Error(`Only ${loaded.size}/4 Nanako body animations loaded.`);
     currentBodyMotion="";
     syncBodyMotionForFrame({body_motion:pendingBodyMotion,emotion:"neutral"});
-    console.log("[Nanako 3D] Step 2.01 body animations ready: neutral, angry, thinking, clapping");
+    console.log("[Nanako 3D] Step 2.02 body animations ready: neutral, angry, thinking, clapping");
     return true;
   })().catch(err=>{bodyAnimationsLoading=null;console.error("[Nanako 3D body animation load]",err);return false});
   return bodyAnimationsLoading;
@@ -233,7 +233,7 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
     let elapsed=mediaClock
       ? Math.max(0,Number(mediaClock.currentTime||0)*1000)
       : now-started;
-    // Step 2.01: every spoken plan follows the complete decoded media duration.
+    // Step 2.02: every spoken plan follows the complete decoded media duration.
     // If mobile decoding reports a longer duration than Python's WAV timeline,
     // proportionally stretch the complete plan instead of freezing on its final
     // frame while Nanako is still audibly speaking.
@@ -366,8 +366,8 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.1",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
-const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 2.01 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
+const CLIENT_BUILD="12.0.2",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
+const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 2.02 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_INSPECT=`${API}/api/mic/session/inspect`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
 const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
@@ -484,11 +484,11 @@ function memoryPayload(){
     user_name:persistentUserName||""
   };
 }
-async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • 3D + FBX motion + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 2.01 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
+async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • 3D + FBX motion + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 2.02 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),styleValue:$("styleValue"),styleGrid:$("styleGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",autoEffectiveLevel="",speechStyle="auto",autoEffectiveStyle="",settingSwitchBusy=false,score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micSessionId="",micSessionGeneration=0,activeMicTurnController=null,micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+let level="auto",autoEffectiveLevel="",speechStyle="auto",autoEffectiveStyle="",settingSwitchBusy=false,score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micSessionId="",micSessionGeneration=0,activeMicTurnController=null,micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false,micZeroChunkCount=0,micHardwareRecoveryBusy=false,micLastHardwareRecoveryAt=0;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 let micUploadedBytes=0,visionAnalysisCount=0,visionImageTokens=0;
 function updateResourceDiagnostics(){if(e.visionDiagnostic)e.visionDiagnostic.textContent=`Vision analyses: ${visionAnalysisCount} • image tokens: ${visionImageTokens}`;if(e.micDiagnostic)e.micDiagnostic.textContent=`Microphone uploaded: ${(micUploadedBytes/1024).toFixed(1)} KB • capture: ${micWorkletUsing?"continuous AudioWorklet":"continuous compatibility"} • VAD: Python`}
 function imageTokensFromUsage(value){let total=0;if(!value||typeof value!=="object")return 0;for(const [key,item] of Object.entries(value)){if(/image.*token/i.test(key)&&Number.isFinite(Number(item)))total+=Number(item);else if(item&&typeof item==="object")total+=imageTokensFromUsage(item)}return total}
@@ -828,13 +828,11 @@ async function play(b,m,animationPlan=null,options={}){
 async function ensureMicHardware(){
   if(stream&&stream.getTracks().some(t=>t.readyState==="live")&&ctx&&(micProcessor||micWorkletNode))return;
   if(!navigator.mediaDevices?.getUserMedia)throw new Error("Microphone access requires HTTPS.");
-  const supported=navigator.mediaDevices.getSupportedConstraints?.()||{};
   const audioConstraints={echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1};
-  // Step 1.65: request browser-level voice isolation where Safari/iOS exposes
-  // it, while remaining fully compatible with browsers that do not. Python still
-  // owns VAD/turn detection; this only asks the phone to deliver cleaner PCM.
-  if(supported.voiceIsolation)audioConstraints.voiceIsolation=true;
+  // Keep the request to standard WebRTC constraints. Chrome/iOS may advertise
+  // voiceIsolation yet return a permanently zeroed channel after output routing.
   stream=await navigator.mediaDevices.getUserMedia({audio:audioConstraints});
+  for(const track of stream.getAudioTracks())track.onmute=()=>{if(active&&!micCapturePaused)void recoverDigitallySilentMic()};
   const AC=window.AudioContext||window.webkitAudioContext;
   if(!AC)throw new Error("Web Audio is not supported by this browser.");
   ctx=new AC();
@@ -842,19 +840,26 @@ async function ensureMicHardware(){
   micSource=ctx.createMediaStreamSource(stream);
   const acceptAudioChunk=input=>{
     if(!active||micCapturePaused||!micSessionId)return;
+    let peak=0;
+    for(let i=0;i<input.length;i++)peak=Math.max(peak,Math.abs(Number(input[i])||0));
+    if(peak<=1e-7){
+      micZeroChunkCount++;
+      // A real phone microphone always has a measurable analogue noise floor.
+      // Repeated exact zeroes mean Chrome's capture graph is alive but detached
+      // from the physical microphone. Do not upload fake silence to Python.
+      if(micZeroChunkCount>=20)void recoverDigitallySilentMic();
+      return;
+    }
+    micZeroChunkCount=0;
     const samples=resampleMono(input,ctx.sampleRate,MIC_TARGET_RATE);
     for(let i=0;i<samples.length;i++)micBatch.push(samples[i]);
     while(micBatch.length>=MIC_BATCH_SAMPLES){const batch=micBatch.splice(0,MIC_BATCH_SAMPLES);micQueue.push(floatToPcm16(batch));}
     if(micQueue.length>8)micQueue.splice(0,micQueue.length-8);pumpMicQueue();
   };
-  if(ctx.audioWorklet&&window.AudioWorkletNode){
-    try{
-      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=12.0.1");
-      micWorkletNode=new AudioWorkletNode(ctx,"nanako-mic-transport",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
-      micWorkletNode.port.onmessage=ev=>{if(ev.data?.type==="audio"&&ev.data.samples)acceptAudioChunk(ev.data.samples)};
-      micSource.connect(micWorkletNode);micWorkletNode.connect(ctx.destination);micWorkletUsing=true;return;
-    }catch(workletError){console.warn("[Nanako Mic] continuous AudioWorklet unavailable; using continuous compatibility capture.",workletError);micWorkletNode=null;micWorkletUsing=false;}
-  }
+  // iPhone Chrome can keep an AudioWorklet running while supplying an all-zero
+  // input channel after its playback route changes. Use the stable callback
+  // capture path directly; Python still owns every VAD and turn decision.
+  micWorkletNode=null;micWorkletUsing=false;
   micProcessor=ctx.createScriptProcessor(2048,1,1);
   micProcessor.onaudioprocess=ev=>{
     try{ev.outputBuffer.getChannelData(0).fill(0)}catch{}
@@ -863,6 +868,28 @@ async function ensureMicHardware(){
   };
   micSource.connect(micProcessor);
   micProcessor.connect(ctx.destination);
+}
+
+async function recoverDigitallySilentMic(){
+  const now=Date.now();
+  if(micHardwareRecoveryBusy||!active||micCapturePaused||now-micLastHardwareRecoveryAt<3000)return;
+  micHardwareRecoveryBusy=true;micLastHardwareRecoveryAt=now;micZeroChunkCount=0;
+  console.warn("[Nanako Mic] Digital-zero capture detected; rebuilding phone microphone input.");
+  status("Reconnecting microphone...");
+  try{
+    try{micProcessor?.disconnect()}catch{}
+    try{micSource?.disconnect()}catch{}
+    micProcessor=null;micSource=null;
+    try{await ctx?.close()}catch{}ctx=null;
+    try{stream?.getTracks().forEach(track=>track.stop())}catch{}stream=null;
+    micBatch=[];micQueue=[];
+    await ensureMicHardware();
+    if(active&&!micCapturePaused)status("Listening...");
+  }catch(err){
+    console.error("[Nanako Mic] input recovery failed",err);
+    error("The phone microphone stopped supplying audio. Tap End Conversation, then Start Conversation.");
+    status("Microphone restart needed");
+  }finally{micHardwareRecoveryBusy=false;}
 }
 
 function resampleMono(input,inputRate,targetRate){
@@ -995,7 +1022,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.1] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.2] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1199,7 +1226,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.01 QWEN3.5-OMNI-PLUS + STABLE VOICE RECOVERY VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 2.02 QWEN3.5-OMNI-PLUS + STABLE VOICE RECOVERY VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
