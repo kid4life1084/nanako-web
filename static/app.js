@@ -1,7 +1,7 @@
 (async()=>{
 "use strict";
 
-// Step 1.94 release gate is created inline by index.html, before any external
+// Step 1.95 release gate is created inline by index.html, before any external
 // JavaScript is loaded. It removes an older cache-first worker exactly once.
 if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 
@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.9.4",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.9.5",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -123,7 +123,7 @@ try{
   }
 }catch{}
 // ============================================================
-// NANAKO v11 STEP 1.94 — PYTHON-SELECTED VRM FACE + FBX BODY MOTION
+// NANAKO v11 STEP 1.95 — CONSISTENT VOICE + OUTDOOR/CAFE MIC
 // Python selects every semantic frame and its timing. JavaScript only applies
 // that plan to the VRM canvas; there is no image renderer or fallback.
 let nanakoMotion=null,nanakoAvatar=null;
@@ -161,17 +161,17 @@ async function loadProductionBodyAnimations(){
   if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
   bodyAnimationsLoading=(async()=>{
     const result=await window.nanako3DRenderer.loadBodyAnimations({
-      neutral:"./static/animations/nanako_idle.fbx?v=11.9.4",
-      angry:"./static/animations/nanako_angry.fbx?v=11.9.4",
-      thinking:"./static/animations/nanako_thinking.fbx?v=11.9.4",
-      clapping:"./static/animations/nanako_clapping.fbx?v=11.9.4"
+      neutral:"./static/animations/nanako_idle.fbx?v=11.9.5",
+      angry:"./static/animations/nanako_angry.fbx?v=11.9.5",
+      thinking:"./static/animations/nanako_thinking.fbx?v=11.9.5",
+      clapping:"./static/animations/nanako_clapping.fbx?v=11.9.5"
     });
     const loaded=new Set((result?.loaded||[]).map(item=>item.name));
     bodyAnimationsLoaded=["neutral","angry","thinking","clapping"].every(name=>loaded.has(name));
     if(!bodyAnimationsLoaded)throw new Error(`Only ${loaded.size}/4 Nanako body animations loaded.`);
     currentBodyMotion="";
     syncBodyMotionForFrame({body_motion:pendingBodyMotion,emotion:"neutral"});
-    console.log("[Nanako 3D] Step 1.94 body animations ready: neutral, angry, thinking, clapping");
+    console.log("[Nanako 3D] Step 1.95 body animations ready: neutral, angry, thinking, clapping");
     return true;
   })().catch(err=>{bodyAnimationsLoading=null;console.error("[Nanako 3D body animation load]",err);return false});
   return bodyAnimationsLoading;
@@ -220,7 +220,7 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
     let elapsed=mediaClock
       ? Math.max(0,Number(mediaClock.currentTime||0)*1000)
       : now-started;
-    // Step 1.94: every spoken plan follows the complete decoded media duration.
+    // Step 1.95: every spoken plan follows the complete decoded media duration.
     // If mobile decoding reports a longer duration than Python's WAV timeline,
     // proportionally stretch the complete plan instead of freezing on its final
     // frame while Nanako is still audibly speaking.
@@ -353,8 +353,8 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="11.9.4",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
-const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.94 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
+const CLIENT_BUILD="11.9.5",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
+const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.95 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_INSPECT=`${API}/api/mic/session/inspect`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
 const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
@@ -471,11 +471,11 @@ function memoryPayload(){
     user_name:persistentUserName||""
   };
 }
-async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • 3D + FBX motion + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 1.94 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
+async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • 3D + FBX motion + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 1.95 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),styleValue:$("styleValue"),styleGrid:$("styleGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
-let level="auto",autoEffectiveLevel="",speechStyle="auto",autoEffectiveStyle="",settingSwitchBusy=false,score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micSessionId="",micSessionGeneration=0,activeMicTurnController=null,micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
+let level="auto",autoEffectiveLevel="",speechStyle="auto",autoEffectiveStyle="",settingSwitchBusy=false,score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micSessionId="",micSessionGeneration=0,activeMicTurnController=null,micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false,playbackCtx=null,ttsMediaSource=null,ttsGainNode=null,ttsLimiterNode=null;const history=[];const ttsAudio=new Audio();ttsAudio.preload="auto";ttsAudio.playsInline=true;
 let micUploadedBytes=0,visionAnalysisCount=0,visionImageTokens=0;
 function updateResourceDiagnostics(){if(e.visionDiagnostic)e.visionDiagnostic.textContent=`Vision analyses: ${visionAnalysisCount} • image tokens: ${visionImageTokens}`;if(e.micDiagnostic)e.micDiagnostic.textContent=`Microphone uploaded: ${(micUploadedBytes/1024).toFixed(1)} KB • capture: ${micWorkletUsing?"continuous AudioWorklet":"continuous compatibility"} • VAD: Python`}
 function imageTokensFromUsage(value){let total=0;if(!value||typeof value!=="object")return 0;for(const [key,item] of Object.entries(value)){if(/image.*token/i.test(key)&&Number.isFinite(Number(item)))total+=Number(item);else if(item&&typeof item==="object")total+=imageTokensFromUsage(item)}return total}
@@ -556,6 +556,40 @@ async function askCamera(){if(busy)return;let question=String(e.cameraQuestion?.
 function normalizeAudioSource(b,m){let v=String(b||"");if(!v)return"";if(v.startsWith("data:"))return v;return`data:${m||"audio/wav"};base64,${v}`}
 function audioBlobUrlFromBase64(b,m){let v=String(b||"").trim();if(!v)return"";if(v.startsWith("data:"))v=v.slice(v.indexOf(",")+1);const bin=atob(v);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:m||"audio/wav"}))}
 function revokeCurrentAudioObjectUrl(){if(currentAudioObjectUrl){try{URL.revokeObjectURL(currentAudioObjectUrl)}catch{}currentAudioObjectUrl=""}}
+function ensurePlaybackGainStage(){
+  if(ttsGainNode&&playbackCtx)return true;
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return false;
+    playbackCtx=playbackCtx||new AC();
+    ttsMediaSource=ttsMediaSource||playbackCtx.createMediaElementSource(ttsAudio);
+    ttsGainNode=playbackCtx.createGain();
+    ttsLimiterNode=playbackCtx.createDynamicsCompressor();
+    ttsLimiterNode.threshold.value=-2.5;
+    ttsLimiterNode.knee.value=4;
+    ttsLimiterNode.ratio.value=8;
+    ttsLimiterNode.attack.value=.002;
+    ttsLimiterNode.release.value=.14;
+    ttsMediaSource.connect(ttsGainNode);
+    ttsGainNode.connect(ttsLimiterNode);
+    ttsLimiterNode.connect(playbackCtx.destination);
+    ttsGainNode.gain.value=1;
+    return true;
+  }catch(x){
+    console.warn("[Nanako Audio] playback gain stage unavailable; using native output.",x);
+    ttsGainNode=null;ttsLimiterNode=null;
+    return false;
+  }
+}
+function setNanakoPlaybackGain(){
+  if(!ensurePlaybackGainStage())return;
+  const target=active?1.42:1;
+  const now=playbackCtx.currentTime;
+  try{
+    ttsGainNode.gain.cancelScheduledValues(now);
+    ttsGainNode.gain.setTargetAtTime(target,now,.025);
+  }catch{ttsGainNode.gain.value=target}
+}
 function unlockAudio(){
   if(audioUnlocked) return;
   try{
@@ -563,6 +597,8 @@ function unlockAudio(){
     // this element. Starting playback inside the user's tap is enough to
     // grant media playback permission; the tiny silent WAV then ends by itself.
     // The same ttsAudio element is later reused for Nanako's real voice.
+    ensurePlaybackGainStage();
+    if(playbackCtx?.state==="suspended")void playbackCtx.resume();
     ttsAudio.src=SILENT_WAV;
     ttsAudio.volume=.01;
     ttsAudio.preload="auto";
@@ -633,6 +669,8 @@ async function play(b,m,animationPlan=null,options={}){
 
 
   const a=ttsAudio;
+  setNanakoPlaybackGain();
+  if(playbackCtx?.state==="suspended")try{await playbackCtx.resume()}catch{}
   revokeCurrentAudioObjectUrl();
   try{currentAudioObjectUrl=audioBlobUrlFromBase64(b,m);a.src=currentAudioObjectUrl;}catch(blobErr){console.warn("[Nanako Audio] Blob conversion failed; using data URL.",blobErr);a.src=normalizeAudioSource(b,m);}
   a.preload="auto";
@@ -828,7 +866,7 @@ async function ensureMicHardware(){
   };
   if(ctx.audioWorklet&&window.AudioWorkletNode){
     try{
-      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.9.4");
+      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.9.5");
       micWorkletNode=new AudioWorkletNode(ctx,"nanako-mic-transport",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
       micWorkletNode.port.onmessage=ev=>{if(ev.data?.type==="audio"&&ev.data.samples)acceptAudioChunk(ev.data.samples)};
       micSource.connect(micWorkletNode);micWorkletNode.connect(ctx.destination);micWorkletUsing=true;return;
@@ -974,7 +1012,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.9.4] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.9.5] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1178,7 +1216,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 1.94 QWEN3.5-OMNI-PLUS + FBX BODY MOTION VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.95 QWEN3.5-OMNI-PLUS + CONSISTENT VOICE + OUTDOOR/CAFE MIC VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
