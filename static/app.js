@@ -1,7 +1,7 @@
 (async()=>{
 "use strict";
 
-// Step 1.92 release gate is created inline by index.html, before any external
+// Step 1.94 release gate is created inline by index.html, before any external
 // JavaScript is loaded. It removes an older cache-first worker exactly once.
 if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 
@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=11.9.2",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=11.9.4",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -123,7 +123,7 @@ try{
   }
 }catch{}
 // ============================================================
-// NANAKO v11 STEP 1.92 — PYTHON-SELECTED BAKED VRM PRESETS
+// NANAKO v11 STEP 1.94 — PYTHON-SELECTED VRM FACE + FBX BODY MOTION
 // Python selects every semantic frame and its timing. JavaScript only applies
 // that plan to the VRM canvas; there is no image renderer or fallback.
 let nanakoMotion=null,nanakoAvatar=null;
@@ -133,11 +133,57 @@ let idlePlanTimer=0;
 let postSpeechHoldTimer=0;
 let currentAnimationPlan=null;
 let cachedPythonIdlePlan=null;
+let bodyAnimationsLoaded=false;
+let bodyAnimationsLoading=null;
+let currentBodyMotion="";
+let pendingBodyMotion="neutral";
+
+function requestedBodyMotion(frame){
+  const explicit=String(frame?.body_motion||"").trim().toLowerCase();
+  if(["neutral","angry","thinking"].includes(explicit))return explicit;
+  return String(frame?.emotion||"").trim().toLowerCase()==="angry"?"angry":"neutral";
+}
+
+function syncBodyMotionForFrame(frame){
+  const name=requestedBodyMotion(frame);
+  pendingBodyMotion=name;
+  if(!bodyAnimationsLoaded||currentBodyMotion===name)return;
+  const loop=name==="neutral";
+  const transitionSeconds=name==="thinking"?1.35:0.48;
+  if(window.nanako3DRenderer?.playBodyAnimation?.(name,{loop,hold:true,transitionSeconds})){
+    currentBodyMotion=name;
+  }
+}
+
+async function loadProductionBodyAnimations(){
+  if(bodyAnimationsLoaded)return true;
+  if(bodyAnimationsLoading)return bodyAnimationsLoading;
+  if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
+  bodyAnimationsLoading=(async()=>{
+    const result=await window.nanako3DRenderer.loadBodyAnimations({
+      neutral:"./static/animations/nanako_idle.fbx?v=11.9.4",
+      angry:"./static/animations/nanako_angry.fbx?v=11.9.4",
+      thinking:"./static/animations/nanako_thinking.fbx?v=11.9.4",
+      clapping:"./static/animations/nanako_clapping.fbx?v=11.9.4"
+    });
+    const loaded=new Set((result?.loaded||[]).map(item=>item.name));
+    bodyAnimationsLoaded=["neutral","angry","thinking","clapping"].every(name=>loaded.has(name));
+    if(!bodyAnimationsLoaded)throw new Error(`Only ${loaded.size}/4 Nanako body animations loaded.`);
+    currentBodyMotion="";
+    syncBodyMotionForFrame({body_motion:pendingBodyMotion,emotion:"neutral"});
+    console.log("[Nanako 3D] Step 1.94 body animations ready: neutral, angry, thinking, clapping");
+    return true;
+  })().catch(err=>{bodyAnimationsLoading=null;console.error("[Nanako 3D body animation load]",err);return false});
+  return bodyAnimationsLoading;
+}
+
+window.addEventListener("nanako3d-ready",()=>{void loadProductionBodyAnimations()});
 
 function renderAnimationFrame(frame){
   if(!frame)return;
   window.__nanakoPending3DFrame=frame;
   if(window.nanako3DRenderer?.applyFrame)window.nanako3DRenderer.applyFrame(frame);
+  syncBodyMotionForFrame(frame);
   const emotion=String(frame.emotion||"neutral").trim().toLowerCase()||"neutral";
   const scale=Number.isFinite(Number(frame.scale))?Number(frame.scale):1;
   const y=Number.isFinite(Number(frame.translate_y))?Number(frame.translate_y):0;
@@ -174,7 +220,7 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
     let elapsed=mediaClock
       ? Math.max(0,Number(mediaClock.currentTime||0)*1000)
       : now-started;
-    // Step 1.92: every spoken plan follows the complete decoded media duration.
+    // Step 1.94: every spoken plan follows the complete decoded media duration.
     // If mobile decoding reports a longer duration than Python's WAV timeline,
     // proportionally stretch the complete plan instead of freezing on its final
     // frame while Nanako is still audibly speaking.
@@ -214,29 +260,37 @@ function idlePlanEmotion(plan){
   return String(plan?.emotion||plan?.frames?.[0]?.emotion||"neutral").trim().toLowerCase()||"neutral";
 }
 
+function idlePlanBodyMotion(plan){
+  return String(plan?.body_motion||plan?.frames?.[0]?.body_motion||"neutral").trim().toLowerCase()||"neutral";
+}
+
 function playPythonIdlePlan(plan){
   if(currentAudio||!plan?.frames?.length)return false;
   cachedPythonIdlePlan=plan;
   const planEmotion=idlePlanEmotion(plan);
+  const planBodyMotion=idlePlanBodyMotion(plan);
   // Paint Python's first idle snapshot immediately, then continue its breathing
   // and blink timeline. When it expires, refresh the SAME emotional idle.
   renderAnimationFrame(plan.frames[0]);
-  playAnimationPlan(plan,{loop:false,onComplete:()=>requestIdleAnimation({preferCache:false,emotion:planEmotion})});
+  playAnimationPlan(plan,{loop:false,onComplete:()=>requestIdleAnimation({preferCache:false,emotion:planEmotion,bodyMotion:planBodyMotion})});
   return true;
 }
 
-async function requestIdleAnimation({preferCache=true,emotion=null}={}){
+async function requestIdleAnimation({preferCache=true,emotion=null,bodyMotion=null}={}){
   clearTimeout(idlePlanTimer);
   if(currentAudio)return;
 
   const requestedEmotion=String(emotion||"").trim().toLowerCase();
+  const requestedBodyMotion=String(bodyMotion||"").trim().toLowerCase();
   const cachedEmotion=idlePlanEmotion(cachedPythonIdlePlan);
+  const cachedBodyMotion=idlePlanBodyMotion(cachedPythonIdlePlan);
   // Step 1.63: never reuse a neutral plan for an emotional idle (or vice versa).
-  if(preferCache&&cachedPythonIdlePlan&&(!requestedEmotion||cachedEmotion===requestedEmotion)&&playPythonIdlePlan(cachedPythonIdlePlan))return;
+  if(preferCache&&cachedPythonIdlePlan&&(!requestedEmotion||cachedEmotion===requestedEmotion)&&(!requestedBodyMotion||cachedBodyMotion===requestedBodyMotion)&&playPythonIdlePlan(cachedPythonIdlePlan))return;
 
   try{
     const emotionQuery=requestedEmotion?`&emotion=${encodeURIComponent(requestedEmotion)}`:"";
-    const r=await fetch(`${API}/api/animation/idle-plan?duration_ms=60000&sample_ms=100${emotionQuery}`,{cache:"no-store"});
+    const bodyMotionQuery=requestedBodyMotion?`&body_motion=${encodeURIComponent(requestedBodyMotion)}`:"";
+    const r=await fetch(`${API}/api/animation/idle-plan?duration_ms=60000&sample_ms=100${emotionQuery}${bodyMotionQuery}`,{cache:"no-store"});
     const d=await r.json();
     if(!r.ok||!d?.ok||!d?.animation_plan)throw new Error(d?.error||`Animation request failed (${r.status})`);
     cachedPythonIdlePlan=d.animation_plan;
@@ -248,17 +302,19 @@ async function requestIdleAnimation({preferCache=true,emotion=null}={}){
     if(!requestedEmotion||requestedEmotion==="neutral"){
       renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
     }
-    idlePlanTimer=setTimeout(()=>requestIdleAnimation({preferCache:false,emotion:requestedEmotion||null}),1500);
+    idlePlanTimer=setTimeout(()=>requestIdleAnimation({preferCache:false,emotion:requestedEmotion||null,bodyMotion:requestedBodyMotion||null}),1500);
   }
 }
 
-function returnToPythonIdle({emotion=null}={}){
+function returnToPythonIdle({emotion=null,bodyMotion=null}={}){
   stopAnimationPlan();
   const target=String(emotion||"neutral").trim().toLowerCase()||"neutral";
+  const targetBodyMotion=String(bodyMotion||"neutral").trim().toLowerCase()||"neutral";
   const cachedEmotion=idlePlanEmotion(cachedPythonIdlePlan);
-  if(cachedPythonIdlePlan&&cachedEmotion===target&&playPythonIdlePlan(cachedPythonIdlePlan))return;
+  const cachedBodyMotion=idlePlanBodyMotion(cachedPythonIdlePlan);
+  if(cachedPythonIdlePlan&&cachedEmotion===target&&cachedBodyMotion===targetBodyMotion&&playPythonIdlePlan(cachedPythonIdlePlan))return;
   cachedPythonIdlePlan=null;
-  requestIdleAnimation({preferCache:false,emotion:target});
+  requestIdleAnimation({preferCache:false,emotion:target,bodyMotion:targetBodyMotion});
 }
 
 function finishPlanWithPostHold(plan,{idleEmotion=null,onDone=null}={}){
@@ -267,9 +323,10 @@ function finishPlanWithPostHold(plan,{idleEmotion=null,onDone=null}={}){
   const postPlan=plan?.post_speech_plan;
   const planEmotion=String(plan?.emotion||"neutral").trim().toLowerCase()||"neutral";
   const target=String(idleEmotion||planEmotion||"neutral").trim().toLowerCase()||"neutral";
+  const targetBodyMotion=idlePlanBodyMotion(plan);
   if(postPlan?.frames?.length){
     playAnimationPlan(postPlan,{onComplete:()=>{
-      returnToPythonIdle({emotion:target});
+      returnToPythonIdle({emotion:target,bodyMotion:idlePlanBodyMotion(postPlan)||targetBodyMotion});
       if(typeof onDone==="function")onDone();
     }});
     return;
@@ -279,12 +336,12 @@ function finishPlanWithPostHold(plan,{idleEmotion=null,onDone=null}={}){
     renderAnimationFrame(post);
     postSpeechHoldTimer=setTimeout(()=>{
       postSpeechHoldTimer=0;
-      returnToPythonIdle({emotion:target});
+      returnToPythonIdle({emotion:target,bodyMotion:targetBodyMotion});
       if(typeof onDone==="function")onDone();
     },hold);
     return;
   }
-  returnToPythonIdle({emotion:target});
+  returnToPythonIdle({emotion:target,bodyMotion:targetBodyMotion});
   if(typeof onDone==="function")onDone();
 }
 
@@ -296,8 +353,8 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="11.9.2",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
-const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.92 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
+const CLIENT_BUILD="11.9.4",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`;
+const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step 1.94 • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_INSPECT=`${API}/api/mic/session/inspect`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
 const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
@@ -414,7 +471,7 @@ function memoryPayload(){
     user_name:persistentUserName||""
   };
 }
-async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.0-python-plan",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • 3D + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 1.92 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
+async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • 3D + FBX motion + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 1.94 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),styleValue:$("styleValue"),styleGrid:$("styleGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
@@ -771,7 +828,7 @@ async function ensureMicHardware(){
   };
   if(ctx.audioWorklet&&window.AudioWorkletNode){
     try{
-      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.9.2");
+      await ctx.audioWorklet.addModule("./static/mic-transport-worklet.js?v=11.9.4");
       micWorkletNode=new AudioWorkletNode(ctx,"nanako-mic-transport",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
       micWorkletNode.port.onmessage=ev=>{if(ev.data?.type==="audio"&&ev.data.samples)acceptAudioChunk(ev.data.samples)};
       micSource.connect(micWorkletNode);micWorkletNode.connect(ctx.destination);micWorkletUsing=true;return;
@@ -917,7 +974,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.9.2] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 11.9.4] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1121,7 +1178,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 1.92 QWEN3.5-OMNI-PLUS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 1.94 QWEN3.5-OMNI-PLUS + FBX BODY MOTION VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
