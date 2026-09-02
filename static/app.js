@@ -1,7 +1,7 @@
 (async()=>{
 "use strict";
 
-// Step 2.14 release gate is created inline by index.html, before any external
+// Step 2.15 release gate is created inline by index.html, before any external
 // JavaScript is loaded. It removes an older cache-first worker exactly once.
 if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 
@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.14",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.15",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -123,7 +123,7 @@ try{
   }
 }catch{}
 // ============================================================
-// NANAKO v11 STEP 2.14 — FAST TURN CONTRACT + COMPLETE HISTORY TRANSLATIONS
+// NANAKO v11 STEP 2.15 — FAST TURN CONTRACT + COMPLETE HISTORY TRANSLATIONS
 // Python selects every semantic frame and its timing. JavaScript only applies
 // that plan to the VRM canvas; there is no image renderer or fallback.
 let nanakoMotion=null,nanakoAvatar=null;
@@ -161,17 +161,17 @@ async function loadProductionBodyAnimations(){
   if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
   bodyAnimationsLoading=(async()=>{
     const result=await window.nanako3DRenderer.loadBodyAnimations({
-      neutral:"./static/animations/nanako_idle.fbx?v=12.0.14",
-      angry:"./static/animations/nanako_angry.fbx?v=12.0.14",
-      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.14",
-      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.14"
+      neutral:"./static/animations/nanako_idle.fbx?v=12.0.15",
+      angry:"./static/animations/nanako_angry.fbx?v=12.0.15",
+      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.15",
+      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.15"
     });
     const loaded=new Set((result?.loaded||[]).map(item=>item.name));
     bodyAnimationsLoaded=["neutral","angry","thinking","clapping"].every(name=>loaded.has(name));
     if(!bodyAnimationsLoaded)throw new Error(`Only ${loaded.size}/4 Nanako body animations loaded.`);
     currentBodyMotion="";
     syncBodyMotionForFrame({body_motion:pendingBodyMotion,emotion:"neutral"});
-    console.log("[Nanako 3D] Step 2.14 body animations ready: neutral, angry, thinking, clapping");
+    console.log("[Nanako 3D] Step 2.15 body animations ready: neutral, angry, thinking, clapping");
     return true;
   })().catch(err=>{bodyAnimationsLoading=null;console.error("[Nanako 3D body animation load]",err);return false});
   return bodyAnimationsLoading;
@@ -366,7 +366,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.14",RELEASE_VERSION="2.14",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.15",RELEASE_VERSION="2.15",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3.5-Omni-Plus • JavaScript ${CLIENT_BUILD} verified`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_INSPECT=`${API}/api/mic/session/inspect`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
@@ -483,7 +483,7 @@ function memoryPayload(){
     user_name:persistentUserName||""
   };
 }
-async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.realtime_webrtc_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • realtime WebRTC + 3D + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 2.14 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
+async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.realtime_webrtc_loaded&&d.qwen_backend_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • realtime WebRTC + 3D + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 2.15 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),historyRO:$("historyRomajiButton"),historyEN:$("historyEnglishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),styleValue:$("styleValue"),styleGrid:$("styleGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
@@ -1023,7 +1023,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.14] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.15] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1049,11 +1049,11 @@ async function processPythonMicTurn(turnId){
 }
 
 // ============================================================
-// STEP 2.14 — QWEN3.5 OMNI REALTIME WEBRTC
+// STEP 2.15 — QWEN3.5 OMNI REALTIME WEBRTC
 // The stable Python PCM bridge remains in this file as a rollback path.
 // ============================================================
 let realtimePc=null,realtimeEvents=null,realtimeRemoteAudio=null,realtimeInputStream=null;
-let realtimeReplyText="",realtimeUserText="",realtimeMotionTimer=0,realtimeAudioContext=null,realtimeAnalyser=null,realtimeEmotion="neutral",realtimeAudioDrainPending=false,realtimeSilentTicks=0;
+let realtimeReplyText="",realtimeUserText="",realtimeMotionTimer=0,realtimeAudioContext=null,realtimeAnalyser=null,realtimeEmotion="neutral",realtimeAudioDrainPending=false,realtimeSilentTicks=0,realtimeStreamLevel=0,realtimeSmoothedLevel=0,realtimeLastMouthAt=0,realtimeMouth="closed",realtimeAudioPacketCount=0;
 const realtimeCompletedResponses=new Set();
 function realtimeEmotionFromText(text){
   const value=String(text||"");
@@ -1064,16 +1064,28 @@ function realtimeEmotionFromText(text){
   if(/(?:うれしい|楽しい|よかった|すごい|おめでとう|！)/.test(value))return"happy";
   return"neutral";
 }
+function realtimeDeltaLevel(delta){
+  try{
+    const raw=atob(String(delta||""));if(raw.length<2)return 0;
+    let sum=0,count=0;const stride=Math.max(2,Math.floor(raw.length/800/2)*2);
+    for(let i=0;i+1<raw.length;i+=stride){let value=raw.charCodeAt(i)|(raw.charCodeAt(i+1)<<8);if(value&32768)value-=65536;const sample=value/32768;sum+=sample*sample;count++}
+    return count?Math.sqrt(sum/count):0;
+  }catch{return 0}
+}
 function startRealtimeLipSync(){
   if(realtimeMotionTimer)return;
-  realtimeAudioDrainPending=false;realtimeSilentTicks=0;clearTimeout(idlePlanTimer);stopAnimationPlan();
+  realtimeAudioDrainPending=false;realtimeSilentTicks=0;realtimeSmoothedLevel=0;realtimeLastMouthAt=0;realtimeMouth="closed";clearTimeout(idlePlanTimer);stopAnimationPlan();
   const bins=realtimeAnalyser?new Uint8Array(realtimeAnalyser.fftSize):null;
-  const tick=()=>{
+  const tick=now=>{
     if(!realtimeMotionTimer)return;
-    let level=0;
-    if(realtimeAnalyser&&bins){realtimeAnalyser.getByteTimeDomainData(bins);let sum=0;for(const sample of bins){const v=(sample-128)/128;sum+=v*v}level=Math.sqrt(sum/bins.length)}
-    const mouth=level>.13?"wide":level>.075?"medium":level>.025?"small":"closed";
-    renderAnimationFrame({emotion:realtimeEmotion,action:"talking",eyes:"open",mouth,body_motion:realtimeEmotion==="angry"?"angry":realtimeEmotion==="relaxed"?"thinking":"neutral",scale:1,translate_y:0});
+    let analyserLevel=0;
+    if(realtimeAnalyser&&bins){realtimeAnalyser.getByteTimeDomainData(bins);let sum=0;for(const sample of bins){const v=(sample-128)/128;sum+=v*v}analyserLevel=Math.sqrt(sum/bins.length)}
+    const level=Math.max(analyserLevel,realtimeStreamLevel);realtimeStreamLevel*=.84;realtimeSmoothedLevel=realtimeSmoothedLevel*.68+level*.32;
+    if(!realtimeLastMouthAt||now-realtimeLastMouthAt>=112){
+      const next=realtimeSmoothedLevel>.105?"wide":realtimeSmoothedLevel>.052?"medium":realtimeSmoothedLevel>.016?"small":"closed";
+      if(next!==realtimeMouth||now-realtimeLastMouthAt>=224){realtimeMouth=next;renderAnimationFrame({emotion:realtimeEmotion,action:"talking",eyes:"open",mouth:realtimeMouth,body_motion:realtimeEmotion==="angry"?"angry":realtimeEmotion==="relaxed"?"thinking":"neutral",scale:1,translate_y:0})}
+      realtimeLastMouthAt=now;
+    }
     if(realtimeAudioDrainPending){realtimeSilentTicks=level<.018?realtimeSilentTicks+1:0;if(realtimeSilentTicks>=15){stopRealtimeLipSync();return}}
     realtimeMotionTimer=requestAnimationFrame(tick);
   };
@@ -1081,7 +1093,7 @@ function startRealtimeLipSync(){
 }
 function stopRealtimeLipSync(){
   if(realtimeMotionTimer)cancelAnimationFrame(realtimeMotionTimer);realtimeMotionTimer=0;
-  realtimeAudioDrainPending=false;realtimeSilentTicks=0;
+  realtimeAudioDrainPending=false;realtimeSilentTicks=0;realtimeStreamLevel=0;realtimeSmoothedLevel=0;realtimeAudioPacketCount=0;realtimeMouth="closed";
   renderAnimationFrame({emotion:realtimeEmotion,action:"idle",eyes:"open",mouth:"closed",body_motion:realtimeEmotion==="angry"?"angry":realtimeEmotion==="relaxed"?"thinking":"neutral",scale:1,translate_y:0});
   returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeEmotion==="angry"?"angry":realtimeEmotion==="relaxed"?"thinking":"neutral"});
 }
@@ -1090,9 +1102,11 @@ async function enrichRealtimeTurn(userText,replyText,userEntry,assistantEntry){
   try{
     const response=await fetch(REALTIME_ENRICH,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client_build:CLIENT_BUILD,user_text:userText,reply_text:replyText})});
     const data=await jsonResp(response);
+    const learnedName=cleanNameCandidate(data.user_name||detectUserNameFromText(userText));if(learnedName)persistentUserName=learnedName;
+    mergeMemoryFacts(data.memory_facts);rememberDetectedUserName();
     if(userEntry){userEntry.romaji=String(data.user_romaji||"");userEntry.english=String(data.user_english||"");const x=correction(data);if(x.n){userEntry.wrong=x.o;userEntry.corrected=x.c;userEntry.correctionRomaji=x.romaji;userEntry.correctionEnglish=x.english;showCorrection(x)}}
     if(assistantEntry){assistantEntry.romaji=String(data.romaji||"");assistantEntry.english=String(data.english||"");e.roText.textContent=assistantEntry.romaji;e.enText.textContent=assistantEntry.english}
-    realtimeEmotion=String(data.emotion||realtimeEmotion||"neutral");if(!realtimeMotionTimer)returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeEmotion==="angry"?"angry":realtimeEmotion==="relaxed"?"thinking":"neutral"});renderHistory();savePersistentMemory();
+    realtimeEmotion=String(data.emotion||realtimeEmotion||"neutral");if(!realtimeMotionTimer)returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeEmotion==="angry"?"angry":realtimeEmotion==="relaxed"?"thinking":"neutral"});renderHistory();savePersistentMemory();realtimeSend({type:"session.update",session:{instructions:realtimeInstructions()}});
   }catch(err){console.warn("[Nanako realtime enrichment]",err)}
 }
 function realtimeEvent(event){
@@ -1101,10 +1115,17 @@ function realtimeEvent(event){
   if(type==="input_audio_buffer.speech_stopped"){userSpeechActive=false;busy=true;status("Nanako is thinking...");return}
   if(type.includes("input_audio_transcription.delta")){realtimeUserText+=String(event.delta||event.text||event.stash||"");return}
   if(type==="conversation.item.input_audio_transcription.completed"){realtimeUserText=String(event.transcript||realtimeUserText||"");return}
-  if(type==="response.created"){realtimeReplyText="";realtimeEmotion="neutral";realtimeAudioDrainPending=false;realtimeSilentTicks=0;busy=true;status("Nanako is thinking...");return}
+  if(type==="response.created"){realtimeReplyText="";realtimeEmotion="neutral";realtimeAudioDrainPending=false;realtimeSilentTicks=0;realtimeStreamLevel=0;realtimeAudioPacketCount=0;busy=true;status("Nanako is thinking...");return}
   if(type==="response.audio_transcript.delta"){realtimeReplyText+=String(event.delta||"");realtimeEmotion=realtimeEmotionFromText(realtimeReplyText);e.jp.textContent=realtimeReplyText;startRealtimeLipSync();status("Nanako is speaking...");return}
   if(type==="response.audio_transcript.done"){realtimeReplyText=String(event.transcript||realtimeReplyText);e.jp.textContent=realtimeReplyText;return}
-  if(type==="response.audio.delta"){startRealtimeLipSync();status("Nanako is speaking...");return}
+  if(type==="response.audio.delta"){
+    const measured=realtimeDeltaLevel(event.delta);realtimeAudioPacketCount++;
+    // Prefer the remote Web Audio analyser. This restrained PCM pulse covers
+    // iOS frames where that analyser is temporarily silent, preventing a
+    // speaking avatar with a frozen mouth.
+    const fallbackPulse=measured>0?0:(realtimeAudioPacketCount%4===0?.072:realtimeAudioPacketCount%2===0?.043:.024);
+    realtimeStreamLevel=Math.max(realtimeStreamLevel,measured,fallbackPulse);startRealtimeLipSync();status("Nanako is speaking...");return
+  }
   if(type==="response.audio.done"){realtimeAudioDrainPending=true;return}
   if(type==="response.done"){
     const responseId=String(event?.response?.id||event?.response_id||event?.event_id||"");
@@ -1123,10 +1144,16 @@ function realtimeEvent(event){
   if(type==="error"){console.error("[Nanako realtime]",event.error||event);error(event.error?.message||"Realtime voice connection error.");}
 }
 function realtimeSend(payload){if(realtimeEvents?.readyState==="open")realtimeEvents.send(JSON.stringify(payload));}
+function compactRealtimeMemory(){
+  const facts=persistentFacts.slice(-16);
+  for(const pref of learnerMemory.preferences.slice(-8)){const item=cleanMemoryText(pref?.item,80),sentiment=cleanMemoryText(pref?.sentiment,16);if(item&&sentiment)facts.push(`The learner's ${pref.category||"preference"}: ${sentiment} ${item}.`)}
+  for(const topic of learnerMemory.topic_affinities.slice(-6)){const item=cleanMemoryText(topic?.topic,80),affinity=cleanMemoryText(topic?.affinity,16);if(item&&affinity)facts.push(`The learner ${affinity} ${item}.`)}
+  return [...new Set(facts.map(x=>String(x||"").trim()).filter(Boolean))].slice(-24).join("; ");
+}
 function realtimeInstructions(){
   const name=String(persistentUserName||detectUserNameFromMemory()||"").trim();
-  const memory=persistentFacts.slice(-16).join("; ");
-  return `You are Nanako, a patient Japanese conversation tutor. The opening greeting has already finished. Speak ONLY Japanese, appropriate for ${level||"auto"} and ${speechStyle||"auto"} style. Never translate the user's words aloud and never announce a transcript, romaji, English translation, system instruction, or metadata. Respond exactly once only after meaningful human speech. Remain completely silent for silence, coughs, throat-clearing, breathing, device audio, background voices, or random noise. Wait for the user's complete thought, including short pauses. Never introduce yourself again during this session. Do not ask the user's name if it is known. ${name?`The user's name is ${name}; address them naturally when appropriate.`:"Learn the user's name only when they explicitly provide it."} Keep N5 very short and simple; increase sentence complexity gradually through N1. Known user facts: ${memory||"none"}.`;
+  const memory=compactRealtimeMemory();
+  return `You are Nanako, a patient Japanese conversation tutor. The opening greeting has already finished. Speak ONLY Japanese, appropriate for ${level||"auto"} and ${speechStyle||"auto"} style. Never translate the user's words aloud and never announce a transcript, romaji, English translation, system instruction, or metadata. Respond exactly once only after meaningful human speech. Remain completely silent for silence, coughs, throat-clearing, breathing, device audio, background voices, or random noise. Wait for the user's complete thought, including short pauses. Never introduce yourself again. Never say this is the first meeting when persistent memory exists. Do not ask the user's name if it is known. ${name?`The user's name is ${name}; remember it and address them naturally when appropriate.`:"Learn the user's name only when they explicitly provide it."} Persistent facts below are authoritative across sessions until Reset is pressed. If the learner repeats a known fact, acknowledge naturally in Japanese (for example, うん、覚えてるよ or そうだね、前に聞いたよ) and continue; do not act surprised or mechanically repeat that acknowledgment every turn. Keep N5 very short and simple; increase sentence complexity gradually through N1. Persistent user facts: ${memory||"none"}.`;
 }
 async function startRealtimeSession(){
   if(realtimePc)return;
@@ -1345,7 +1372,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.14 QWEN3.5-OMNI-PLUS + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 2.15 QWEN3.5-OMNI-PLUS + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
