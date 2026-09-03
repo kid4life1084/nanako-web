@@ -368,7 +368,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.19",RELEASE_VERSION="2.19",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.20",RELEASE_VERSION="2.19.1",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.5-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -489,7 +489,7 @@ function memoryPayload(){
     user_name:persistentUserName||""
   };
 }
-async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.visual_awareness_engine_loaded&&d.split_pipeline_loaded&&d.qwen_backend_configured&&d.fish_audio_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • split ASR/LLM/TTS + 3D + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 2.19 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
+async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.behavior_engine_loaded&&d.visual_awareness_engine_loaded&&d.split_pipeline_loaded&&d.qwen_backend_configured&&d.fish_audio_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • split ASR/LLM/TTS + 3D + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 2.19 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
 const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
 const $=id=>document.getElementById(id),e={levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),ro:$("romajiButton"),en:$("englishButton"),historyRO:$("historyRomajiButton"),historyEN:$("historyEnglishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),styleValue:$("styleValue"),styleGrid:$("styleGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
@@ -559,8 +559,13 @@ async function playStartupGreetingIfReady(fromGesture=false){
   if(startupGreetingPlayPromise)return startupGreetingPlayPromise;
   startupGreetingPlayPromise=(async()=>{
     const d=startupGreetingData||await fetchStartupGreeting();
-    if(!d?.audio_base64)return false;
-    const ok=await play(d.audio_base64,d.audio_mime||"audio/wav",d.animation_plan,{gestureImmediate:!!fromGesture,silentFailure:true,idleEmotion:"neutral"});
+    if(!d)return false;
+    let ok=false;
+    if(d?.tts_stream&&!muted){
+      ok=await playFishStreaming(String(d?.reply||""),d?.animation_plan,{idleEmotion:String(d?.animation_plan?.emotion||"neutral"),voiceStyle:String(d?.tts_voice_style||"normal"),sampleRate:Number(d?.tts_sample_rate||24000)});
+    }else if(d?.audio_base64){
+      ok=await play(d.audio_base64,d.audio_mime||"audio/wav",d.animation_plan,{gestureImmediate:!!fromGesture,silentFailure:true,idleEmotion:"neutral"});
+    }
     if(ok)startupGreetingPlayed=true;
     return ok;
   })();
@@ -664,7 +669,15 @@ async function playFishStreaming(text,animationPlan=null,options={}){
     const buf=fishAudioCtx.createBuffer(1,n,sampleRate);buf.copyToChannel(floats,0);
     const src=fishAudioCtx.createBufferSource();src.buffer=buf;src.connect(fishAudioCtx.destination);fishScheduledSources.push(src);
     const when=Math.max(nextStart,fishAudioCtx.currentTime+0.015);src.start(when);nextStart=when+buf.duration;totalSamples+=n;mediaClock.duration=totalSamples/sampleRate;
-    const mouth=mouthFromRms(rms);setTimeout(()=>{if(currentAudio===mediaClock&&!mediaClock.ended)liveStreamMouthOverride=mouth;},Math.max(0,(when-fishAudioCtx.currentTime)*1000));
+    // Playback-aligned 20 ms lip windows: network chunk size must not control mouth speed.
+    const lipWindow=Math.max(1,Math.round(sampleRate*0.020));
+    for(let off=0;off<n;off+=lipWindow){
+      const end=Math.min(n,off+lipWindow);let wsum=0;
+      for(let k=off;k<end;k++){const v=floats[k];wsum+=v*v;}
+      const mouth=mouthFromRms(Math.sqrt(wsum/Math.max(1,end-off)));
+      const mouthWhen=when+(off/sampleRate);
+      setTimeout(()=>{if(currentAudio===mediaClock&&!mediaClock.ended)liveStreamMouthOverride=mouth;},Math.max(0,(mouthWhen-fishAudioCtx.currentTime)*1000));
+    }
   };
   try{
     const r=await fetch(FISH_TTS_STREAM,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client_build:CLIENT_BUILD,text,voice_style:voiceStyle}),signal:ctrl.signal});
@@ -1336,9 +1349,9 @@ async function enterStartupSplash(){
     nanakoMotion=nanakoMotion||document.querySelector(".nanako-motion");
     renderAnimationFrame({emotion:"neutral",action:"idle",eyes:"open",mouth:"closed",scale:1,translate_y:0});
     if(!startupGreetingData)await fetchStartupGreeting();
-    if(startupGreetingData?.audio_base64&&!muted){
-      await play(startupGreetingData.audio_base64,startupGreetingData.audio_mime||"audio/wav",startupGreetingData.animation_plan,{gestureImmediate:false,silentFailure:false,idleEmotion:"neutral"});
-      startupGreetingPlayed=true;
+    if(startupGreetingData&&!muted){
+      const ok=await playStartupGreetingIfReady(true);
+      if(!ok)console.warn("[Nanako Startup] greeting data loaded but voice playback did not start");
     }
   }catch(err){
     console.error("[NanaChat Startup Enter]",err);
