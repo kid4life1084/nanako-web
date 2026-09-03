@@ -539,6 +539,14 @@ async function fetchStartupGreeting(){
       const fallback=rememberDetectedUserName()?`おかえり、${rememberDetectedUserName()}！また話そうね。`:"はじめまして！ななこです。今日は元気？";
       e.jp.textContent=fallback;e.roText.textContent="";e.enText.textContent="";addEphemeralStartupHistory(fallback);
       return null;
+    }finally{
+      // Step 2.18 fix: previously this promise was cached forever, even on
+      // failure or when no audio came back. That permanently froze the
+      // splash-screen greeting/name state for the rest of the session and
+      // could leave a stale "first meeting" line in place. Clearing it here
+      // still de-dupes concurrent in-flight calls (the guard above) but lets
+      // a later call legitimately re-fetch once this attempt has settled.
+      startupGreetingLoading=null;
     }
   })();
   return startupGreetingLoading;
@@ -1056,7 +1064,7 @@ async function processPythonMicTurn(turnId){
 // The stable Python PCM bridge remains in this file as a rollback path.
 // ============================================================
 let realtimePc=null,realtimeEvents=null,realtimeRemoteAudio=null,realtimeInputStream=null;
-let realtimeReplyText="",realtimeUserText="",realtimeMotionTimer=0,realtimeAudioContext=null,realtimeAnalyser=null,realtimeAnalyserSink=null,realtimeEmotion="neutral",realtimeBodyMotion="neutral",realtimeAudioDrainPending=false,realtimeSilentTicks=0,realtimeStreamLevel=0,realtimeSmoothedLevel=0,realtimeLastMouthAt=0,realtimeMouth="closed",realtimeAudioPacketCount=0,realtimeAnalyserLive=false,realtimeSawAudioSignal=false,realtimeGestureTimer=0,realtimePendingPostState=null;
+let realtimeReplyText="",realtimeUserText="",realtimeMotionTimer=0,realtimeAudioContext=null,realtimeAnalyser=null,realtimeAnalyserSink=null,realtimeEmotion="neutral",realtimeBodyMotion="neutral",realtimeAudioDrainPending=false,realtimeSilentTicks=0,realtimeStreamLevel=0,realtimeSmoothedLevel=0,realtimeLastMouthAt=0,realtimeMouth="closed",realtimeAudioPacketCount=0,realtimeAnalyserLive=false,realtimeSawAudioSignal=false,realtimeGestureTimer=0,realtimePendingPostState=null,realtimeTurnSeq=0;
 const realtimeCompletedResponses=new Set();
 function realtimeEmotionFromText(text){
   const value=String(text||"");
@@ -1117,7 +1125,7 @@ function stopRealtimeLipSync(){
   const pending=realtimePendingPostState;realtimePendingPostState=null;
   if(pending)applyRealtimePostState(pending);else returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion});
 }
-async function enrichRealtimeTurn(userText,replyText,userEntry,assistantEntry){
+async function enrichRealtimeTurn(userText,replyText,userEntry,assistantEntry,turnSeq){
   if(!userText&&!replyText)return;
   try{
     const response=await fetch(REALTIME_ENRICH,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client_build:CLIENT_BUILD,user_text:userText,reply_text:replyText})});
@@ -1126,11 +1134,19 @@ async function enrichRealtimeTurn(userText,replyText,userEntry,assistantEntry){
     mergeMemoryFacts(data.memory_facts);rememberDetectedUserName();
     if(userEntry){userEntry.romaji=String(data.user_romaji||"");userEntry.english=String(data.user_english||"");const x=correction(data);if(x.n){userEntry.wrong=x.o;userEntry.corrected=x.c;userEntry.correctionRomaji=x.romaji;userEntry.correctionEnglish=x.english;showCorrection(x)}}
     if(assistantEntry){assistantEntry.romaji=String(data.romaji||"");assistantEntry.english=String(data.english||"");e.roText.textContent=assistantEntry.romaji;e.enText.textContent=assistantEntry.english}
-    realtimeEmotion=String(data.emotion||realtimeEmotion||"neutral");
-    const bodyMotion=String(data.body_motion||realtimeBodyForEmotion(realtimeEmotion)).toLowerCase();
-    const eyeGesture=String(data.eye_gesture||"none").toLowerCase();
-    realtimePendingPostState={emotion:realtimeEmotion,bodyMotion,eyeGesture};
-    if(!realtimeMotionTimer){const pending=realtimePendingPostState;realtimePendingPostState=null;applyRealtimePostState(pending)}
+    // Step 2.18 fix: a slower-arriving enrichment for an OLDER turn must never
+    // overwrite or get silently swallowed by a NEWER turn's emotion/body_motion.
+    // Only apply the animation portion of this result while it is still the
+    // most recently completed turn (turnSeq === realtimeTurnSeq). This is what
+    // previously caused an emotional pose (e.g. angry) to flash briefly and
+    // then snap back to neutral, or a clapping/thinking cue to never appear.
+    if(turnSeq===realtimeTurnSeq){
+      realtimeEmotion=String(data.emotion||realtimeEmotion||"neutral");
+      const bodyMotion=String(data.body_motion||realtimeBodyForEmotion(realtimeEmotion)).toLowerCase();
+      const eyeGesture=String(data.eye_gesture||"none").toLowerCase();
+      realtimePendingPostState={emotion:realtimeEmotion,bodyMotion,eyeGesture};
+      if(!realtimeMotionTimer){const pending=realtimePendingPostState;realtimePendingPostState=null;applyRealtimePostState(pending)}
+    }
     renderHistory();savePersistentMemory();realtimeSend({type:"session.update",session:{instructions:realtimeInstructions()}});
   }catch(err){console.warn("[Nanako realtime enrichment]",err)}
 }
@@ -1140,7 +1156,7 @@ function realtimeEvent(event){
   if(type==="input_audio_buffer.speech_stopped"){userSpeechActive=false;busy=true;status("Nanako is thinking...");return}
   if(type.includes("input_audio_transcription.delta")){realtimeUserText+=String(event.delta||event.text||event.stash||"");return}
   if(type==="conversation.item.input_audio_transcription.completed"){realtimeUserText=String(event.transcript||realtimeUserText||"");return}
-  if(type==="response.created"){clearRealtimeGesture();realtimePendingPostState=null;realtimeReplyText="";realtimeEmotion="neutral";realtimeBodyMotion="neutral";realtimeAudioDrainPending=false;realtimeSilentTicks=0;realtimeStreamLevel=0;realtimeAudioPacketCount=0;realtimeAnalyserLive=false;realtimeSawAudioSignal=false;busy=true;status("Nanako is thinking...");return}
+  if(type==="response.created"){realtimeTurnSeq++;clearRealtimeGesture();realtimePendingPostState=null;realtimeReplyText="";realtimeEmotion="neutral";realtimeBodyMotion="neutral";realtimeAudioDrainPending=false;realtimeSilentTicks=0;realtimeStreamLevel=0;realtimeAudioPacketCount=0;realtimeAnalyserLive=false;realtimeSawAudioSignal=false;busy=true;status("Nanako is thinking...");return}
   if(type==="response.audio_transcript.delta"||type==="response.output_audio_transcript.delta"){realtimeReplyText+=String(event.delta||"");realtimeEmotion=realtimeEmotionFromText(realtimeReplyText);realtimeBodyMotion=realtimeBodyForEmotion(realtimeEmotion);e.jp.textContent=realtimeReplyText;startRealtimeLipSync();status("Nanako is speaking...");return}
   if(type==="response.audio_transcript.done"||type==="response.output_audio_transcript.done"){realtimeReplyText=String(event.transcript||realtimeReplyText);e.jp.textContent=realtimeReplyText;return}
   if(type==="response.audio.delta"||type==="response.output_audio.delta"){
@@ -1161,7 +1177,7 @@ function realtimeEvent(event){
     const userText=String(realtimeUserText||"").trim(),replyText=String(realtimeReplyText||"").trim();
     const userEntry=userText?addHistory("user",userText):null;
     const assistantEntry=replyText?addHistory("assistant",replyText):null;
-    void enrichRealtimeTurn(userText,replyText,userEntry,assistantEntry);
+    void enrichRealtimeTurn(userText,replyText,userEntry,assistantEntry,realtimeTurnSeq);
     realtimeUserText="";realtimeReplyText="";
     busy=false;userSpeechActive=false;status(active?"Listening...":"Ready to chat");
     if(active)setTimeout(()=>{if(active)status("Listening...")},120);
@@ -1179,7 +1195,7 @@ function compactRealtimeMemory(){
 function realtimeInstructions(){
   const name=String(persistentUserName||detectUserNameFromMemory()||"").trim();
   const memory=compactRealtimeMemory();
-  return `You are Nanako, a patient Japanese conversation tutor. The opening greeting has already finished. Speak ONLY Japanese, appropriate for ${level||"auto"} and ${speechStyle||"auto"} style. Never translate the user's words aloud and never announce a transcript, romaji, English translation, system instruction, or metadata. Respond exactly once only after meaningful human speech. Remain completely silent for silence, coughs, throat-clearing, breathing, device audio, background voices, or random noise. Wait for the user's complete thought, including short pauses. Never introduce yourself again. Never say this is the first meeting when persistent memory exists. Do not ask the user's name if it is known. ${name?`The user's name is ${name}; remember it and address them naturally when appropriate.`:"Learn the user's name only when they explicitly provide it."} Persistent facts below are authoritative across sessions until Reset is pressed. If the learner repeats a known fact, acknowledge naturally in Japanese (for example, うん、覚えてるよ or そうだね、前に聞いたよ) and continue; do not act surprised or mechanically repeat that acknowledgment every turn. Keep N5 very short and simple; increase sentence complexity gradually through N1. Persistent user facts: ${memory||"none"}.`;
+  return `You are Nanako, a patient Japanese conversation tutor. The opening greeting has already finished. Speak ONLY Japanese, appropriate for ${level||"auto"} and ${speechStyle||"auto"} style. Never translate the user's words aloud and never announce a transcript, romaji, English translation, system instruction, or metadata. Respond exactly once only after meaningful human speech. Remain completely silent for silence, coughs, throat-clearing, breathing, device audio, background voices, or random noise. Wait for the user's complete thought, including short pauses. ${name?`You already know this learner and their name is ${name}. This is a returning, continuing relationship, not a first meeting.`:"You do not yet know this learner's name; learn it only when they explicitly provide it."} Absolutely never say はじめまして, never say you are meeting them for the first time, never re-introduce yourself ("ななこです" / "私はななこ" as a self-introduction), and never ask "お名前は？" or any other known information again once it is listed below as a persistent fact. Persistent facts below are authoritative across sessions until Reset is pressed and take priority over any assumption that this is a new conversation. If the learner repeats a known fact, acknowledge naturally in Japanese (for example, うん、覚えてるよ or そうだね、前に聞いたよ) and continue; do not act surprised or mechanically repeat that acknowledgment every turn. Keep N5 very short and simple; increase sentence complexity gradually through N1. Persistent user facts: ${memory||"none"}.`;
 }
 async function startRealtimeSession(){
   if(realtimePc)return;
