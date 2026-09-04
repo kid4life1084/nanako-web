@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.22",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.23",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -162,10 +162,10 @@ async function loadProductionBodyAnimations(){
   if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
   bodyAnimationsLoading=(async()=>{
     const result=await window.nanako3DRenderer.loadBodyAnimations({
-      neutral:"./static/animations/nanako_idle.fbx?v=12.0.22",
-      angry:"./static/animations/nanako_angry.fbx?v=12.0.22",
-      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.22",
-      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.22"
+      neutral:"./static/animations/nanako_idle.fbx?v=12.0.23",
+      angry:"./static/animations/nanako_angry.fbx?v=12.0.23",
+      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.23",
+      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.23"
     });
     const loaded=new Set((result?.loaded||[]).map(item=>item.name));
     bodyAnimationsLoaded=["neutral","angry","thinking","clapping"].every(name=>loaded.has(name));
@@ -368,7 +368,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.22",RELEASE_VERSION="2.19.3",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.23",RELEASE_VERSION="2.19.4",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.5-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -652,13 +652,13 @@ async function playFishStreaming(text,animationPlan=null,options={}){
   const voiceStyle=String(options?.voiceStyle||"normal");
   const idleEmotion=String(options?.idleEmotion||animationPlan?.emotion||"neutral").trim().toLowerCase()||"neutral";
   const ctrl=new AbortController();fishStreamAbort=ctrl;
-  let streamClockStart=fishAudioCtx.currentTime+0.06;
+  let streamClockStart=fishAudioCtx.currentTime+0.035;
   const mediaClock={duration:0,ended:false,get currentTime(){return Math.max(0,fishAudioCtx.currentTime-streamClockStart)},pause(){try{ctrl.abort()}catch{};for(const src of fishScheduledSources.splice(0)){try{src.stop()}catch{}};this.ended=true;},load(){},src:""};
   currentAudio=mediaClock;micQueue=[];micBatch=[];micCapturePaused=true;await setServerNanakoSpeaking(true);status("Nanako is speaking...");convButton();
   let nextStart=streamClockStart,playedStart=nextStart,totalSamples=0,pending=new Uint8Array(0),failed=false;
   liveStreamMouthOverride="closed";useTalkingAnimation(animationPlan,mediaClock);
 
-  // Step 2.19.3: VRoid viseme lip-sync.  Fish still streams raw PCM, but mouth
+  // Step 2.19.4: VRoid viseme lip-sync.  Fish still streams raw PCM, but mouth
   // motion is no longer a two-size amplitude toggle.  We keep a continuous
   // analysis buffer across network chunks, use real silence to close the mouth,
   // use a half-open transition on speech attacks, and use VRoid A/I/U/E/O
@@ -680,10 +680,11 @@ async function playFishStreaming(text,animationPlan=null,options={}){
   };
   const lipVisemes=buildVisemeTrack(text);
   let lipVisemeIndex=0,lipSmoothedRms=0,lipWasClosed=true,lipPendingSamples=new Float32Array(0),lipPendingWhen=0;
-  const lipWindowSamples=Math.max(1,Math.round(sampleRate*0.105));
+  const lipWindowSamples=Math.max(1,Math.round(sampleRate*0.070));
+  const lipVisualLead=0.050;
   const scheduleLipFrame=(mouth,when)=>setTimeout(()=>{
     if(currentAudio===mediaClock&&!mediaClock.ended)liveStreamMouthOverride=mouth;
-  },Math.max(0,(when-fishAudioCtx.currentTime)*1000));
+  },Math.max(0,(when-lipVisualLead-fishAudioCtx.currentTime)*1000));
   // Explicitly begin from a closed mouth before the first audible syllable.
   scheduleLipFrame("closed",streamClockStart);
   const feedLipSamples=(floats,when)=>{
@@ -727,7 +728,7 @@ async function playFishStreaming(text,animationPlan=null,options={}){
     const rms=Math.sqrt(sum/Math.max(1,n));
     const buf=fishAudioCtx.createBuffer(1,n,sampleRate);buf.copyToChannel(floats,0);
     const src=fishAudioCtx.createBufferSource();src.buffer=buf;src.connect(fishAudioCtx.destination);fishScheduledSources.push(src);
-    const when=Math.max(nextStart,fishAudioCtx.currentTime+0.015);src.start(when);nextStart=when+buf.duration;totalSamples+=n;mediaClock.duration=totalSamples/sampleRate;
+    const when=Math.max(nextStart,fishAudioCtx.currentTime+0.010);src.start(when);nextStart=when+buf.duration;totalSamples+=n;mediaClock.duration=totalSamples/sampleRate;
     feedLipSamples(floats,when);
   };
   try{
@@ -1155,7 +1156,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.22] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.23] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1572,7 +1573,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.19.3 QWEN3-ASR-FLASH + QWEN3.5-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 2.19.4 QWEN3-ASR-FLASH + QWEN3.5-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
