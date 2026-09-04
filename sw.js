@@ -1,4 +1,4 @@
-// NanaChat Step 2.21.0 network-first worker.
+// NanaChat Step 2.21.1 network-first worker.
 const BUILD="nanachat-step2-20-11-build-12-0-36-network-only";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys()){if(/^(?:nanachat|nanako)/i.test(k))await caches.delete(k)}await self.clients.claim();})()));
