@@ -368,7 +368,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.20",RELEASE_VERSION="2.19.1",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.21",RELEASE_VERSION="2.19.1",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.5-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -669,14 +669,22 @@ async function playFishStreaming(text,animationPlan=null,options={}){
     const buf=fishAudioCtx.createBuffer(1,n,sampleRate);buf.copyToChannel(floats,0);
     const src=fishAudioCtx.createBufferSource();src.buffer=buf;src.connect(fishAudioCtx.destination);fishScheduledSources.push(src);
     const when=Math.max(nextStart,fishAudioCtx.currentTime+0.015);src.start(when);nextStart=when+buf.duration;totalSamples+=n;mediaClock.duration=totalSamples/sampleRate;
-    // Playback-aligned 20 ms lip windows: network chunk size must not control mouth speed.
-    const lipWindow=Math.max(1,Math.round(sampleRate*0.020));
+    // Step 2.19.2 natural streaming lip-sync.
+    // The 20 ms version reacted to phoneme-level energy and looked unnaturally fast.
+    // Use ~100 ms playback-aligned windows (matching the cadence of the older,
+    // natural-looking non-streaming/realtime mouth animation) and smooth adjacent
+    // energy windows. Audio remains fully streamed; only visual mouth cadence is slowed.
+    const lipWindow=Math.max(1,Math.round(sampleRate*0.100));
+    let lipSmooth=0;
     for(let off=0;off<n;off+=lipWindow){
       const end=Math.min(n,off+lipWindow);let wsum=0;
       for(let k=off;k<end;k++){const v=floats[k];wsum+=v*v;}
-      const mouth=mouthFromRms(Math.sqrt(wsum/Math.max(1,end-off)));
+      const raw=Math.sqrt(wsum/Math.max(1,end-off));
+      lipSmooth=lipSmooth?lipSmooth*0.45+raw*0.55:raw;
+      const mouth=mouthFromRms(lipSmooth);
       const mouthWhen=when+(off/sampleRate);
-      setTimeout(()=>{if(currentAudio===mediaClock&&!mediaClock.ended)liveStreamMouthOverride=mouth;},Math.max(0,(mouthWhen-fishAudioCtx.currentTime)*1000));
+      setTimeout(()=>{if(currentAudio===mediaClock&&!mediaClock.ended)liveStreamMouthOverride=mouth;},
+        Math.max(0,(mouthWhen-fishAudioCtx.currentTime)*1000));
     }
   };
   try{
