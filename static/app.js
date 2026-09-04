@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.38",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.39",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -149,8 +149,8 @@ function syncBodyMotionForFrame(frame){
   const name=requestedBodyMotion(frame);
   pendingBodyMotion=name;
   if(!bodyAnimationsLoaded||currentBodyMotion===name)return;
-  const loop=name==="neutral";
-  const transitionSeconds=name==="thinking"?1.35:0.48;
+  const loop=name==="neutral"||name==="clapping";
+  const transitionSeconds=name==="thinking"?1.35:name==="clapping"?0.08:0.48;
   if(window.nanako3DRenderer?.playBodyAnimation?.(name,{loop,hold:true,transitionSeconds})){
     currentBodyMotion=name;
   }
@@ -208,25 +208,90 @@ function renderAnimationFrame(frame){
   }
 }
 
-let animationSfxAudio=null,animationSfxStartTimer=0,animationSfxStopTimer=0;
-function stopAnimationSfx(){
-  if(animationSfxStartTimer)clearTimeout(animationSfxStartTimer);animationSfxStartTimer=0;
-  if(animationSfxStopTimer)clearTimeout(animationSfxStopTimer);animationSfxStopTimer=0;
-  if(animationSfxAudio){try{animationSfxAudio.pause();animationSfxAudio.currentTime=0}catch{}animationSfxAudio=null}
+let animationSfxCtx=null,animationSfxMasterGain=null;
+let animationSfxSources=new Set(),animationSfxGeneration=0;
+const animationSfxBuffers=new Map(),animationSfxPromises=new Map();
+const ANIMATION_SFX_VOLUME=0.70;
+
+function animationSfxContext(){
+  if(animationSfxCtx&&animationSfxCtx.state!=="closed")return animationSfxCtx;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return null;
+  animationSfxCtx=new AC();
+  animationSfxMasterGain=animationSfxCtx.createGain();
+  animationSfxMasterGain.gain.value=ANIMATION_SFX_VOLUME;
+  animationSfxMasterGain.connect(animationSfxCtx.destination);
+  return animationSfxCtx;
 }
+
+async function loadAnimationSfxBuffer(src){
+  const key=String(src||"");
+  if(!key)return null;
+  if(animationSfxBuffers.has(key))return animationSfxBuffers.get(key);
+  if(animationSfxPromises.has(key))return animationSfxPromises.get(key);
+  const promise=(async()=>{
+    const ac=animationSfxContext();if(!ac)return null;
+    const response=await fetch(key,{cache:"force-cache"});
+    if(!response.ok)throw new Error(`SFX HTTP ${response.status}`);
+    const decoded=await ac.decodeAudioData(await response.arrayBuffer());
+    animationSfxBuffers.set(key,decoded);
+    animationSfxPromises.delete(key);
+    return decoded;
+  })().catch(err=>{animationSfxPromises.delete(key);console.warn("[Nanako SFX] preload failed",key,err);return null});
+  animationSfxPromises.set(key,promise);
+  return promise;
+}
+
+function preloadAnimationSfx(){
+  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=12.0.39");
+  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=12.0.39");
+}
+
+function stopAnimationSfx(){
+  animationSfxGeneration+=1;
+  for(const source of [...animationSfxSources]){
+    try{source.stop()}catch{}
+    try{source.disconnect()}catch{}
+  }
+  animationSfxSources.clear();
+}
+
 function scheduleAnimationSfx(plan){
   const cue=plan?.sfx;if(!cue?.src)return;
-  const start=Math.max(0,Number(cue.start_ms)||0),stop=Math.max(start,Number(cue.stop_ms)||Number(plan?.duration_ms)||0);
-  animationSfxStartTimer=setTimeout(()=>{
-    animationSfxStartTimer=0;
-    try{
-      const a=new Audio(String(cue.src));a.preload="auto";animationSfxAudio=a;a.currentTime=0;
-      const playPromise=a.play();if(playPromise?.catch)playPromise.catch(err=>console.warn(`[Nanako SFX] ${cue.name||"animation"} play blocked`,err));
-      if(stop>start)animationSfxStopTimer=setTimeout(()=>{animationSfxStopTimer=0;if(animationSfxAudio===a){try{a.pause();a.currentTime=0}catch{}animationSfxAudio=null}},stop-start);
-      console.log(`[Nanako SFX] ${cue.name||"animation"} start=${start}ms stop=${stop}ms`);
-    }catch(err){console.warn("[Nanako SFX] failed",err)}
-  },start);
+  const generation=animationSfxGeneration;
+  const starts=Array.isArray(cue.hits_ms)&&cue.hits_ms.length
+    ? cue.hits_ms.map(v=>Math.max(0,Number(v)||0))
+    : [Math.max(0,Number(cue.start_ms)||0)];
+  const planStop=Math.max(0,Number(cue.stop_ms)||Number(plan?.duration_ms)||0);
+  const requestedAt=performance.now();
+  void (async()=>{
+    const buffer=await loadAnimationSfxBuffer(String(cue.src));
+    if(!buffer||generation!==animationSfxGeneration)return;
+    const ac=animationSfxContext();if(!ac)return;
+    try{if(ac.state!=="running")await ac.resume()}catch{}
+    if(generation!==animationSfxGeneration)return;
+    for(const startMs of starts){
+      const lateness=performance.now()-(requestedAt+startMs);
+      // Missing an SFX hit is preferable to playing it a second late.
+      if(lateness>80)continue;
+      const source=ac.createBufferSource();
+      source.buffer=buffer;
+      const hitGain=ac.createGain();
+      hitGain.gain.value=Math.max(0,Math.min(1,Number(cue.volume??1)));
+      source.connect(hitGain);hitGain.connect(animationSfxMasterGain);
+      animationSfxSources.add(source);
+      source.onended=()=>{animationSfxSources.delete(source);try{source.disconnect()}catch{}try{hitGain.disconnect()}catch{}};
+      const when=ac.currentTime+Math.max(0,(requestedAt+startMs-performance.now())/1000);
+      source.start(when);
+      if(planStop>startMs){
+        const stopWhen=ac.currentTime+Math.max(0,(requestedAt+planStop-performance.now())/1000);
+        try{source.stop(stopWhen)}catch{}
+      }
+    }
+    console.log(`[Nanako SFX] ${cue.name||"animation"} hits=${starts.join(",")}ms stop=${planStop}ms volume=${Math.round(ANIMATION_SFX_VOLUME*100)}%`);
+  })();
 }
+preloadAnimationSfx();
 
 function stopAnimationPlan(){
   stopAnimationSfx();
@@ -287,6 +352,7 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
       animationRaf=requestAnimationFrame(tick);
     }else{
       animationRaf=0;
+      stopAnimationSfx();
       if(typeof onComplete==="function")onComplete();
     }
   };
@@ -390,7 +456,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.38",RELEASE_VERSION="2.21.1",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.39",RELEASE_VERSION="2.21.2",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.7-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -671,6 +737,7 @@ function unlockAudio(){
     if(AC){
       fishAudioCtx=fishAudioCtx||new AC();
       try{fishAudioCtx.resume()}catch{}
+      try{const sfxAc=animationSfxContext();if(sfxAc&&sfxAc.state!=="running")sfxAc.resume()}catch{}
       try{
         const b=fishAudioCtx.createBuffer(1,1,fishAudioCtx.sampleRate||24000);
         const src=fishAudioCtx.createBufferSource();src.buffer=b;src.connect(fishAudioCtx.destination);src.start(0);
@@ -1277,7 +1344,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.38] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.39] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1334,7 +1401,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
   if(wink){
     stopAnimationPlan();
     renderAnimationFrame({emotion:"neutral",action:"wink_prepare",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.06,scale:1,translate_y:0});
-    scheduleAnimationSfx({duration_ms:1540,sfx:{src:"./static/sfx/wink.wav?v=12.0.38",start_ms:160,stop_ms:1540,name:"wink-realtime"}});
+    scheduleAnimationSfx({duration_ms:1340,sfx:{src:"./static/sfx/wink.wav?v=12.0.39",start_ms:160,stop_ms:1160,name:"wink-realtime",volume:1}});
     realtimeGestureTimer=setTimeout(()=>{
       renderAnimationFrame({emotion:"neutral",action:"wink",eyes:wink,mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.16,scale:1,translate_y:0});
       realtimeGestureTimer=setTimeout(()=>{
@@ -1344,7 +1411,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
     },160);return;
   }
   if(realtimeBodyMotion==="clapping"){
-    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/solo_clap.wav?v=12.0.38",start_ms:0,stop_ms:2600,name:"solo-clap-realtime"}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
+    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.39",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
     realtimeGestureTimer=setTimeout(()=>{realtimeGestureTimer=0;realtimeBodyMotion="neutral";returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:"neutral"})},2600);return;
   }
   returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion});
@@ -1643,7 +1710,7 @@ async function recoverAfterForeground(){
   try{
     // iOS/PWA app switching frequently suspends WebAudio while leaving the
     // MediaStream object looking "live". Resume every audio context first.
-    for(const ac of [fishAudioCtx,ctx,realtimeAudioContext]){
+    for(const ac of [fishAudioCtx,ctx,realtimeAudioContext,animationSfxCtx]){
       try{if(ac&&ac.state!=="running"&&ac.state!=="closed")await ac.resume()}catch(err){console.warn("[Nanako Foreground] AudioContext resume failed",err)}
     }
     if(currentAudio){
@@ -1706,7 +1773,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.21.1 QWEN3-ASR-FLASH + QWEN3.7-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 2.21.2 QWEN3-ASR-FLASH + QWEN3.7-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
