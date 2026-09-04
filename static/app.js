@@ -368,7 +368,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.33",RELEASE_VERSION="2.20.8",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.34",RELEASE_VERSION="2.20.9",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.5-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -483,10 +483,11 @@ function memoryPayload(){
   // Step 2.20.8: older builds may have stored favorites only in learnerMemory.
   // Rehydrate a compact fact view for Python RAG without duplicating storage.
   for(const pref of (Array.isArray(learnerMemory?.preferences)?learnerMemory.preferences:[])){
-    const category=String(pref?.category||"").trim(),item=String(pref?.item||"").trim(),sentiment=String(pref?.sentiment||"").trim().toLowerCase();
+    const category=String(pref?.category||"").trim(),item=String(pref?.item||"").trim(),sentiment=String(pref?.sentiment||"").trim().toLowerCase(),evidence=String(pref?.evidence||"").trim();
     if(!item)continue;
+    const grounded=!evidence||evidence.toLowerCase().includes(item.toLowerCase())||(!/[?？]/.test(evidence)&&!/(?:一番.*(?:好き|大好き)|お気に入り|favorite|favourite).*(?:何|which|what|覚えて|remember)/i.test(evidence));
     let fact="";
-    if(/game|gaming|video game|ゲーム/i.test(category)&&["favorite","favourite"].includes(sentiment))fact=`The learner's favorite game is ${item}.`;
+    if(grounded&&/game|gaming|video game|ゲーム/i.test(category)&&["favorite","favourite"].includes(sentiment))fact=`The learner's favorite game is ${item}.`;
     else if(["favorite","favourite"].includes(sentiment))fact=`The learner's favorite ${category||"item"} is ${item}.`;
     else if(/game|gaming|video game|ゲーム/i.test(category)&&["love","like"].includes(sentiment))fact=`The learner likes the game ${item}.`;
     if(fact&&!facts.some(x=>String(x).toLowerCase()===fact.toLowerCase()))facts.push(fact);
@@ -1301,14 +1302,14 @@ function realtimeBodyForEmotion(emotion){return emotion==="angry"?"angry":emotio
 function clearRealtimeGesture(){if(realtimeGestureTimer)clearTimeout(realtimeGestureTimer);realtimeGestureTimer=0}
 function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGesture="none"}={}){
   clearRealtimeGesture();realtimeEmotion=String(emotion||"neutral");realtimeBodyMotion=["neutral","angry","thinking","clapping"].includes(bodyMotion)?bodyMotion:realtimeBodyForEmotion(realtimeEmotion);
-  const wink=eyeGesture==="wink_left"?"winkleft":eyeGesture==="wink_right"?"winkright":"";
+  const wink=eyeGesture==="wink_left"?"winkleftflirty":eyeGesture==="wink_right"?"winkrightflirty":"";
   if(wink){
     stopAnimationPlan();
-    renderAnimationFrame({emotion:"neutral",action:"wink_prepare",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.04,scale:1,translate_y:0});
+    renderAnimationFrame({emotion:"neutral",action:"wink_prepare",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.06,scale:1,translate_y:0});
     realtimeGestureTimer=setTimeout(()=>{
-      renderAnimationFrame({emotion:"neutral",action:"wink",eyes:wink,mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.10,scale:1,translate_y:0});
+      renderAnimationFrame({emotion:"neutral",action:"wink",eyes:wink,mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.16,scale:1,translate_y:0});
       realtimeGestureTimer=setTimeout(()=>{
-        realtimeGestureTimer=0;renderAnimationFrame({emotion:"neutral",action:"wink_release",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.03,scale:1,translate_y:0});
+        realtimeGestureTimer=0;renderAnimationFrame({emotion:"neutral",action:"wink_release",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.05,scale:1,translate_y:0});
         setTimeout(()=>returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion}),180);
       },1000);
     },160);return;
