@@ -368,7 +368,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.32",RELEASE_VERSION="2.20.7",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.33",RELEASE_VERSION="2.20.8",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.5-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -480,6 +480,17 @@ function mergeLearnerMemory(updates){
 }
 function memoryPayload(){
   const facts=persistentFacts.slice(-MEMORY_FACT_MAX);
+  // Step 2.20.8: older builds may have stored favorites only in learnerMemory.
+  // Rehydrate a compact fact view for Python RAG without duplicating storage.
+  for(const pref of (Array.isArray(learnerMemory?.preferences)?learnerMemory.preferences:[])){
+    const category=String(pref?.category||"").trim(),item=String(pref?.item||"").trim(),sentiment=String(pref?.sentiment||"").trim().toLowerCase();
+    if(!item)continue;
+    let fact="";
+    if(/game|gaming|video game|ゲーム/i.test(category)&&["favorite","favourite"].includes(sentiment))fact=`The learner's favorite game is ${item}.`;
+    else if(["favorite","favourite"].includes(sentiment))fact=`The learner's favorite ${category||"item"} is ${item}.`;
+    else if(/game|gaming|video game|ゲーム/i.test(category)&&["love","like"].includes(sentiment))fact=`The learner likes the game ${item}.`;
+    if(fact&&!facts.some(x=>String(x).toLowerCase()===fact.toLowerCase()))facts.push(fact);
+  }
   if(persistentUserName){
     const nameFact=`The learner's name is ${persistentUserName}.`;
     if(!facts.some(f=>String(f).toLowerCase()===nameFact.toLowerCase()))facts.push(nameFact);
