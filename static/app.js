@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.24",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.28",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -162,10 +162,10 @@ async function loadProductionBodyAnimations(){
   if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
   bodyAnimationsLoading=(async()=>{
     const result=await window.nanako3DRenderer.loadBodyAnimations({
-      neutral:"./static/animations/nanako_idle.fbx?v=12.0.24",
-      angry:"./static/animations/nanako_angry.fbx?v=12.0.24",
-      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.24",
-      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.24"
+      neutral:"./static/animations/nanako_idle.fbx?v=12.0.28",
+      angry:"./static/animations/nanako_angry.fbx?v=12.0.28",
+      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.28",
+      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.28"
     });
     const loaded=new Set((result?.loaded||[]).map(item=>item.name));
     bodyAnimationsLoaded=["neutral","angry","thinking","clapping"].every(name=>loaded.has(name));
@@ -368,7 +368,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.26",RELEASE_VERSION="2.20.1",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.28",RELEASE_VERSION="2.20.3",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.5-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -759,6 +759,26 @@ async function playFishStreaming(text,animationPlan=null,options={}){
     if(!r.body)throw new Error("Streaming response body unavailable");
     const reader=r.body.getReader();
     while(true){const {done,value}=await reader.read();if(done)break;if(value?.length)schedulePcm(value);}
+    if(totalSamples===0&&!ctrl.signal.aborted){
+      // Step 2.20.3 reliability guard: a Fish/proxy request can occasionally
+      // finish HTTP 200 with no PCM.  Previously that looked like a successful
+      // voice turn, so Nanako left thinking and silently returned to listening.
+      // Retry once through the normal Fish WAV endpoint and schedule that audio
+      // in the SAME WebAudio/animation turn.  Normal turns remain true streaming.
+      console.warn("[Fish Stream] zero PCM bytes; retrying once with verified Fish WAV fallback");
+      status("Nanako is speaking...");
+      const fallbackResponse=await fetch(`${API}/api/speak`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text,voice_style:voiceStyle,client_build:CLIENT_BUILD}),signal:ctrl.signal});
+      const fallbackData=await jsonResp(fallbackResponse);
+      const b64=String(fallbackData?.audio_base64||"");
+      if(!b64)throw new Error(fallbackData?.error||"Fish returned an empty stream and the fallback produced no audio.");
+      const raw=atob(b64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+      const decoded=await fishAudioCtx.decodeAudioData(bytes.buffer.slice(0));
+      const source=fishAudioCtx.createBufferSource();source.buffer=decoded;source.connect(fishAudioCtx.destination);fishScheduledSources.push(source);
+      const when=Math.max(nextStart,fishAudioCtx.currentTime+0.018);source.start(when);nextStart=when+decoded.duration;
+      totalSamples=Math.max(1,Math.round(decoded.duration*sampleRate));mediaClock.duration=decoded.duration;
+      const mono=decoded.getChannelData(0);feedLipSamples(mono,when);
+      console.log(`[Fish Stream] zero-byte recovery scheduled ${decoded.duration.toFixed(2)}s WAV`);
+    }
     const remainingMs=Math.max(0,(nextStart-fishAudioCtx.currentTime)*1000);
     await new Promise(resolve=>setTimeout(resolve,remainingMs+40));
   }catch(err){if(err?.name!=="AbortError"){failed=true;console.warn("[Fish Stream]",err);error("Nanako's Fish Audio stream failed. Check the Fish API key and voice ID.");}}
@@ -1178,7 +1198,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.26] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.28] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1595,7 +1615,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.20.1 QWEN3-ASR-FLASH + QWEN3.5-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 2.20.3 QWEN3-ASR-FLASH + QWEN3.5-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
