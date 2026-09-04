@@ -368,7 +368,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.25",RELEASE_VERSION="2.20.0",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.26",RELEASE_VERSION="2.20.1",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.5-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -377,7 +377,7 @@ const RUNTIME_CHECK=`${API}/runtime-check`;
 const LAST_GREETING_KEY="nanako_last_startup_greeting_v1";
 const MEMORY_KEY="nanakoPersistentMemoryV1";
 const USER_NAME_KEY="nanakoPersistentUserNameV1";
-const SESSION_HISTORY_MAX=600,MEMORY_SEND_MAX=16,MEMORY_FACT_MAX=80,LEARNER_PREFERENCE_MAX=100,LEARNER_TOPIC_MAX=80,LEARNER_PROGRESS_MAX=100,LEARNER_INTERACTION_MAX=100;
+const SESSION_HISTORY_MAX=600,MEMORY_SEND_MAX=8,MEMORY_FACT_MAX=80,LEARNER_PREFERENCE_MAX=100,LEARNER_TOPIC_MAX=80,LEARNER_PROGRESS_MAX=100,LEARNER_INTERACTION_MAX=100;
 let persistentFacts=[],learnerMemory={preferences:[],topic_affinities:[],language_progress:[],interaction_patterns:[]},persistentUserName="",startupGreetingData=null,startupGreetingPlayed=false,startupGreetingLoading=null,startupGreetingPlayPromise=null;
 function loadPersistentMemory(){
   try{
@@ -561,8 +561,14 @@ async function playStartupGreetingIfReady(fromGesture=false){
   if(startupGreetingPlayed||muted)return false;
   if(startupGreetingPlayPromise)return startupGreetingPlayPromise;
   startupGreetingPlayPromise=(async()=>{
-    const d=startupGreetingData||await fetchStartupGreeting();
-    if(!d)return false;
+    let d=startupGreetingData;
+    if(!d){
+      const n=rememberDetectedUserName();
+      d={reply:n?`おかえり、${n}！また話そうね。`:"はじめまして！ななこです。今日は元気？",tts_stream:true,tts_voice_style:"normal",tts_sample_rate:24000,animation_plan:null};
+      console.log("[Nanako Startup] immediate local greeting -> Fish stream");
+      // Refresh randomized metadata in the background; never block first speech on it.
+      void fetchStartupGreeting();
+    }
     let ok=false;
     if(d?.tts_stream&&!muted){
       ok=await playFishStreaming(String(d?.reply||""),d?.animation_plan,{idleEmotion:String(d?.animation_plan?.emotion||"neutral"),voiceStyle:String(d?.tts_voice_style||"normal"),sampleRate:Number(d?.tts_sample_rate||24000)});
@@ -1172,7 +1178,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.25] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.26] one authorized front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1589,7 +1595,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.20.0 QWEN3-ASR-FLASH + QWEN3.5-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 2.20.1 QWEN3-ASR-FLASH + QWEN3.5-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
