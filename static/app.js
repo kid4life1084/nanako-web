@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.30",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.35",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -368,7 +368,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.34",RELEASE_VERSION="2.20.9",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.35",RELEASE_VERSION="2.20.10",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.5-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -459,6 +459,12 @@ function rememberDetectedUserName(){
 }
 function mergeMemoryFacts(items){
   if(!Array.isArray(items))return;
+  for(const item of items){
+    const fact=String(item||"").trim();
+    if(/^The learner(?:'s|’s) favorite (?:video )?game is\s+/i.test(fact)){
+      persistentFacts=persistentFacts.filter(x=>!/^The learner(?:'s|’s) favorite (?:video )?game is\s+/i.test(String(x||"").trim()));
+    }
+  }
   const seen=new Set(persistentFacts.map(x=>x.toLowerCase()));
   for(const item of items){const fact=String(item||"").trim();if(!fact||memoryFactHasInvalidName(fact))continue;const key=fact.toLowerCase();if(seen.has(key))continue;seen.add(key);persistentFacts.push(fact);}
   if(persistentFacts.length>MEMORY_FACT_MAX)persistentFacts=persistentFacts.slice(-MEMORY_FACT_MAX);
@@ -469,7 +475,7 @@ function cleanMemoryText(value,max=180){return String(value||"").replace(/\s+/g,
 function mergeLearnerMemory(updates){
   if(!updates||typeof updates!=="object")return;
   const prefs=Array.isArray(updates.preferences)?updates.preferences:[];
-  for(const raw of prefs){const category=cleanMemoryText(raw?.category,40),item=cleanMemoryText(raw?.item,100),sentiment=cleanMemoryText(raw?.sentiment,16).toLowerCase(),evidence=cleanMemoryText(raw?.evidence);if(!item||!["like","dislike","favorite","avoid"].includes(sentiment))continue;const key=`${category}|${item}`.toLowerCase();const existing=learnerMemory.preferences.find(x=>`${x.category}|${x.item}`.toLowerCase()===key);const next={category,item,sentiment,evidence,observations:Math.min(99,(Number(existing?.observations)||0)+1),successes:0};if(existing)Object.assign(existing,next);else learnerMemory.preferences.push(next)}
+  for(const raw of prefs){const category=cleanMemoryText(raw?.category,40),item=cleanMemoryText(raw?.item,100),sentiment=cleanMemoryText(raw?.sentiment,16).toLowerCase(),evidence=cleanMemoryText(raw?.evidence);if(!item||!["like","dislike","favorite","avoid"].includes(sentiment))continue;if(sentiment==="favorite"&&/^(?:game|gaming|video game|ゲーム)$/i.test(category)){learnerMemory.preferences=learnerMemory.preferences.filter(x=>!(String(x?.sentiment||"").toLowerCase()==="favorite"&&/^(?:game|gaming|video game|ゲーム)$/i.test(String(x?.category||""))));}const key=`${category}|${item}`.toLowerCase();const existing=learnerMemory.preferences.find(x=>`${x.category}|${x.item}`.toLowerCase()===key);const next={category,item,sentiment,evidence,observations:Math.min(99,(Number(existing?.observations)||0)+1),successes:0};if(existing)Object.assign(existing,next);else learnerMemory.preferences.push(next)}
   const topics=Array.isArray(updates.topic_affinities)?updates.topic_affinities:[];
   for(const raw of topics){const topic=cleanMemoryText(raw?.topic,100),affinity=cleanMemoryText(raw?.affinity,16).toLowerCase(),evidence=cleanMemoryText(raw?.evidence);if(!topic||!["likes","dislikes","avoid"].includes(affinity))continue;const existing=learnerMemory.topic_affinities.find(x=>String(x.topic).toLowerCase()===topic.toLowerCase());const next={topic,affinity,evidence,observations:Math.min(99,(Number(existing?.observations)||0)+1),successes:0};if(existing)Object.assign(existing,next);else learnerMemory.topic_affinities.push(next)}
   const progress=Array.isArray(updates.language_progress)?updates.language_progress:[];
@@ -1249,7 +1255,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.32] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.35] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1677,7 +1683,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.20.5 QWEN3-ASR-FLASH + QWEN3.5-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 2.20.10 QWEN3-ASR-FLASH + QWEN3.5-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
