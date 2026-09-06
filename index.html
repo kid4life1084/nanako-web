@@ -12,10 +12,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
-<link rel="manifest" href="./manifest.webmanifest?v=12.0.46">
+<link rel="manifest" href="./manifest.webmanifest?v=12.0.47">
 <script>
 window.__NANAKO_RELEASE_GATE__=(async()=>{
-  const epoch="12.0.46",key="nanako_release_epoch";
+  const epoch="12.0.47",key="nanako_release_epoch";
   // Run cleanup on every document load. This deliberately does not trust a
   // previously stored epoch because iOS/Chrome can restore an old page while
   // keeping newer localStorage.
@@ -25,8 +25,8 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   try{const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);history.replaceState(null,"",url.href)}}catch{}
 })();
 </script>
-<link rel="stylesheet" href="./static/style.css?v=12.0.46">
-<link rel="preload" as="fetch" href="./static/models/nanako.glb?v=12.0.46" type="model/gltf-binary" crossorigin>
+<link rel="stylesheet" href="./static/style.css?v=12.0.47">
+<link rel="preload" as="fetch" href="./static/models/nanako.glb?v=12.0.47" type="model/gltf-binary" crossorigin>
 <style>
 .startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:#f2f5fa;}
 .startup-card{width:min(100%,420px);padding:36px 24px 30px;border:1px solid #dde4ee;border-radius:30px;background:#ffffff;box-shadow:0 18px 54px rgba(50,70,105,.10);display:flex;flex-direction:column;align-items:center;text-align:center;}
@@ -42,10 +42,21 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 .learning-onboarding-card{width:min(100%,420px);padding:24px 22px 20px;border:1px solid #dde4ee;border-radius:28px;background:#fff;box-shadow:0 18px 54px rgba(50,70,105,.10);}
 .learning-onboarding-card h2{margin:0;text-align:center;color:#17213a;font:800 25px/1.15 ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Avenir Next",sans-serif;}
 .learning-onboarding-intro{margin:7px 0 16px;text-align:center;color:#78869b;font-size:12px;line-height:1.35;}
-.learning-option{margin-bottom:13px}.learning-option:last-child{margin-bottom:0}
-.learning-level-button{width:100%;height:42px;border:0;border-radius:14px;background:#2384f5;color:#fff;font-size:16px;font-weight:800;}
+.learning-option{margin-bottom:11px}.learning-option:last-of-type{margin-bottom:0}
+.learning-level-button{width:100%;height:42px;border:1px solid #cdd8e8;border-radius:14px;background:#edf2f8;color:#17213a;font-size:16px;font-weight:800;}
+.learning-level-button.selected{border-color:#2384f5;background:#e8f2ff;color:#176cc9;box-shadow:0 0 0 2px rgba(35,132,245,.08)}
 .learning-level-description{padding:5px 5px 0;color:#6f7c90;font-size:11px;line-height:1.3;text-align:center;}
-.daily-mission-strip{margin-top:3px;padding:5px 9px;border:1px solid #dde4ee;border-radius:10px;background:#fff;color:#6f7c90;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.onboarding-continue,.daily-start-button{width:100%;height:46px;margin-top:15px;border:0;border-radius:15px;background:#2384f5;color:#fff;font-size:16px;font-weight:800;box-shadow:0 8px 18px rgba(35,132,245,.16)}
+.onboarding-continue:disabled{opacity:.42;box-shadow:none}
+.daily-challenges{position:fixed;inset:0;z-index:485;display:grid;place-items:center;padding:16px;background:#f2f5fa;}
+.daily-challenges[hidden]{display:none!important;}
+.daily-challenges-card{width:min(100%,420px);padding:20px 18px 18px;border:1px solid #dde4ee;border-radius:28px;background:#fff;box-shadow:0 18px 54px rgba(50,70,105,.10);}
+.daily-challenges-card h2{margin:0;text-align:center;color:#17213a;font:800 24px/1.15 ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Avenir Next",sans-serif;}
+.daily-challenges-intro{margin:6px 0 11px;text-align:center;color:#78869b;font-size:11px;line-height:1.3;}
+.daily-challenge-list{display:grid;gap:7px;}
+.daily-challenge-item{display:grid;grid-template-columns:25px 1fr;align-items:start;gap:7px;padding:8px 9px;border:1px solid #e0e6ef;border-radius:12px;background:#f8fafc;color:#42506a;}
+.daily-challenge-number{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#e8f2ff;color:#2379dc;font-size:11px;font-weight:800;}
+.daily-challenge-text{font-size:11px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 </style>
 </head>
 <body>
@@ -53,7 +64,7 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   <div class="startup-card">
     <div class="startup-logo-circle">N</div>
     <div class="startup-title-ja">NanaChat</div>
-    <div id="startupVersion" class="startup-version">Version 2.25.0</div>
+    <div id="startupVersion" class="startup-version">Version 2.25.1</div>
     <button id="startupEnterButton" class="startup-enter-button" disabled>Loading Nanako 3D…</button>
   </div>
 </div>
@@ -61,9 +72,18 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   <div class="learning-onboarding-card">
     <h2>Choose your Japanese level</h2>
     <div class="learning-onboarding-intro">Pick what feels closest right now. You can change it later from the ••• menu.</div>
-    <div class="learning-option"><button class="learning-level-button" data-onboarding-level="beginner">Beginner</button><div class="learning-level-description">I can use basic words and short sentences for everyday topics.</div></div>
-    <div class="learning-option"><button class="learning-level-button" data-onboarding-level="intermediate">Intermediate</button><div class="learning-level-description">I can hold everyday conversations, explain reasons, and connect ideas.</div></div>
-    <div class="learning-option"><button class="learning-level-button" data-onboarding-level="advanced">Advanced</button><div class="learning-level-description">I can discuss complex ideas naturally with longer, nuanced Japanese.</div></div>
+    <div class="learning-option"><button class="learning-level-button" data-onboarding-level="beginner">Beginner</button><div class="learning-level-description">Basic words and short sentences for familiar everyday topics.</div></div>
+    <div class="learning-option"><button class="learning-level-button" data-onboarding-level="intermediate">Intermediate</button><div class="learning-level-description">Everyday conversations, connected ideas, reasons and short stories.</div></div>
+    <div class="learning-option"><button class="learning-level-button" data-onboarding-level="advanced">Advanced</button><div class="learning-level-description">Longer natural conversation, nuance, abstract ideas and complex language.</div></div>
+    <button id="learningContinueButton" class="onboarding-continue" disabled>Continue</button>
+  </div>
+</div>
+<div id="dailyChallengesScreen" class="daily-challenges" hidden>
+  <div class="daily-challenges-card">
+    <h2>Daily Challenges</h2>
+    <div class="daily-challenges-intro">Five optional ways to earn extra XP today. Complete any or all of them while chatting with Nanako.</div>
+    <div id="dailyChallengesList" class="daily-challenge-list"></div>
+    <button id="dailyChallengesStartButton" class="daily-start-button">Start with Nanako</button>
   </div>
 </div>
 <main class="app-shell"><section class="nanako-app">
@@ -72,13 +92,12 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 <div class="top-actions"><span id="levelBadge" class="level-badge">Choose level</span><button id="menuButton" class="round-button">•••</button></div>
 </header>
 <div class="score-row"><div class="score-track"><div id="scoreFill" class="score-fill"></div></div><span id="scoreText">0 / 1000</span></div>
-<div id="dailyMissionStrip" class="daily-mission-strip">Daily challenge will appear after you choose a level.</div>
 
 <section class="character-stage">
   <div class="nanako-motion">
     <div id="nanakoAvatar" class="nanako-avatar vrm-loading" aria-label="Nanako" role="img">
       <img id="nanakoBackground" class="nanako-background" alt="" aria-hidden="true">
-      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako.glb?v=12.0.46" aria-label="Nanako 3D avatar"></canvas>
+      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako.glb?v=12.0.47" aria-label="Nanako 3D avatar"></canvas>
       <div id="nanako3DStatus" class="nanako-3d-status">Loading Nanako 3D…</div>
     </div>
   </div>
@@ -143,6 +162,6 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<script src="./static/nanako-3d.js?v=12.0.46" defer></script>
-<script src="./static/app.js?v=12.0.46" defer></script>
+<script src="./static/nanako-3d.js?v=12.0.47" defer></script>
+<script src="./static/app.js?v=12.0.47" defer></script>
 </body></html>
