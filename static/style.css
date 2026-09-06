@@ -154,7 +154,7 @@ html.portrait-lock-landscape .modal-backdrop{
 .avatar-credit{margin-top:8px;padding-top:8px;border-top:1px solid #352b3e;color:#817889;font-size:9px}
 
 /* ==========================================================
-   NanaChat Step 2.24.2 — Calm Light UI palette
+   NanaChat Step 2.24.3 — Calm Light UI palette
    Colour-only refinement inspired by the approved reference.
    Layout, portrait geometry, control placement and sizing are unchanged.
    ========================================================== */
@@ -228,3 +228,51 @@ html.app-layout .nanako-app{background:linear-gradient(180deg,#f6f8fc 0%,var(--c
 .camera-view{background:#eef2f7;border-color:var(--calm-border)}
 .camera-status{color:#748097}.camera-question{border-color:var(--calm-border);background:var(--calm-panel);color:var(--calm-text)}
 .camera-privacy{color:#8792a6}.avatar-credit{border-top-color:var(--calm-border);color:#8b96a8}
+
+
+/* ==========================================================
+   NanaChat Step 2.24.3 — Calm Light UI refinement
+   Visual-only: splash/title typography, exact scene fill, white idle portrait.
+   No control placement, portrait window placement, message geometry or runtime logic changed.
+   ========================================================== */
+:root{
+  --calm-portrait-idle:#ffffff;
+}
+
+/* Warm, rounded companion identity for the product title only. */
+.top-bar h1{
+  font-family:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Avenir Next",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-weight:760;
+  letter-spacing:.012em;
+  color:var(--calm-text);
+}
+
+/* The portrait frame itself stays exactly where it was, but its idle surface is now
+   the same clean white as the reply card instead of the old dark gradient. */
+.character-stage,
+html.app-layout .character-stage{
+  background:var(--calm-portrait-idle)!important;
+  border-color:var(--calm-border)!important;
+}
+
+/* Scene artwork is authored at 627x640. Make the visual layer occupy the entire
+   portrait viewport so no dark side gutters can appear when a scene is active. */
+html.app-layout .nanako-avatar{
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  aspect-ratio:auto!important;
+}
+.nanako-background{
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:fill!important;
+  object-position:center center!important;
+  background:var(--calm-portrait-idle)!important;
+}
+.nanako-3d-canvas{
+  width:100%!important;
+  height:100%!important;
+}
