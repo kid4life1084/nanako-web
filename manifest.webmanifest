@@ -2,13 +2,13 @@
   "name": "NanaChat",
   "short_name": "NanaChat",
   "id": "./index.html",
-  "start_url": "./index.html?nanako_release=12.0.43",
+  "start_url": "./index.html?nanako_release=12.0.44",
   "scope": "./",
   "display": "standalone",
   "display_override": [
     "standalone"
   ],
   "orientation": "portrait",
-  "background_color": "#0b0910",
-  "theme_color": "#0b0910"
+  "background_color": "#f2f5fa",
+  "theme_color": "#f2f5fa"
 }
