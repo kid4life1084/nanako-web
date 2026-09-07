@@ -276,6 +276,6 @@ html.app-layout .nanako-avatar{
   width:100%!important;
   height:100%!important;
 }
-/* Step 2.25.4 casual-learning XP */
+/* Step 2.25.5 casual-learning XP */
 .score-row span#scoreText{width:64px!important;font-size:10px!important;white-space:nowrap}
 .level-badge{min-width:104px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
