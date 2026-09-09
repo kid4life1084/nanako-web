@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.56",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.57",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -41,17 +41,44 @@ function currentDeviceOrientationAngle(){
   if(a===90)return 90;
   return 90;
 }
+function deviceIsActuallyLandscape(){
+  // Step 2.26.1: NEVER infer device orientation from visualViewport dimensions.
+  // On iPhone the software keyboard can make the visible viewport shorter than
+  // it is wide while the PHONE ITSELF is still portrait. The old test (vw > vh)
+  // therefore rotated the entire NanaChat UI by 90 degrees as soon as text input
+  // opened. Use physical/orientation signals only.
+  try{
+    const type=String(screen.orientation?.type||"").toLowerCase();
+    if(type.startsWith("landscape"))return true;
+    if(type.startsWith("portrait"))return false;
+    let raw=Number(screen.orientation?.angle);
+    if(!Number.isFinite(raw))raw=Number(window.orientation);
+    if(Number.isFinite(raw)){
+      const a=((raw%360)+360)%360;
+      return a===90||a===270;
+    }
+    const sw=Math.max(1,Number(screen.width)||0),sh=Math.max(1,Number(screen.height)||0);
+    if(sw&&sh)return sw>sh;
+    return false;
+  }catch{return false;}
+}
 function syncPortraitPresentation(){
   try{
-    const vv=window.visualViewport;
-    const vw=Math.max(1,Math.round(vv?.width||window.innerWidth||document.documentElement.clientWidth||1));
-    const vh=Math.max(1,Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight||1));
-    const landscape=isPhoneLike()&&vw>vh;
+    const landscape=isPhoneLike()&&deviceIsActuallyLandscape();
     document.documentElement.classList.toggle("portrait-lock-landscape",landscape);
     if(landscape){
-      document.documentElement.style.setProperty("--portrait-lock-w",`${vh}px`);
-      document.documentElement.style.setProperty("--portrait-lock-h",`${vw}px`);
+      // Size from the layout viewport/screen, not the keyboard-shrunken visual viewport.
+      const rawW=Math.max(1,Math.round(window.innerWidth||document.documentElement.clientWidth||screen.width||1));
+      const rawH=Math.max(1,Math.round(window.innerHeight||document.documentElement.clientHeight||screen.height||1));
+      const shortSide=Math.min(rawW,rawH),longSide=Math.max(rawW,rawH);
+      document.documentElement.style.setProperty("--portrait-lock-w",`${shortSide}px`);
+      document.documentElement.style.setProperty("--portrait-lock-h",`${longSide}px`);
       document.documentElement.style.setProperty("--portrait-lock-rotation",`${currentDeviceOrientationAngle()}deg`);
+    }else{
+      // Hard-clear stale fallback geometry left by an earlier orientation/keyboard event.
+      document.documentElement.style.removeProperty("--portrait-lock-w");
+      document.documentElement.style.removeProperty("--portrait-lock-h");
+      document.documentElement.style.removeProperty("--portrait-lock-rotation");
     }
     return landscape;
   }catch{return false;}
@@ -243,17 +270,17 @@ async function loadAnimationSfxBuffer(src){
 }
 
 function preloadAnimationSfx(){
-  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=12.0.56");
-  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=12.0.56");
-  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.56");
-  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.56");
+  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=12.0.57");
+  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=12.0.57");
+  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.57");
+  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.57");
 }
 
 async function playLevelUpSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.56");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.57");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
   return await new Promise(resolve=>{const source=ac.createBufferSource(),gain=ac.createGain();source.buffer=buffer;gain.gain.value=.60;source.connect(gain);gain.connect(ac.destination);source.onended=()=>{try{source.disconnect()}catch{}try{gain.disconnect()}catch{}resolve(true)};source.start();});
 }
-function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.56",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
+function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.57",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
 async function celebrateLearningLevelUp(event){
   if(!event||!event.congratulation_jp)return;micCapturePaused=true;status("Level up! 🎉");stopAnimationPlan();await playLevelUpSfx();
   if(!muted)await playFishStreaming(String(event.congratulation_jp),levelUpClapPlan(),{idleEmotion:"happy",voiceStyle:"normal",sampleRate:24000,suppressResume:true});
@@ -262,9 +289,9 @@ async function celebrateLearningLevelUp(event){
 }
 let dailyChallengeNoticeQueue=[],dailyChallengeNoticeBusy=false;
 async function playDailyChallengePassSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.56");if(!buffer)return false;
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.57");if(!buffer)return false;
   try{if(ac.state!=="running")await ac.resume()}catch{}
-  // Step 2.26.0: daily_challenge_pass.wav was too loud on-device.
+  // Step 2.26.1: daily_challenge_pass.wav was too loud on-device.
   // Play it at 60% of its previous amplitude (40% reduction), independently
   // from the established animation-SFX master and level-up reward volumes.
   try{const src=ac.createBufferSource(),gain=ac.createGain();src.buffer=buffer;gain.gain.value=.60;src.connect(gain);gain.connect(ac.destination);src.start();return true}catch(err){console.warn("[Daily Challenge SFX]",err);return false}
@@ -499,7 +526,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.56",RELEASE_VERSION="2.26.0",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.57",RELEASE_VERSION="2.26.1",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.7-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -987,7 +1014,7 @@ async function playFishStreaming(text,animationPlan=null,options={}){
   const voiceStyle=String(options?.voiceStyle||"normal");
   const idleEmotion=String(options?.idleEmotion||animationPlan?.emotion||"neutral").trim().toLowerCase()||"neutral";
   const ctrl=new AbortController();fishStreamAbort=ctrl;
-  // Step 2.26.0: anchor the animation clock to the FIRST scheduled audible PCM,
+  // Step 2.26.1: anchor the animation clock to the FIRST scheduled audible PCM,
   // not to the TTS request start. On iPhone the network TTFA can be hundreds of
   // milliseconds, which previously let the body animation run ahead of speech.
   let streamClockStart=NaN;
@@ -1549,7 +1576,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.56] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.57] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1606,7 +1633,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
   if(wink){
     stopAnimationPlan();
     renderAnimationFrame({emotion:"neutral",action:"wink_prepare",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.06,scale:1,translate_y:0});
-    scheduleAnimationSfx({duration_ms:1340,sfx:{src:"./static/sfx/wink.wav?v=12.0.56",start_ms:160,stop_ms:1160,name:"wink-realtime",volume:1}});
+    scheduleAnimationSfx({duration_ms:1340,sfx:{src:"./static/sfx/wink.wav?v=12.0.57",start_ms:160,stop_ms:1160,name:"wink-realtime",volume:1}});
     realtimeGestureTimer=setTimeout(()=>{
       renderAnimationFrame({emotion:"neutral",action:"wink",eyes:wink,mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.16,scale:1,translate_y:0});
       realtimeGestureTimer=setTimeout(()=>{
@@ -1616,7 +1643,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
     },160);return;
   }
   if(realtimeBodyMotion==="clapping"){
-    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.56",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
+    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.57",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
     realtimeGestureTimer=setTimeout(()=>{realtimeGestureTimer=0;realtimeBodyMotion="neutral";returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:"neutral"})},2600);return;
   }
   returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion});
@@ -1908,7 +1935,7 @@ async function startMode(){
 
 async function stopMode(){
   active=false;await setServerNanakoSpeaking(false);await stopRealtimeSession();await stopMicBridge();await stopAudio(false);
-  // Step 2.26.0: ending voice conversation must never leave the text composer
+  // Step 2.26.1: ending voice conversation must never leave the text composer
   // blocked by a stale in-flight voice flag/controller. Text chat is valid
   // with the microphone off.
   try{activeMicTurnController?.abort()}catch{}activeMicTurnController=null;busy=false;micCapturePaused=true;
@@ -1973,7 +2000,7 @@ window.addEventListener("beforeunload",()=>{
 let foregroundRecoveryBusy=false,lastForegroundRecoveryAt=0,backgroundLifecycleEpoch=0;
 
 function stopLocalSpeechForBackground(reason="background"){
-  // Step 2.26.0 iOS/PWA lifecycle hard reset. iOS can freeze WebAudio, fetch,
+  // Step 2.26.1 iOS/PWA lifecycle hard reset. iOS can freeze WebAudio, fetch,
   // requestAnimationFrame and MediaStream independently. Keeping a half-live
   // turn across that suspension is what created stuck "Nanako is speaking"
   // and frozen animation states. We intentionally cancel the interrupted turn
@@ -2080,7 +2107,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.26.0 QWEN3-ASR-FLASH + QWEN3.7-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 2.26.1 QWEN3-ASR-FLASH + QWEN3.7-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
