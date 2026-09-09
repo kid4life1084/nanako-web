@@ -10,7 +10,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.55",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.56",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -243,17 +243,17 @@ async function loadAnimationSfxBuffer(src){
 }
 
 function preloadAnimationSfx(){
-  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=12.0.55");
-  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=12.0.55");
-  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.55");
-  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.55");
+  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=12.0.56");
+  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=12.0.56");
+  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.56");
+  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.56");
 }
 
 async function playLevelUpSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.55");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.56");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
   return await new Promise(resolve=>{const source=ac.createBufferSource(),gain=ac.createGain();source.buffer=buffer;gain.gain.value=.60;source.connect(gain);gain.connect(ac.destination);source.onended=()=>{try{source.disconnect()}catch{}try{gain.disconnect()}catch{}resolve(true)};source.start();});
 }
-function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.55",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
+function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.56",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
 async function celebrateLearningLevelUp(event){
   if(!event||!event.congratulation_jp)return;micCapturePaused=true;status("Level up! 🎉");stopAnimationPlan();await playLevelUpSfx();
   if(!muted)await playFishStreaming(String(event.congratulation_jp),levelUpClapPlan(),{idleEmotion:"happy",voiceStyle:"normal",sampleRate:24000,suppressResume:true});
@@ -262,9 +262,9 @@ async function celebrateLearningLevelUp(event){
 }
 let dailyChallengeNoticeQueue=[],dailyChallengeNoticeBusy=false;
 async function playDailyChallengePassSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.55");if(!buffer)return false;
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.56");if(!buffer)return false;
   try{if(ac.state!=="running")await ac.resume()}catch{}
-  // Step 2.25.9: daily_challenge_pass.wav was too loud on-device.
+  // Step 2.26.0: daily_challenge_pass.wav was too loud on-device.
   // Play it at 60% of its previous amplitude (40% reduction), independently
   // from the established animation-SFX master and level-up reward volumes.
   try{const src=ac.createBufferSource(),gain=ac.createGain();src.buffer=buffer;gain.gain.value=.60;src.connect(gain);gain.connect(ac.destination);src.start();return true}catch(err){console.warn("[Daily Challenge SFX]",err);return false}
@@ -310,14 +310,17 @@ function scheduleAnimationSfx(plan){
     const ac=animationSfxContext();if(!ac)return;
     try{if(ac.state!=="running")await ac.resume()}catch{}
     if(generation!==animationSfxGeneration)return;
-    for(const startMs of starts){
+    const hitVolumes=Array.isArray(cue.hit_volumes)?cue.hit_volumes:[];
+    for(let hitIndex=0;hitIndex<starts.length;hitIndex++){
+      const startMs=starts[hitIndex];
       const lateness=performance.now()-(requestedAt+startMs);
       // Missing an SFX hit is preferable to playing it a second late.
       if(lateness>80)continue;
       const source=ac.createBufferSource();
       source.buffer=buffer;
       const hitGain=ac.createGain();
-      hitGain.gain.value=Math.max(0,Math.min(1,Number(cue.volume??1)));
+      const perHitVolume=hitVolumes.length?Number(hitVolumes[hitIndex]??cue.volume??1):Number(cue.volume??1);
+      hitGain.gain.value=Math.max(0,Math.min(1,perHitVolume));
       source.connect(hitGain);hitGain.connect(animationSfxMasterGain);
       animationSfxSources.add(source);
       source.onended=()=>{animationSfxSources.delete(source);try{source.disconnect()}catch{}try{hitGain.disconnect()}catch{}};
@@ -496,7 +499,7 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.55",RELEASE_VERSION="2.25.9",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.56",RELEASE_VERSION="2.26.0",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
 const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.7-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
@@ -984,11 +987,22 @@ async function playFishStreaming(text,animationPlan=null,options={}){
   const voiceStyle=String(options?.voiceStyle||"normal");
   const idleEmotion=String(options?.idleEmotion||animationPlan?.emotion||"neutral").trim().toLowerCase()||"neutral";
   const ctrl=new AbortController();fishStreamAbort=ctrl;
-  let streamClockStart=fishAudioCtx.currentTime+0.018;
-  const mediaClock={duration:0,ended:false,get currentTime(){return Math.max(0,fishAudioCtx.currentTime-streamClockStart)},pause(){try{ctrl.abort()}catch{};for(const src of fishScheduledSources.splice(0)){try{src.stop()}catch{}};this.ended=true;},load(){},src:""};
-  currentAudio=mediaClock;micQueue=[];micBatch=[];micCapturePaused=true;await setServerNanakoSpeaking(true);status("Nanako is speaking...");convButton();
-  let nextStart=streamClockStart,playedStart=nextStart,totalSamples=0,pending=new Uint8Array(0),failed=false;
-  liveStreamMouthOverride="closed";useTalkingAnimation(animationPlan,mediaClock);
+  // Step 2.26.0: anchor the animation clock to the FIRST scheduled audible PCM,
+  // not to the TTS request start. On iPhone the network TTFA can be hundreds of
+  // milliseconds, which previously let the body animation run ahead of speech.
+  let streamClockStart=NaN;
+  const mediaClock={duration:0,ended:false,get currentTime(){return Number.isFinite(streamClockStart)?Math.max(0,fishAudioCtx.currentTime-streamClockStart):0},pause(){try{ctrl.abort()}catch{};for(const src of fishScheduledSources.splice(0)){try{src.stop()}catch{}};this.ended=true;},load(){},src:""};
+  currentAudio=mediaClock;micQueue=[];micBatch=[];micCapturePaused=true;status("Nanako is preparing to speak...");convButton();
+  let nextStart=NaN,totalSamples=0,pending=new Uint8Array(0),failed=false,talkingAnimationStarted=false;
+  const startAudibleTurn=(when)=>{
+    if(!Number.isFinite(streamClockStart))streamClockStart=when;
+    if(talkingAnimationStarted)return;
+    talkingAnimationStarted=true;
+    liveStreamMouthOverride="closed";
+    useTalkingAnimation(animationPlan,mediaClock);
+    void setServerNanakoSpeaking(true);
+    status("Nanako is speaking...");
+  };
 
   // Step 2.19.5: VRoid viseme lip-sync.  Fish still streams raw PCM, but mouth
   // motion is no longer a two-size amplitude toggle.  We keep a continuous
@@ -1017,8 +1031,8 @@ async function playFishStreaming(text,animationPlan=null,options={}){
   const scheduleLipFrame=(mouth,when)=>setTimeout(()=>{
     if(currentAudio===mediaClock&&!mediaClock.ended)liveStreamMouthOverride=mouth;
   },Math.max(0,(when-lipVisualLead-fishAudioCtx.currentTime)*1000));
-  // Explicitly begin from a closed mouth before the first audible syllable.
-  scheduleLipFrame("closed",streamClockStart);
+  // The first closed-mouth frame is scheduled only once the first audible PCM
+  // has a real AudioContext start time (see startAudibleTurn).
   const feedLipSamples=(floats,when)=>{
     if(!floats?.length)return;
     // If the browser/network created a real playback gap, do not let a partial
@@ -1060,7 +1074,9 @@ async function playFishStreaming(text,animationPlan=null,options={}){
     const rms=Math.sqrt(sum/Math.max(1,n));
     const buf=fishAudioCtx.createBuffer(1,n,sampleRate);buf.copyToChannel(floats,0);
     const src=fishAudioCtx.createBufferSource();src.buffer=buf;src.connect(fishAudioCtx.destination);fishScheduledSources.push(src);
-    const when=Math.max(nextStart,fishAudioCtx.currentTime+0.010);src.start(when);nextStart=when+buf.duration;totalSamples+=n;mediaClock.duration=totalSamples/sampleRate;
+    const when=Number.isFinite(nextStart)?Math.max(nextStart,fishAudioCtx.currentTime+0.010):(fishAudioCtx.currentTime+0.018);
+    if(!talkingAnimationStarted){startAudibleTurn(when);scheduleLipFrame("closed",when);}
+    src.start(when);nextStart=when+buf.duration;totalSamples+=n;mediaClock.duration=totalSamples/sampleRate;
     feedLipSamples(floats,when);
   };
   try{
@@ -1084,7 +1100,9 @@ async function playFishStreaming(text,animationPlan=null,options={}){
       const raw=atob(b64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
       const decoded=await fishAudioCtx.decodeAudioData(bytes.buffer.slice(0));
       const source=fishAudioCtx.createBufferSource();source.buffer=decoded;source.connect(fishAudioCtx.destination);fishScheduledSources.push(source);
-      const when=Math.max(nextStart,fishAudioCtx.currentTime+0.018);source.start(when);nextStart=when+decoded.duration;
+      const when=Number.isFinite(nextStart)?Math.max(nextStart,fishAudioCtx.currentTime+0.018):(fishAudioCtx.currentTime+0.018);
+      if(!talkingAnimationStarted){startAudibleTurn(when);scheduleLipFrame("closed",when);}
+      source.start(when);nextStart=when+decoded.duration;
       totalSamples=Math.max(1,Math.round(decoded.duration*sampleRate));mediaClock.duration=decoded.duration;
       const mono=decoded.getChannelData(0);feedLipSamples(mono,when);
       console.log(`[Fish Stream] zero-byte recovery scheduled ${decoded.duration.toFixed(2)}s WAV`);
@@ -1094,7 +1112,7 @@ async function playFishStreaming(text,animationPlan=null,options={}){
     // keeps advancing. That previously let a generated reply be marked finished
     // before any scheduled audio was actually heard. Wait on AudioContext time,
     // which pauses with the audio device and resumes when the app returns.
-    while(!ctrl.signal.aborted&&fishAudioCtx.currentTime<nextStart+0.025){
+    while(!ctrl.signal.aborted&&Number.isFinite(nextStart)&&fishAudioCtx.currentTime<nextStart+0.025){
       if(document.visibilityState==="visible"&&fishAudioCtx.state!=="running"){
         try{await fishAudioCtx.resume()}catch{}
       }
@@ -1106,7 +1124,14 @@ async function playFishStreaming(text,animationPlan=null,options={}){
     mediaClock.ended=true;liveStreamMouthOverride="closed";
     if(currentAudio===mediaClock)currentAudio=null;
     await setServerNanakoSpeaking(false);micCapturePaused=!!options?.suppressResume;stopAnimationPlan();
-    finishPlanWithPostHold(animationPlan,{idleEmotion,onDone:()=>{if(options?.suppressResume){status("Nanako is celebrating...");return;}if(active){status("Listening...");setTimeout(begin,20)}else status("Ready to chat")}});convButton();
+    if(document.visibilityState!=="visible"){
+      // Background lifecycle owns recovery. Never restart mic/animation while iOS
+      // has the PWA suspended.
+      returnToPythonIdle({emotion:idleEmotion});
+      convButton();
+    }else{
+      finishPlanWithPostHold(animationPlan,{idleEmotion,onDone:()=>{if(options?.suppressResume){status("Nanako is celebrating...");return;}if(active){status("Listening...");setTimeout(begin,20)}else status("Ready to chat")}});convButton();
+    }
   }
   return !failed;
 }
@@ -1524,7 +1549,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.55] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.56] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1581,7 +1606,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
   if(wink){
     stopAnimationPlan();
     renderAnimationFrame({emotion:"neutral",action:"wink_prepare",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.06,scale:1,translate_y:0});
-    scheduleAnimationSfx({duration_ms:1340,sfx:{src:"./static/sfx/wink.wav?v=12.0.55",start_ms:160,stop_ms:1160,name:"wink-realtime",volume:1}});
+    scheduleAnimationSfx({duration_ms:1340,sfx:{src:"./static/sfx/wink.wav?v=12.0.56",start_ms:160,stop_ms:1160,name:"wink-realtime",volume:1}});
     realtimeGestureTimer=setTimeout(()=>{
       renderAnimationFrame({emotion:"neutral",action:"wink",eyes:wink,mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.16,scale:1,translate_y:0});
       realtimeGestureTimer=setTimeout(()=>{
@@ -1591,7 +1616,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
     },160);return;
   }
   if(realtimeBodyMotion==="clapping"){
-    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.55",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
+    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.56",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
     realtimeGestureTimer=setTimeout(()=>{realtimeGestureTimer=0;realtimeBodyMotion="neutral";returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:"neutral"})},2600);return;
   }
   returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion});
@@ -1883,7 +1908,7 @@ async function startMode(){
 
 async function stopMode(){
   active=false;await setServerNanakoSpeaking(false);await stopRealtimeSession();await stopMicBridge();await stopAudio(false);
-  // Step 2.25.9: ending voice conversation must never leave the text composer
+  // Step 2.26.0: ending voice conversation must never leave the text composer
   // blocked by a stale in-flight voice flag/controller. Text chat is valid
   // with the microphone off.
   try{activeMicTurnController?.abort()}catch{}activeMicTurnController=null;busy=false;micCapturePaused=true;
@@ -1945,7 +1970,34 @@ window.addEventListener("beforeunload",()=>{
   currentAudio?.pause();
 });
 
-let foregroundRecoveryBusy=false,lastForegroundRecoveryAt=0;
+let foregroundRecoveryBusy=false,lastForegroundRecoveryAt=0,backgroundLifecycleEpoch=0;
+
+function stopLocalSpeechForBackground(reason="background"){
+  // Step 2.26.0 iOS/PWA lifecycle hard reset. iOS can freeze WebAudio, fetch,
+  // requestAnimationFrame and MediaStream independently. Keeping a half-live
+  // turn across that suspension is what created stuck "Nanako is speaking"
+  // and frozen animation states. We intentionally cancel the interrupted turn
+  // locally and create a fresh mic session when the app returns.
+  backgroundLifecycleEpoch+=1;
+  const oldSession=micSessionId;
+  try{activeMicTurnController?.abort()}catch{};activeMicTurnController=null;
+  try{fishStreamAbort?.abort()}catch{};fishStreamAbort=null;
+  for(const src of fishScheduledSources.splice(0)){try{src.stop()}catch{}}
+  if(currentAudio){try{currentAudio.pause?.()}catch{};currentAudio=null;}
+  liveStreamMouthOverride="";
+  if(bargeCaptureTimer){clearTimeout(bargeCaptureTimer);bargeCaptureTimer=0;}
+  micSessionGeneration+=1;micSessionId="";micQueue=[];micBatch=[];
+  micCapturePaused=true;userSpeechActive=false;busy=false;
+  stopAnimationPlan();returnToPythonIdle({emotion:"neutral"});convButton();
+  // Best-effort server cleanup with keepalive. These calls are advisory; the
+  // fresh foreground session does not depend on their completion.
+  if(oldSession){
+    try{fetch(MIC_SPEAKING,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:oldSession,speaking:false}),keepalive:true}).catch(()=>{})}catch{}
+    try{fetch(MIC_STOP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:oldSession}),keepalive:true}).catch(()=>{})}catch{}
+  }
+  console.log(`[Nanako Lifecycle] ${reason} hard-reset transient voice/animation state • epoch=${backgroundLifecycleEpoch}`);
+}
+
 async function recoverAfterForeground(){
   if(document.visibilityState!=="visible"||foregroundRecoveryBusy)return;
   const now=Date.now();if(now-lastForegroundRecoveryAt<500)return;
@@ -1956,10 +2008,10 @@ async function recoverAfterForeground(){
     for(const ac of [fishAudioCtx,ctx,realtimeAudioContext,animationSfxCtx]){
       try{if(ac&&ac.state!=="running"&&ac.state!=="closed")await ac.resume()}catch(err){console.warn("[Nanako Foreground] AudioContext resume failed",err)}
     }
-    if(currentAudio){
-      if(fishAudioCtx&&fishAudioCtx.state!=="running"&&fishAudioCtx.state!=="closed")await fishAudioCtx.resume().catch(()=>{});
-      console.log(`[Nanako Foreground] active voice turn resumed • fishContext=${fishAudioCtx?.state||"none"}`);
-      return;
+    if(currentAudio||fishStreamAbort||userSpeechActive){
+      // A stale turn survived a WebKit lifecycle callback. Fail closed rather
+      // than attempting to resume a half-suspended audio/animation timeline.
+      stopLocalSpeechForBackground("foreground-stale-turn");
     }
     requestIdleAnimation();
     if(!active)return;
@@ -1977,8 +2029,10 @@ async function recoverAfterForeground(){
       try{stream?.getTracks().forEach(t=>t.stop())}catch{};stream=null;
       await ensureMicHardware();
     }else if(ctx.state==="suspended"){await ctx.resume().catch(()=>{});}
-    micCapturePaused=false;status("Listening...");
-    console.log("[Nanako Foreground] microphone + Python session recovered");
+    busy=false;userSpeechActive=false;micCapturePaused=false;
+    stopAnimationPlan();returnToPythonIdle({emotion:"neutral"});
+    status("Listening...");
+    console.log(`[Nanako Foreground] microphone + Python session recovered • epoch=${backgroundLifecycleEpoch}`);
   }catch(err){
     console.error("[Nanako Foreground recovery]",err);
     micCapturePaused=false;
@@ -1986,9 +2040,18 @@ async function recoverAfterForeground(){
     if(active)setTimeout(()=>begin().catch(x=>console.warn("[Nanako Foreground begin retry]",x)),180);
   }finally{foregroundRecoveryBusy=false;}
 }
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(()=>void recoverAfterForeground(),80)});
-window.addEventListener("pageshow",()=>setTimeout(()=>void recoverAfterForeground(),100));
-window.addEventListener("focus",()=>{if(document.visibilityState==="visible"){setTimeout(()=>void recoverAfterForeground(),120);if(interactionStarted){startIdleQuestionWatchdog();scheduleIdleQuestion();}}});document.addEventListener("visibilitychange",()=>{if(document.hidden)clearIdleQuestionTimer();else if(interactionStarted){startIdleQuestionWatchdog();scheduleIdleQuestion();}});
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){
+    clearIdleQuestionTimer();
+    stopLocalSpeechForBackground("visibility-hidden");
+  }else{
+    setTimeout(()=>void recoverAfterForeground(),100);
+    if(interactionStarted){startIdleQuestionWatchdog();scheduleIdleQuestion();}
+  }
+});
+window.addEventListener("pagehide",()=>stopLocalSpeechForBackground("pagehide"));
+window.addEventListener("pageshow",()=>setTimeout(()=>void recoverAfterForeground(),120));
+window.addEventListener("focus",()=>{if(document.visibilityState==="visible"){setTimeout(()=>void recoverAfterForeground(),140);if(interactionStarted){startIdleQuestionWatchdog();scheduleIdleQuestion();}}});
 
 
 function bindStartupEnterImmediately(){
@@ -2017,7 +2080,7 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.25.9 QWEN3-ASR-FLASH + QWEN3.7-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v11 Step 2.26.0 QWEN3-ASR-FLASH + QWEN3.7-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
