@@ -1,5 +1,5 @@
-// NanaChat Step 2.28.1 network-first worker.
-const BUILD="nanachat-step2-28-1-build-12-0-60-scene-costume";
+// NanaChat Step 2.28.2 network-first worker.
+const BUILD="nanachat-step2-28-2-build-12-0-61-scene-costume";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys()){if(/^(?:nanachat|nanako)/i.test(k))await caches.delete(k)}await self.clients.claim();})()));
 self.addEventListener("fetch",e=>{
