@@ -6,16 +6,16 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f2f5fa">
+<meta name="theme-color" content="#04122d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
-<link rel="manifest" href="./manifest.webmanifest?v=12.0.61">
+<link rel="manifest" href="./manifest.webmanifest?v=12.0.62">
 <script>
 window.__NANAKO_RELEASE_GATE__=(async()=>{
-  const epoch="12.0.61",key="nanako_release_epoch";
+  const epoch="12.0.62",key="nanako_release_epoch";
   // Run cleanup on every document load. This deliberately does not trust a
   // previously stored epoch because iOS/Chrome can restore an old page while
   // keeping newer localStorage.
@@ -25,25 +25,28 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   try{const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);history.replaceState(null,"",url.href)}}catch{}
 })();
 </script>
-<link rel="stylesheet" href="./static/style.css?v=12.0.61">
-<link rel="preload" as="fetch" href="./static/models/nanako_sweater_jeans.vrm?v=12.0.61" type="model/gltf-binary" crossorigin>
+<link rel="stylesheet" href="./static/style.css?v=12.0.62">
+<link rel="preload" as="fetch" href="./static/models/nanako_sweater_jeans.vrm?v=12.0.62" type="model/gltf-binary" crossorigin>
+<link rel="preload" as="image" href="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.62" fetchpriority="high">
+<link rel="preload" as="audio" href="./static/sfx/title_welcome_message.wav?v=12.0.62">
 <style>
-.startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;overflow:hidden;padding:0;background:#071326;isolation:isolate;}
-.startup-splash::before{content:"";position:absolute;inset:-28px;z-index:-2;background:url("./static/splash/nanachat-midnight-indigo.webp?v=12.0.61") center/cover no-repeat;filter:blur(18px) brightness(.48) saturate(.92);transform:scale(1.08);}
-.startup-splash::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(3,12,29,.18),rgba(3,12,29,.36));pointer-events:none;}
-.startup-card{position:relative;width:min(100vw,627px,calc(100vh * 627 / 640));aspect-ratio:627/640;overflow:hidden;border:0;border-radius:0;background:transparent;box-shadow:none;}
-.startup-cover{display:block;width:100%;height:100%;object-fit:cover;user-select:none;-webkit-user-drag:none;}
-.startup-version-overlay{position:absolute;left:5.2%;top:50.4%;width:29.5%;height:6.2%;display:grid;place-items:center;border-radius:999px;background:rgba(7,19,42,.94);color:#e9e6df;font:500 clamp(9px,2.7vw,13px)/1 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.08em;box-shadow:0 0 18px rgba(7,19,42,.65);}
-.startup-enter-button{position:absolute;left:25.2%;top:81.15%;width:49.5%;height:11.1%;margin:0;border:0;border-radius:999px;background:transparent;color:transparent;font-size:1px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:filter .16s ease,transform .16s ease,box-shadow .16s ease;}
+.startup-splash{position:fixed;inset:0;z-index:500;overflow:hidden;padding:0;background:#04122d;isolation:isolate;}
+.startup-splash::before,.startup-splash::after{content:none;}
+/* The artboard uses the same cover calculation as the image. This keeps the
+   live version label and Enter hit target aligned without creating a card. */
+.startup-card{position:absolute;left:50%;top:50%;width:max(100vw,46.154vh);height:max(100vh,216.667vw);transform:translate(-50%,-50%);overflow:hidden;border:0;border-radius:0;background:#04122d;box-shadow:none;}
+.startup-cover{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none;}
+.startup-version-overlay{position:absolute;left:7.6%;top:47.25%;width:25%;height:3.6%;display:grid;place-items:center;border-radius:999px;background:rgba(5,17,42,.97);color:#e9e6df;font:500 clamp(9px,1.45vh,14px)/1 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.08em;box-shadow:0 0 15px rgba(5,17,42,.52);}
+.startup-enter-button{position:absolute;left:25.1%;top:60.75%;width:49.2%;height:6.1%;margin:0;border:0;border-radius:999px;background:transparent;color:transparent;font-size:1px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:filter .16s ease,transform .16s ease,box-shadow .16s ease;}
 .startup-enter-button:not(:disabled):hover{filter:brightness(1.12);transform:scale(1.018);box-shadow:0 0 24px rgba(255,219,148,.25);}
 .startup-enter-button:not(:disabled):active{transform:scale(.985);}
 .startup-enter-button:focus-visible{outline:3px solid #fff;outline-offset:3px;}
 .startup-enter-button:disabled{cursor:wait;box-shadow:inset 0 0 0 999px rgba(5,11,28,.20);}
-.startup-progress{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));z-index:3;width:min(38vw,150px);padding:8px 10px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(4,13,31,.72);box-shadow:0 7px 24px rgba(0,0,0,.28);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+.startup-progress{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));z-index:4;width:min(42vw,168px);padding:8px 10px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(4,13,31,.72);box-shadow:0 7px 24px rgba(0,0,0,.24);}
 .startup-progress-label{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;color:#eef3ff;font:600 10px/1.15 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.03em;}
 .startup-progress-track{height:4px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.18);}
 .startup-progress-fill{width:2%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#f3c66d,#fff2c7);box-shadow:0 0 8px rgba(255,220,146,.52);transition:width .18s ease;}
-.startup-progress.ready{opacity:0;transition:opacity .28s ease .18s;pointer-events:none;}
+.startup-progress.ready{opacity:1;pointer-events:none;}
 .learning-onboarding{position:fixed;inset:0;z-index:490;display:grid;place-items:center;padding:18px;background:#f2f5fa;}
 .learning-onboarding[hidden]{display:none!important;}
 .learning-onboarding-card{width:min(100%,420px);padding:24px 22px 20px;border:1px solid #dde4ee;border-radius:28px;background:#fff;box-shadow:0 18px 54px rgba(50,70,105,.10);}
@@ -88,9 +91,9 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 </head>
 <body class="preinteraction">
 <div id="startupSplash" class="startup-splash">
-  <div class="startup-card" aria-label="NanaChat Version 2.28.2">
-    <img class="startup-cover" src="./static/splash/nanachat-midnight-indigo.webp?v=12.0.61" width="627" height="640" alt="NanaChat Version 2.28.2 — Nanako in her default red sweater">
-    <span id="startupVersion" class="startup-version-overlay">Version 2.28.2</span>
+  <div class="startup-card" aria-label="NanaChat Version 2.29.0">
+    <img class="startup-cover" src="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.62" width="852" height="1846" alt="NanaChat Version 2.29.0 — Nanako in her default red sweater">
+    <span id="startupVersion" class="startup-version-overlay">Version 2.29.0</span>
     <button id="startupEnterButton" class="startup-enter-button" type="button" aria-label="Enter NanaChat" disabled>Loading Nanako 3D…</button>
   </div>
   <div id="startupProgress" class="startup-progress" role="status" aria-live="polite">
@@ -127,7 +130,7 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
   <div class="nanako-motion">
     <div id="nanakoAvatar" class="nanako-avatar vrm-loading" aria-label="Nanako" role="img">
       <img id="nanakoBackground" class="nanako-background" alt="" aria-hidden="true">
-      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_sweater_jeans.vrm?v=12.0.61" aria-label="Nanako 3D avatar"></canvas>
+      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_sweater_jeans.vrm?v=12.0.62" aria-label="Nanako 3D avatar"></canvas>
       <div id="nanako3DStatus" class="nanako-3d-status">Loading Nanako 3D…</div>
     </div>
   </div>
@@ -199,6 +202,24 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<script src="./static/nanako-3d.js?v=12.0.61" defer></script>
-<script src="./static/app.js?v=12.0.61" defer></script>
+<audio id="titleWelcomeAudio" src="./static/sfx/title_welcome_message.wav?v=12.0.62" preload="auto" playsinline></audio>
+<script>
+(() => {
+  const audio=document.getElementById("titleWelcomeAudio");
+  let played=false;
+  async function playTitleWelcome(){
+    if(played||!audio)return false;
+    try{audio.currentTime=0;await audio.play();played=true;return true}catch{return false}
+  }
+  window.playNanakoTitleWelcome=playTitleWelcome;
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>void playTitleWelcome(),{once:true});
+  else void playTitleWelcome();
+  /* iOS blocks first-load audio until a gesture. Retry once on the user's
+     first splash interaction, while preserving immediate autoplay elsewhere. */
+  window.addEventListener("pointerdown",()=>void playTitleWelcome(),{once:true,capture:true});
+  window.addEventListener("keydown",()=>void playTitleWelcome(),{once:true,capture:true});
+})();
+</script>
+<script src="./static/nanako-3d.js?v=12.0.62" defer></script>
+<script src="./static/app.js?v=12.0.62" defer></script>
 </body></html>
