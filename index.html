@@ -12,10 +12,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
-<link rel="manifest" href="./manifest.webmanifest?v=12.0.58">
+<link rel="manifest" href="./manifest.webmanifest?v=12.0.60">
 <script>
 window.__NANAKO_RELEASE_GATE__=(async()=>{
-  const epoch="12.0.58",key="nanako_release_epoch";
+  const epoch="12.0.60",key="nanako_release_epoch";
   // Run cleanup on every document load. This deliberately does not trust a
   // previously stored epoch because iOS/Chrome can restore an old page while
   // keeping newer localStorage.
@@ -25,18 +25,18 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   try{const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);history.replaceState(null,"",url.href)}}catch{}
 })();
 </script>
-<link rel="stylesheet" href="./static/style.css?v=12.0.58">
-<link rel="preload" as="fetch" href="./static/models/nanako_sweater_jeans.vrm?v=12.0.58" type="model/gltf-binary" crossorigin>
+<link rel="stylesheet" href="./static/style.css?v=12.0.60">
+<link rel="preload" as="fetch" href="./static/models/nanako_sweater_jeans.vrm?v=12.0.60" type="model/gltf-binary" crossorigin>
 <style>
-.startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:#f2f5fa;}
-.startup-card{width:min(100%,420px);padding:36px 24px 30px;border:1px solid #dde4ee;border-radius:30px;background:#ffffff;box-shadow:0 18px 54px rgba(50,70,105,.10);display:flex;flex-direction:column;align-items:center;text-align:center;}
-.startup-logo-circle{width:86px;height:86px;border-radius:50%;display:grid;place-items:center;background:#edf1f7;color:#17213a;font-family:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Avenir Next",sans-serif;font-size:40px;font-weight:800;box-shadow:inset 0 0 0 1px #dde4ee;}
-.startup-title-ja{margin-top:18px;font-family:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Avenir Next",sans-serif;font-size:36px;font-weight:760;letter-spacing:.015em;color:#17213a;}
-.startup-title-en{margin-top:6px;font-size:18px;font-weight:700;color:#6d7a92;}
-.startup-subtitle{margin-top:8px;color:#8c97aa;font-size:13px;}
-.startup-version{margin-top:11px;padding:6px 12px;border:1px solid #dde4ee;border-radius:999px;background:#f5f7fa;color:#718097;font-size:13px;font-weight:700;letter-spacing:.025em;}
-.startup-enter-button{margin-top:26px;min-width:180px;height:50px;border:0;border-radius:16px;background:#2384f5;color:#fff;font-size:18px;font-weight:750;box-shadow:0 9px 22px rgba(35,132,245,.18);}
-.startup-enter-button:disabled{opacity:.62}
+.startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:#071326;}
+.startup-card{position:relative;width:min(100%,420px);aspect-ratio:627/640;overflow:hidden;border:1px solid rgba(244,210,142,.42);border-radius:28px;background:#071326;box-shadow:0 22px 70px rgba(0,8,24,.48);}
+.startup-cover{display:block;width:100%;height:100%;object-fit:cover;user-select:none;-webkit-user-drag:none;}
+.startup-version-overlay{position:absolute;left:5.2%;top:50.4%;width:29.5%;height:6.2%;display:grid;place-items:center;border-radius:999px;background:rgba(7,19,42,.94);color:#e9e6df;font:500 clamp(9px,2.7vw,13px)/1 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.08em;box-shadow:0 0 18px rgba(7,19,42,.65);}
+.startup-enter-button{position:absolute;left:25.2%;top:81.15%;width:49.5%;height:11.1%;margin:0;border:0;border-radius:999px;background:transparent;color:transparent;font-size:1px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:filter .16s ease,transform .16s ease,box-shadow .16s ease;}
+.startup-enter-button:not(:disabled):hover{filter:brightness(1.12);transform:scale(1.018);box-shadow:0 0 24px rgba(255,219,148,.25);}
+.startup-enter-button:not(:disabled):active{transform:scale(.985);}
+.startup-enter-button:focus-visible{outline:3px solid #fff;outline-offset:3px;}
+.startup-enter-button:disabled{cursor:wait;box-shadow:inset 0 0 0 999px rgba(5,11,28,.20);}
 .learning-onboarding{position:fixed;inset:0;z-index:490;display:grid;place-items:center;padding:18px;background:#f2f5fa;}
 .learning-onboarding[hidden]{display:none!important;}
 .learning-onboarding-card{width:min(100%,420px);padding:24px 22px 20px;border:1px solid #dde4ee;border-radius:28px;background:#fff;box-shadow:0 18px 54px rgba(50,70,105,.10);}
@@ -81,11 +81,10 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 </head>
 <body class="preinteraction">
 <div id="startupSplash" class="startup-splash">
-  <div class="startup-card">
-    <div class="startup-logo-circle">N</div>
-    <div class="startup-title-ja">NanaChat</div>
-    <div id="startupVersion" class="startup-version">Version 2.27.0</div>
-    <button id="startupEnterButton" class="startup-enter-button" disabled>Loading Nanako 3D…</button>
+  <div class="startup-card" aria-label="NanaChat Version 2.28.1">
+    <img class="startup-cover" src="./static/splash/nanachat-midnight-indigo.webp?v=12.0.60" width="627" height="640" alt="NanaChat Version 2.28.1 — Nanako in her default red sweater">
+    <span id="startupVersion" class="startup-version-overlay">Version 2.28.1</span>
+    <button id="startupEnterButton" class="startup-enter-button" type="button" aria-label="Enter NanaChat" disabled>Loading Nanako 3D…</button>
   </div>
 </div>
 <div id="learningOnboarding" class="learning-onboarding" hidden>
@@ -117,7 +116,7 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
   <div class="nanako-motion">
     <div id="nanakoAvatar" class="nanako-avatar vrm-loading" aria-label="Nanako" role="img">
       <img id="nanakoBackground" class="nanako-background" alt="" aria-hidden="true">
-      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_sweater_jeans.vrm?v=12.0.58" aria-label="Nanako 3D avatar"></canvas>
+      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_sweater_jeans.vrm?v=12.0.60" aria-label="Nanako 3D avatar"></canvas>
       <div id="nanako3DStatus" class="nanako-3d-status">Loading Nanako 3D…</div>
     </div>
   </div>
@@ -189,6 +188,6 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<script src="./static/nanako-3d.js?v=12.0.58" defer></script>
-<script src="./static/app.js?v=12.0.58" defer></script>
+<script src="./static/nanako-3d.js?v=12.0.60" defer></script>
+<script src="./static/app.js?v=12.0.60" defer></script>
 </body></html>
