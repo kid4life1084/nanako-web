@@ -1,5 +1,5 @@
-// NanaChat Step 2.29.1 network-first worker.
-const BUILD="nanachat-step2-29-1-build-12-0-63-idle-splash-fix";
+// NanaChat Step 2.29.3 network-first worker.
+const BUILD="nanachat-step2-29-3-build-12-0-65-stable-canonical-framing";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys()){if(/^(?:nanachat|nanako)/i.test(k))await caches.delete(k)}await self.clients.claim();})()));
 self.addEventListener("fetch",e=>{

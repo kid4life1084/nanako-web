@@ -12,10 +12,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
-<link rel="manifest" href="./manifest.webmanifest?v=12.0.63">
+<link rel="manifest" href="./manifest.webmanifest?v=12.0.65">
 <script>
 window.__NANAKO_RELEASE_GATE__=(async()=>{
-  const epoch="12.0.63",key="nanako_release_epoch";
+  const epoch="12.0.65",key="nanako_release_epoch";
   // Run cleanup on every document load. This deliberately does not trust a
   // previously stored epoch because iOS/Chrome can restore an old page while
   // keeping newer localStorage.
@@ -25,10 +25,10 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   try{const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);history.replaceState(null,"",url.href)}}catch{}
 })();
 </script>
-<link rel="stylesheet" href="./static/style.css?v=12.0.63">
-<link rel="preload" as="fetch" href="./static/models/nanako_sweater_jeans.vrm?v=12.0.63" type="model/gltf-binary" crossorigin>
-<link rel="preload" as="image" href="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.63" fetchpriority="high">
-<link rel="preload" as="audio" href="./static/sfx/title_welcome_message.wav?v=12.0.63">
+<link rel="stylesheet" href="./static/style.css?v=12.0.65">
+<link rel="preload" as="fetch" href="./static/models/nanako_sweater_jeans.vrm?v=12.0.65" type="model/gltf-binary" crossorigin>
+<link rel="preload" as="image" href="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.65" fetchpriority="high">
+<link rel="preload" as="audio" href="./static/sfx/title_welcome_message.wav?v=12.0.65">
 <style>
 html.splash-active,html.splash-active body{margin:0;width:100%;height:100%;min-height:100vh;min-height:100lvh;background:#04122d!important;}
 .startup-splash{position:fixed;z-index:500;top:0;right:0;bottom:auto;left:0;width:100vw;height:100vh;height:100lvh;min-height:100vh;overflow:hidden;padding:0;background:#04122d;isolation:isolate;}
@@ -92,9 +92,9 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 </head>
 <body class="preinteraction">
 <div id="startupSplash" class="startup-splash">
-  <div class="startup-card" aria-label="NanaChat Version 2.29.1">
-    <img class="startup-cover" src="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.63" width="852" height="1846" alt="NanaChat Version 2.29.1 — Nanako in her default red sweater">
-    <span id="startupVersion" class="startup-version-overlay">Version 2.29.1</span>
+  <div class="startup-card" aria-label="NanaChat Version 2.29.3">
+    <img class="startup-cover" src="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.65" width="852" height="1846" alt="NanaChat Version 2.29.3 — Nanako in her default red sweater">
+    <span id="startupVersion" class="startup-version-overlay">Version 2.29.3</span>
     <button id="startupEnterButton" class="startup-enter-button" type="button" aria-label="Enter NanaChat" disabled>Loading Nanako 3D…</button>
   </div>
   <div id="startupProgress" class="startup-progress" role="status" aria-live="polite">
@@ -131,7 +131,7 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
   <div class="nanako-motion">
     <div id="nanakoAvatar" class="nanako-avatar vrm-loading" aria-label="Nanako" role="img">
       <img id="nanakoBackground" class="nanako-background" alt="" aria-hidden="true">
-      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_sweater_jeans.vrm?v=12.0.63" aria-label="Nanako 3D avatar"></canvas>
+      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_sweater_jeans.vrm?v=12.0.65" aria-label="Nanako 3D avatar"></canvas>
       <div id="nanako3DStatus" class="nanako-3d-status">Loading Nanako 3D…</div>
     </div>
   </div>
@@ -203,24 +203,28 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<audio id="titleWelcomeAudio" src="./static/sfx/title_welcome_message.wav?v=12.0.63" preload="auto" autoplay playsinline></audio>
+<audio id="titleWelcomeAudio" src="./static/sfx/title_welcome_message.wav?v=12.0.65" preload="auto" autoplay playsinline></audio>
 <script>
 (() => {
   const audio=document.getElementById("titleWelcomeAudio");
   let played=false;
-  async function playTitleWelcome(){
-    if(played||!audio)return false;
-    try{audio.currentTime=0;await audio.play();played=true;return true}catch{return false}
+  let playPromise=null;
+  function playTitleWelcome(){
+    if(played||!audio)return Promise.resolve(played);
+    if(playPromise)return playPromise;
+    audio.currentTime=0;
+    playPromise=audio.play().then(()=>{played=true;return true}).catch(()=>false).finally(()=>{playPromise=null;});
+    return playPromise;
   }
   window.playNanakoTitleWelcome=playTitleWelcome;
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>void playTitleWelcome(),{once:true});
   else void playTitleWelcome();
-  /* iOS blocks first-load audio until a gesture. Retry once on the user's
-     first splash interaction, while preserving immediate autoplay elsewhere. */
+  /* Retain the immediate attempt where autoplay is permitted. On iOS, the
+     required Enter gesture below becomes the reliable playback trigger. */
   window.addEventListener("pointerdown",()=>void playTitleWelcome(),{once:true,capture:true});
   window.addEventListener("keydown",()=>void playTitleWelcome(),{once:true,capture:true});
 })();
 </script>
-<script src="./static/nanako-3d.js?v=12.0.63" defer></script>
-<script src="./static/app.js?v=12.0.63" defer></script>
+<script src="./static/nanako-3d.js?v=12.0.65" defer></script>
+<script src="./static/app.js?v=12.0.65" defer></script>
 </body></html>
