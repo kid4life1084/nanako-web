@@ -2203,9 +2203,9 @@ boot();
 // and while the microphone is actively listening.
 (()=>{
   const tracks=[
-    "./static/music/midday-drift.wav?v=12.0.63",
-    "./static/music/midnight-in-kyoto.wav?v=12.0.63",
-    "./static/music/tokio-twilight.wav?v=12.0.63"
+    "./static/music/midday-drift.mp3?v=mp3-01",
+    "./static/music/midnight-in-kyoto.mp3?v=mp3-01",
+    "./static/music/tokio-twilight.mp3?v=mp3-01"
   ];
   let index=0,audio=null,started=false;
   const ducks=new Set();
