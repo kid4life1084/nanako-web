@@ -78,7 +78,6 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 .daily-challenge-pass-notice .challenge-pass-tick{display:inline-block;margin-right:7px;color:#20a35a;font-size:17px;font-weight:900;vertical-align:-1px}
 .daily-reminder-item.completed{background:#e5e7eb!important;border-color:#d5d9df!important;color:#7b8492!important}.daily-reminder-item.completed .daily-reminder-copy{color:#7b8492!important}.daily-reminder-item.completed .daily-reminder-number{background:#d7eadf!important;color:#218a50!important}
 </style>
-<link rel="preload" as="image" href="./static/splash/nanachat-fullscreen-midnight.webp?v=2.30.11" fetchpriority="high">
 </head>
 <body class="preinteraction">
 <div id="startupSplash" class="startup-splash">
@@ -192,4 +191,4 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 
 <script src="./static/nanako-3d.js?v=12.0.57" defer></script>
 <script src="./static/app.js?v=12.0.57" defer></script>
-<div id="recoverySplash" style="position:fixed;inset:0;z-index:9999;background:#04122d"><img src="./static/splash/nanachat-fullscreen-midnight.webp?v=2.30.11" style="width:100%;height:calc(100% + 120px);object-fit:cover;display:block"><button id="recoveryEnter" style="position:fixed;left:25%;top:60%;width:50%;height:8%;opacity:0">Enter</button></div><script>document.getElementById("recoveryEnter").onclick=()=>document.getElementById("recoverySplash").remove()</script></body></html>
+<div id="recoverySplash" style="position:fixed;top:0;right:0;bottom:-120px;left:0;z-index:9999;overflow:hidden;background:#04122d;color:#fff"><img src="./static/splash/nanachat-fullscreen-midnight.webp" style="position:absolute;width:100%;height:calc(100% + 120px);object-fit:cover"><div id="recoveryVersion" style="position:absolute;left:8%;top:47%;font-size:20px">Version</div><button id="recoveryEnter" disabled style="position:absolute;left:25%;top:60%;width:50%;height:7%;border-radius:30px;background:#101a34;color:#fff;border:1px solid #d8b96a;font-size:22px">Loading…</button><div style="position:fixed;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));width:168px;padding:10px;border:1px solid #ffffff44;border-radius:10px;background:#04122dcc"><div id="recoveryProgressLabel">Loading Nanako…</div><div style="height:4px;background:#ffffff44;border-radius:4px;margin-top:7px"><div id="recoveryProgressFill" style="width:2%;height:100%;background:#f3c66d;border-radius:4px"></div></div></div></div><script src="./static/recovery-startup.js"></script></body></html>
