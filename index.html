@@ -27,7 +27,7 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 </script>
 <link rel="stylesheet" href="./static/style.css?v=12.0.57">
 <link rel="preload" as="fetch" href="./static/models/nanako.glb?v=12.0.57" type="model/gltf-binary" crossorigin>
-<style>
+<style>.startup-splash{background:#04122d url("./static/splash/nanachat-fullscreen-midnight.webp") center/cover no-repeat!important;top:0;right:0;bottom:-120px;left:0;inset:auto!important}.startup-card{position:relative;background:transparent!important;border:0!important;box-shadow:none!important;height:100%;width:100%;padding:0}.startup-logo-circle,.startup-title-ja{display:none}.startup-version{position:absolute;left:8%;top:47%;margin:0;background:rgba(5,17,42,.9);color:#fff;border:0}.startup-enter-button{position:absolute;left:25%;top:60.7%;width:49%;height:6%;margin:0;border-radius:999px;background:transparent;color:transparent;box-shadow:none}.startup-progress{position:fixed;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));width:168px;padding:10px;border:1px solid #ffffff44;border-radius:10px;background:#04122dcc;color:#fff}</style><style>
 .startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:#f2f5fa;}
 .startup-card{width:min(100%,420px);padding:36px 24px 30px;border:1px solid #dde4ee;border-radius:30px;background:#ffffff;box-shadow:0 18px 54px rgba(50,70,105,.10);display:flex;flex-direction:column;align-items:center;text-align:center;}
 .startup-logo-circle{width:86px;height:86px;border-radius:50%;display:grid;place-items:center;background:#edf1f7;color:#17213a;font-family:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Avenir Next",sans-serif;font-size:40px;font-weight:800;box-shadow:inset 0 0 0 1px #dde4ee;}
@@ -84,8 +84,8 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
   <div class="startup-card">
     <div class="startup-logo-circle">N</div>
     <div class="startup-title-ja">NanaChat</div>
-    <div id="startupVersion" class="startup-version">Version 2.26.1</div>
-    <button id="startupEnterButton" class="startup-enter-button" disabled>Loading Nanako 3D…</button>
+    <div id="startupVersion" class="startup-version">Version 2.30.13</div>
+    <button id="startupEnterButton" class="startup-enter-button" disabled>Loading Nanako 3D…</button><div id="startupProgress" class="startup-progress"><div><span id="startupProgressText">Loading Nanako…</span> <span id="startupProgressPercent">0%</span></div><div style="height:4px;background:#ffffff44;border-radius:4px;margin-top:7px"><div id="startupProgressFill" style="width:2%;height:100%;background:#f3c66d;border-radius:4px"></div></div></div>
   </div>
 </div>
 <div id="learningOnboarding" class="learning-onboarding" hidden>
@@ -191,4 +191,4 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 
 <script src="./static/nanako-3d.js?v=12.0.57" defer></script>
 <script src="./static/app.js?v=12.0.57" defer></script>
-<div id="recoverySplash" style="position:fixed;top:0;right:0;bottom:-120px;left:0;z-index:9999;overflow:hidden;background:#04122d;color:#fff"><img src="./static/splash/nanachat-fullscreen-midnight.webp" style="position:absolute;width:100%;height:calc(100% + 120px);object-fit:cover"><div id="recoveryVersion" style="position:absolute;left:8%;top:47%;font-size:20px">Version</div><button id="recoveryEnter" disabled style="position:absolute;left:25%;top:60%;width:50%;height:7%;border-radius:30px;background:#101a34;color:#fff;border:1px solid #d8b96a;font-size:22px">Loading…</button><div style="position:fixed;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));width:168px;padding:10px;border:1px solid #ffffff44;border-radius:10px;background:#04122dcc"><div id="recoveryProgressLabel">Loading Nanako…</div><div style="height:4px;background:#ffffff44;border-radius:4px;margin-top:7px"><div id="recoveryProgressFill" style="width:2%;height:100%;background:#f3c66d;border-radius:4px"></div></div></div></div><script src="./static/recovery-startup.js"></script></body></html>
+<script>document.getElementById("startupEnterButton").addEventListener("click",()=>{let t=["./static/music/midday-drift.mp3","./static/music/midnight-kyoto.mp3","./static/music/tokio-twilight.mp3"],i=0;function p(){let a=new Audio(t[i]);a.volume=.13;a.onended=()=>{i=(i+1)%t.length;p()};a.play().catch(()=>{})}p();let w=new Audio("./static/sfx/title_welcome_message.wav");w.volume=.55;w.play().catch(()=>{})},{once:true})</script></body></html>
