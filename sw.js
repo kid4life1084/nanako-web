@@ -1,4 +1,4 @@
-// NanaChat Step 2.30.4 network-first worker.
+// NanaChat Step 2.30.5 network-first worker.
 const BUILD="nanachat-step2-30-0-build-12-0-63-new-default-bgm";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys()){if(/^(?:nanachat|nanako)/i.test(k))await caches.delete(k)}await self.clients.claim();})()));

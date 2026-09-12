@@ -12,10 +12,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
-<link rel="manifest" href="./manifest.webmanifest?v=12.0.67">
+<link rel="manifest" href="./manifest.webmanifest?v=12.0.68">
 <script>
 window.__NANAKO_RELEASE_GATE__=(async()=>{
-  const epoch="12.0.67",key="nanako_release_epoch";
+  const epoch="12.0.68",key="nanako_release_epoch";
   // Run cleanup on every document load. This deliberately does not trust a
   // previously stored epoch because iOS/Chrome can restore an old page while
   // keeping newer localStorage.
@@ -25,16 +25,16 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   try{const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);history.replaceState(null,"",url.href)}}catch{}
 })();
 </script>
-<link rel="stylesheet" href="./static/style.css?v=12.0.67">
-<link rel="preload" as="fetch" href="./static/models/nanako_default.vrm?v=12.0.67" type="model/gltf-binary" crossorigin>
-<link rel="preload" as="image" href="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.67" fetchpriority="high">
-<link rel="preload" as="audio" href="./static/sfx/title_welcome_message.wav?v=12.0.67">
+<link rel="stylesheet" href="./static/style.css?v=12.0.68">
+<link rel="preload" as="fetch" href="./static/models/nanako_default.vrm?v=12.0.68" type="model/gltf-binary" crossorigin>
+<link rel="preload" as="image" href="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.68" fetchpriority="high">
+<link rel="preload" as="audio" href="./static/sfx/title_welcome_message.wav?v=12.0.68">
 <style>
-.startup-splash{position:fixed;inset:0;z-index:500;overflow:hidden;padding:0;background:#04122d;isolation:isolate;}
+.startup-splash{position:fixed;z-index:500;left:0;right:0;top:0;bottom:-80px;width:100vw;height:calc(100dvh + 80px);overflow:hidden;padding:0;background:#04122d;isolation:isolate;}
 .startup-splash::before,.startup-splash::after{content:none;}
 /* The artboard uses the same cover calculation as the image. This keeps the
    live version label and Enter hit target aligned without creating a card. */
-.startup-card{position:absolute;left:50%;top:50%;width:max(100vw,46.154vh);height:max(100vh,216.667vw);transform:translate(-50%,-50%);overflow:hidden;border:0;border-radius:0;background:#04122d;box-shadow:none;}
+.startup-card{position:absolute;inset:0;width:100%;height:100%;transform:none;overflow:hidden;border:0;border-radius:0;background:#04122d;box-shadow:none;}
 .startup-cover{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none;}
 .startup-version-overlay{position:absolute;left:7.6%;top:47.25%;width:25%;height:3.6%;display:grid;place-items:center;border-radius:999px;background:rgba(5,17,42,.97);color:#e9e6df;font:500 clamp(9px,1.45vh,14px)/1 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.08em;box-shadow:0 0 15px rgba(5,17,42,.52);}
 .startup-enter-button{position:absolute;left:25.1%;top:60.75%;width:49.2%;height:6.1%;margin:0;border:0;border-radius:999px;background:transparent;color:transparent;font-size:1px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:filter .16s ease,transform .16s ease,box-shadow .16s ease;}
@@ -91,9 +91,9 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 </head>
 <body class="preinteraction">
 <div id="startupSplash" class="startup-splash">
-  <div class="startup-card" aria-label="NanaChat Version 2.30.4">
-    <img class="startup-cover" src="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.67" width="852" height="1846" alt="NanaChat Version 2.30.4">
-    <span id="startupVersion" class="startup-version-overlay">Version 2.30.4</span>
+  <div class="startup-card" aria-label="NanaChat Version 2.30.5">
+    <img class="startup-cover" src="./static/splash/nanachat-fullscreen-midnight.webp?v=12.0.68" width="852" height="1846" alt="NanaChat Version 2.30.5">
+    <span id="startupVersion" class="startup-version-overlay">Version 2.30.5</span>
     <button id="startupEnterButton" class="startup-enter-button" type="button" aria-label="Enter NanaChat" disabled>Loading Nanako 3D…</button>
   </div>
   <div id="startupProgress" class="startup-progress" role="status" aria-live="polite">
@@ -130,7 +130,7 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
   <div class="nanako-motion">
     <div id="nanakoAvatar" class="nanako-avatar vrm-loading" aria-label="Nanako" role="img">
       <img id="nanakoBackground" class="nanako-background" alt="" aria-hidden="true">
-      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_default.vrm?v=12.0.67" aria-label="Nanako 3D avatar"></canvas>
+      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_default.vrm?v=12.0.68" aria-label="Nanako 3D avatar"></canvas>
       <div id="nanako3DStatus" class="nanako-3d-status">Loading Nanako 3D…</div>
     </div>
   </div>
@@ -202,7 +202,7 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<audio id="titleWelcomeAudio" src="./static/sfx/title_welcome_message.wav?v=12.0.67" preload="auto" playsinline></audio>
+<audio id="titleWelcomeAudio" src="./static/sfx/title_welcome_message.wav?v=12.0.68" preload="auto" playsinline></audio>
 <script>
 (() => {
   const audio=document.getElementById("titleWelcomeAudio");
@@ -220,6 +220,6 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
   window.addEventListener("keydown",()=>void playTitleWelcome(),{once:true,capture:true});
 })();
 </script>
-<script src="./static/nanako-3d.js?v=12.0.67" defer></script>
-<script src="./static/app.js?v=12.0.67" defer></script>
+<script src="./static/nanako-3d.js?v=12.0.68" defer></script>
+<script src="./static/app.js?v=12.0.68" defer></script>
 </body></html>
