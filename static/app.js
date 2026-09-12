@@ -23,7 +23,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.69",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -189,7 +189,7 @@ function syncBodyMotionForFrame(frame){
   const name=requestedBodyMotion(frame);
   pendingBodyMotion=name;
   if(!bodyAnimationsLoaded||currentBodyMotion===name)return;
-  const clipName=name;
+  const clipName=name==="neutral"?"neutral":name;
   const loop=name==="neutral"||name==="clapping";
   const transitionSeconds=name==="thinking"?1.35:name==="clapping"?0.08:0.48;
   if(window.nanako3DRenderer?.playBodyAnimation?.(clipName,{loop,hold:true,transitionSeconds})){
@@ -203,17 +203,17 @@ async function loadProductionBodyAnimations(){
   if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
   bodyAnimationsLoading=(async()=>{
     const result=await window.nanako3DRenderer.loadBodyAnimations({
-      neutral:"./static/animations/nanako_neutral_idle.fbx?v=12.0.69",
-      angry:"./static/animations/nanako_angry.fbx?v=12.0.69",
-      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.69",
-      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.69"
+      neutral:"./static/animations/nanako_neutral_idle.fbx?v=12.0.62",
+      angry:"./static/animations/nanako_angry.fbx?v=12.0.62",
+      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.62",
+      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.62"
     });
     const loaded=new Set((result?.loaded||[]).map(item=>item.name));
     bodyAnimationsLoaded=["neutral","angry","thinking","clapping"].every(name=>loaded.has(name));
     if(!bodyAnimationsLoaded)throw new Error(`Only ${loaded.size}/4 Nanako body animations loaded.`);
     currentBodyMotion="";
     syncBodyMotionForFrame({body_motion:pendingBodyMotion,emotion:"neutral"});
-    console.log("[Nanako 3D] Step 2.30.6 body animations ready: supplied neutral idle, angry, thinking, clapping");
+    console.log("[Nanako 3D] Step 2.29 body animations ready: neutral-pose neutral, angry, thinking, clapping");
     return true;
   })().catch(err=>{bodyAnimationsLoading=null;console.error("[Nanako 3D body animation load]",err);return false});
   return bodyAnimationsLoading;
@@ -544,9 +544,9 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.69",RELEASE_VERSION="2.30.6",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.62",RELEASE_VERSION="2.29.0",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const NANAKO_OUTFIT_MODELS=Object.freeze({
-  neutral:"./static/models/nanako_default.vrm?v=12.0.69",
+  neutral:"./static/models/nanako_default.vrm?v=12.0.62",
   sports:"./static/models/nanako_sports.vrm?v=12.0.62",
   casual:"./static/models/nanako_casual.vrm?v=12.0.62",
   swimwear:"./static/models/nanako_swimwear.vrm?v=12.0.62",
