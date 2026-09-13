@@ -1,5 +1,5 @@
-// NanaChat v2.3.17 revision 2 network-first worker.
-const BUILD="nanachat-v2-3-17-rev1-neutral-avatar";
+// NanaChat v2.3.18 revision 2 network-first worker.
+const BUILD="nanachat-v2-3-18-rev1-neutral-avatar";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys()){if(/^(?:nanachat|nanako)/i.test(k))await caches.delete(k)}await self.clients.claim();})()));
 self.addEventListener("fetch",e=>{
