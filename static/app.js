@@ -23,7 +23,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=2.3.19-r1",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=2.3.20-r1",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -201,9 +201,9 @@ async function loadOptionalBodyAnimations(){
   const renderer=window.nanako3DRenderer;
   if(!renderer?.ready||!renderer?.loadBodyAnimations)return false;
   const result=await renderer.loadBodyAnimations({
-    angry:"./static/animations/nanako_angry.fbx?v=2.3.19-r1",
-    thinking:"./static/animations/nanako_thinking.fbx?v=2.3.19-r1",
-    clapping:"./static/animations/nanako_clapping.fbx?v=2.3.19-r1"
+    angry:"./static/animations/nanako_angry.fbx?v=2.3.20-r1",
+    thinking:"./static/animations/nanako_thinking.fbx?v=2.3.20-r1",
+    clapping:"./static/animations/nanako_clapping.fbx?v=2.3.20-r1"
   });
   const loaded=(result?.loaded||[]).map(item=>item.name);
   console.log(`[Nanako 3D] Optional motions ready: ${loaded.join(", ")||"none"}`);
@@ -216,7 +216,7 @@ async function loadProductionBodyAnimations(){
   if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
   bodyAnimationsLoading=(async()=>{
     const result=await window.nanako3DRenderer.loadBodyAnimations({
-      standing:"./static/animations/nanako_idle_replacement.fbx?v=2.3.19-r1"
+      standing:"./static/animations/nanako_idle_replacement.fbx?v=2.3.20-r1"
     });
     const loaded=new Set((result?.loaded||[]).map(item=>item.name));
     bodyAnimationsLoaded=loaded.has("standing");
@@ -299,17 +299,17 @@ async function loadAnimationSfxBuffer(src){
 }
 
 function preloadAnimationSfx(){
-  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=2.3.19-r1");
-  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=2.3.19-r1");
-  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.3.19-r1");
-  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.3.19-r1");
+  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=2.3.20-r1");
+  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=2.3.20-r1");
+  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.3.20-r1");
+  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.3.20-r1");
 }
 
 async function playLevelUpSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.3.19-r1");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.3.20-r1");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
   return await new Promise(resolve=>{const source=ac.createBufferSource(),gain=ac.createGain();source.buffer=buffer;gain.gain.value=.60;source.connect(gain);gain.connect(ac.destination);source.onended=()=>{try{source.disconnect()}catch{}try{gain.disconnect()}catch{}resolve(true)};source.start();});
 }
-function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=2.3.19-r1",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
+function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=2.3.20-r1",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
 async function celebrateLearningLevelUp(event){
   if(!event||!event.congratulation_jp)return;micCapturePaused=true;status("Level up! 🎉");stopAnimationPlan();await playLevelUpSfx();
   if(!muted)await playFishStreaming(String(event.congratulation_jp),levelUpClapPlan(),{idleEmotion:"happy",voiceStyle:"normal",sampleRate:24000,suppressResume:true});
@@ -318,7 +318,7 @@ async function celebrateLearningLevelUp(event){
 }
 let dailyChallengeNoticeQueue=[],dailyChallengeNoticeBusy=false;
 async function playDailyChallengePassSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.3.19-r1");if(!buffer)return false;
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.3.20-r1");if(!buffer)return false;
   try{if(ac.state!=="running")await ac.resume()}catch{}
   // Step 2.27.0: daily_challenge_pass.wav was too loud on-device.
   // Play it at 60% of its previous amplitude (40% reduction), independently
@@ -383,7 +383,9 @@ function scheduleAnimationSfx(plan){
       source.connect(hitGain);hitGain.connect(animationSfxMasterGain);
       animationSfxSources.add(source);
       source.onended=()=>{animationSfxSources.delete(source);try{source.disconnect()}catch{}try{hitGain.disconnect()}catch{}};
-      const when=syncWink?ac.currentTime+.02:ac.currentTime+Math.max(0,(requestedAt+startMs-performance.now())/1000);
+      const when=syncWink
+        ? ac.currentTime+.02+Math.max(0,(requestedAt+startMs-performance.now())/1000)
+        : ac.currentTime+Math.max(0,(requestedAt+startMs-performance.now())/1000);
       source.start(when);
       if(syncWink)syncStartAt=performance.now()+Math.max(0,(when-ac.currentTime)*1000);
       if(planStop>startMs){
@@ -410,16 +412,14 @@ function stopAnimationPlan(){
 function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={}){
   stopAnimationPlan();
   if(!plan||!Array.isArray(plan.frames)||!plan.frames.length)return;
-  // Python emits cheeky winks as a post-speech plan. Start its visual timeline
-  // against the AudioContext clock so decode/resume latency cannot put the SFX
-  // a second behind the wink (the realtime gesture path is separate).
+  // Python emits cheeky winks as a post-speech plan. Keep the visual timeline
+  // immediate and schedule the sound cue half a second later.
   if(plan.kind==="post-speech-wink"&&!plan.sfx){
-    plan={...plan,duration_ms:Math.max(1120,Number(plan.duration_ms)||0),sfx:{src:"./static/sfx/wink.wav?v=2.3.19-r1",start_ms:0,stop_ms:1120,name:"wink-post-speech",volume:1}};
+    plan={...plan,duration_ms:Math.max(900,Number(plan.duration_ms)||0),sfx:{src:"./static/sfx/wink.wav?v=2.3.20-r1",start_ms:500,stop_ms:1500,name:"wink-post-speech",volume:1}};
   }
   const token=animationToken;
   currentAnimationPlan=plan;
-  const winkStartPromise=plan.kind==="post-speech-wink"?scheduleAnimationSfx(plan):null;
-  if(!winkStartPromise)scheduleAnimationSfx(plan);
+  scheduleAnimationSfx(plan);
   let started=performance.now();
   const duration=Math.max(1,Number(plan.duration_ms)||1);
 
@@ -463,13 +463,11 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
       animationRaf=requestAnimationFrame(tick);
     }else{
       animationRaf=0;
-      stopAnimationSfx();
+      if(plan.kind!=="post-speech-wink")stopAnimationSfx();
       if(typeof onComplete==="function")onComplete();
     }
   };
-  if(winkStartPromise){
-    void winkStartPromise.then(startAt=>{if(token!==animationToken)return;started=Number.isFinite(startAt)?startAt:performance.now();animationRaf=requestAnimationFrame(tick)}).catch(err=>{console.warn("[Nanako SFX] wink sync failed",err);if(token===animationToken){started=performance.now();animationRaf=requestAnimationFrame(tick)}});
-  }else animationRaf=requestAnimationFrame(tick);
+  animationRaf=requestAnimationFrame(tick);
 }
 
 function idlePlanEmotion(plan){
@@ -542,8 +540,12 @@ function finishPlanWithPostHold(plan,{idleEmotion=null,onDone=null}={}){
   const targetBodyMotion=idlePlanBodyMotion(plan);
   if(postPlan?.frames?.length){
     playAnimationPlan(postPlan,{onComplete:()=>{
-      returnToPythonIdle({emotion:target,bodyMotion:idlePlanBodyMotion(postPlan)||targetBodyMotion});
-      if(typeof onDone==="function")onDone();
+      const audioTailMs=postPlan.kind==="post-speech-wink"&&postPlan.sfx
+        ? Math.max(0,Number(postPlan.sfx.stop_ms||0)-Number(postPlan.duration_ms||0)) : 0;
+      setTimeout(()=>{
+        returnToPythonIdle({emotion:target,bodyMotion:idlePlanBodyMotion(postPlan)||targetBodyMotion});
+        if(typeof onDone==="function")onDone();
+      },Math.min(1000,audioTailMs));
     }});
     return;
   }
@@ -569,15 +571,15 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.69",RELEASE_VERSION="2.3.19",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.70",RELEASE_VERSION="2.3.20",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const NANAKO_OUTFIT_MODELS=Object.freeze({
-  neutral:"./static/models/nanako_avatar.vrm?v=2.3.19-r1",
-  sports:"./static/models/nanako_sports.vrm?v=2.3.19-r1",
-  casual:"./static/models/nanako_casual_tshirt_shorts.vrm?v=2.3.19-r1",
-  swimwear:"./static/models/nanako_swimwear.vrm?v=2.3.19-r1",
-  teacher:"./static/models/nanako_teacher.vrm?v=2.3.19-r1",
-  kimono:"./static/models/nanako_kimono.vrm?v=2.3.19-r1",
-  elegant:"./static/models/nanako_elegant_black_sleeveless.vrm?v=2.3.19-r1"
+  neutral:"./static/models/nanako_avatar.vrm?v=2.3.20-r1",
+  sports:"./static/models/nanako_sports.vrm?v=2.3.20-r1",
+  casual:"./static/models/nanako_casual_tshirt_shorts.vrm?v=2.3.20-r1",
+  swimwear:"./static/models/nanako_swimwear.vrm?v=2.3.20-r1",
+  teacher:"./static/models/nanako_teacher.vrm?v=2.3.20-r1",
+  kimono:"./static/models/nanako_kimono.vrm?v=2.3.20-r1",
+  elegant:"./static/models/nanako_elegant_black_sleeveless.vrm?v=2.3.20-r1"
 });
 const NANAKO_SCENE_ASSETS=Object.freeze({
   beach:"beach.webp",classroom:"classroom.webp",living_room:"living_room.webp",
@@ -1686,7 +1688,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.69] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.70] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1743,17 +1745,17 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
   if(wink){
     stopAnimationPlan();
     renderAnimationFrame({emotion:"neutral",action:"wink_prepare",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.06,scale:1,translate_y:0});
-    scheduleAnimationSfx({duration_ms:1340,sfx:{src:"./static/sfx/wink.wav?v=2.3.19-r1",start_ms:160,stop_ms:1160,name:"wink-realtime",volume:1}});
+    scheduleAnimationSfx({duration_ms:1660,sfx:{src:"./static/sfx/wink.wav?v=2.3.20-r1",start_ms:660,stop_ms:1660,name:"wink-realtime",volume:1}});
     realtimeGestureTimer=setTimeout(()=>{
       renderAnimationFrame({emotion:"neutral",action:"wink",eyes:wink,mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.16,scale:1,translate_y:0});
       realtimeGestureTimer=setTimeout(()=>{
         realtimeGestureTimer=0;renderAnimationFrame({emotion:"neutral",action:"wink_release",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.05,scale:1,translate_y:0});
-        setTimeout(()=>returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion}),180);
+        setTimeout(()=>returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion}),500);
       },1000);
     },160);return;
   }
   if(realtimeBodyMotion==="clapping"){
-    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=2.3.19-r1",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
+    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=2.3.20-r1",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
     realtimeGestureTimer=setTimeout(()=>{realtimeGestureTimer=0;realtimeBodyMotion="neutral";returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:"neutral"})},2600);return;
   }
   returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion});
@@ -2225,7 +2227,7 @@ async function boot(){
 boot();
 })();
 
-// v2.3.19 — three-track background music carousel. HTMLAudio keeps the
+// v2.3.20 — three-track background music carousel. HTMLAudio keeps the
 // music independent from speech playback; the gain is reduced during speech
 // and while the microphone is actively listening.
 (()=>{
@@ -2236,8 +2238,8 @@ boot();
   ];
   let index=0,audio=null,started=false,startPromise=null,startAttemptId=0;
   const ducks=new Set();
-  const normal=.0728,quiet=.0364,fadeMs=1400;
-  const target=()=>ducks.size?quiet:normal;
+  const normal=.0728,speechQuiet=.0364,microphoneQuiet=.0182,fadeMs=1400;
+  const target=()=>ducks.has("microphone")?microphoneQuiet:ducks.size?speechQuiet:normal;
   const fadeTo=(value,ms=fadeMs)=>{
     if(!audio)return;
     const from=Number(audio.volume)||0,start=performance.now();
