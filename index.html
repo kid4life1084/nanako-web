@@ -6,16 +6,16 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f2f5fa">
+<meta name="theme-color" content="#04122d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
-<link rel="manifest" href="./manifest.webmanifest?v=12.0.57">
+<link rel="manifest" href="./manifest.webmanifest?v=2.3.14">
 <script>
 window.__NANAKO_RELEASE_GATE__=(async()=>{
-  const epoch="12.0.57",key="nanako_release_epoch";
+  const epoch="2.3.14",key="nanako_release_epoch";
   // Run cleanup on every document load. This deliberately does not trust a
   // previously stored epoch because iOS/Chrome can restore an old page while
   // keeping newer localStorage.
@@ -25,18 +25,29 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
   try{const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);history.replaceState(null,"",url.href)}}catch{}
 })();
 </script>
-<link rel="stylesheet" href="./static/style.css?v=12.0.57">
-<link rel="preload" as="fetch" href="./static/models/nanako.glb?v=12.0.57" type="model/gltf-binary" crossorigin>
-<style>.startup-splash{background:#04122d url("./static/splash/nanachat-fullscreen-midnight.webp") center/cover no-repeat!important;top:0;right:0;bottom:-120px;left:0;inset:auto!important}.startup-card{position:relative;background:transparent!important;border:0!important;box-shadow:none!important;height:100%;width:100%;padding:0}.startup-logo-circle,.startup-title-ja{display:none}.startup-version{position:absolute;left:8%;top:47%;margin:0;background:rgba(5,17,42,.9);color:#fff;border:0}.startup-enter-button{position:absolute;left:25%;top:60.7%;width:49%;height:6%;margin:0;border-radius:999px;background:transparent;color:transparent;box-shadow:none}.startup-progress{position:fixed;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));width:168px;padding:10px;border:1px solid #ffffff44;border-radius:10px;background:#04122dcc;color:#fff}</style><style>
-.startup-splash{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:#f2f5fa;}
-.startup-card{width:min(100%,420px);padding:36px 24px 30px;border:1px solid #dde4ee;border-radius:30px;background:#ffffff;box-shadow:0 18px 54px rgba(50,70,105,.10);display:flex;flex-direction:column;align-items:center;text-align:center;}
-.startup-logo-circle{width:86px;height:86px;border-radius:50%;display:grid;place-items:center;background:#edf1f7;color:#17213a;font-family:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Avenir Next",sans-serif;font-size:40px;font-weight:800;box-shadow:inset 0 0 0 1px #dde4ee;}
-.startup-title-ja{margin-top:18px;font-family:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Avenir Next",sans-serif;font-size:36px;font-weight:760;letter-spacing:.015em;color:#17213a;}
-.startup-title-en{margin-top:6px;font-size:18px;font-weight:700;color:#6d7a92;}
-.startup-subtitle{margin-top:8px;color:#8c97aa;font-size:13px;}
-.startup-version{margin-top:11px;padding:6px 12px;border:1px solid #dde4ee;border-radius:999px;background:#f5f7fa;color:#718097;font-size:13px;font-weight:700;letter-spacing:.025em;}
-.startup-enter-button{margin-top:26px;min-width:180px;height:50px;border:0;border-radius:16px;background:#2384f5;color:#fff;font-size:18px;font-weight:750;box-shadow:0 9px 22px rgba(35,132,245,.18);}
-.startup-enter-button:disabled{opacity:.62}
+<link rel="stylesheet" href="./static/style.css?v=2.3.14">
+<link rel="preload" as="fetch" href="./static/models/nanako_neutral_v2.3.14.vrm?v=2.3.14" type="model/gltf-binary" crossorigin>
+<link rel="preload" as="image" href="./static/splash/nanachat-fullscreen-midnight.webp?v=2.3.14" fetchpriority="high">
+<link rel="preload" as="audio" href="./static/sfx/title_welcome_message.wav?v=2.3.14">
+<style>
+html,body{background:#04122d;}
+.startup-splash{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:500;overflow:hidden;padding:0;background:#04122d;isolation:isolate;}
+.startup-splash::before,.startup-splash::after{content:none;}
+/* The artboard uses the same cover calculation as the image. This keeps the
+   live version label and Enter hit target aligned without creating a card. */
+.startup-card{position:absolute;left:50%;top:50%;width:max(100vw,46.154dvh);height:max(100vh,216.667vw);height:max(100dvh,216.667vw);transform:translate(-50%,-50%);overflow:hidden;border:0;border-radius:0;background:#04122d;box-shadow:none;}
+.startup-cover{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none;}
+.startup-version-overlay{position:absolute;left:7.6%;top:47.25%;width:25%;height:3.6%;display:grid;place-items:center;border-radius:999px;background:rgba(5,17,42,.97);color:#e9e6df;font:500 clamp(9px,1.45vh,14px)/1 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.08em;box-shadow:0 0 15px rgba(5,17,42,.52);}
+.startup-enter-button{position:absolute;left:25.1%;top:60.75%;width:49.2%;height:6.1%;margin:0;border:0;border-radius:999px;background:transparent;color:transparent;font-size:1px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:filter .16s ease,transform .16s ease,box-shadow .16s ease;}
+.startup-enter-button:not(:disabled):hover{filter:brightness(1.12);transform:scale(1.018);box-shadow:0 0 24px rgba(255,219,148,.25);}
+.startup-enter-button:not(:disabled):active{transform:scale(.985);}
+.startup-enter-button:focus-visible{outline:3px solid #fff;outline-offset:3px;}
+.startup-enter-button:disabled{cursor:wait;box-shadow:inset 0 0 0 999px rgba(5,11,28,.20);}
+.startup-progress{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));z-index:4;width:min(42vw,168px);padding:8px 10px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(4,13,31,.72);box-shadow:0 7px 24px rgba(0,0,0,.24);}
+.startup-progress-label{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;color:#eef3ff;font:600 10px/1.15 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.03em;}
+.startup-progress-track{height:4px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.18);}
+.startup-progress-fill{width:2%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#f3c66d,#fff2c7);box-shadow:0 0 8px rgba(255,220,146,.52);transition:width .18s ease;}
+.startup-progress.ready{opacity:1;pointer-events:none;}
 .learning-onboarding{position:fixed;inset:0;z-index:490;display:grid;place-items:center;padding:18px;background:#f2f5fa;}
 .learning-onboarding[hidden]{display:none!important;}
 .learning-onboarding-card{width:min(100%,420px);padding:24px 22px 20px;border:1px solid #dde4ee;border-radius:28px;background:#fff;box-shadow:0 18px 54px rgba(50,70,105,.10);}
@@ -58,7 +69,7 @@ window.__NANAKO_RELEASE_GATE__=(async()=>{
 .daily-challenge-number{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#e8f2ff;color:#2379dc;font-size:11px;font-weight:800;}
 .daily-challenge-text{font-size:11px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
-/* Step 2.26.1: hide the interaction surface until the user explicitly starts.
+/* Step 2.27.0: hide the interaction surface until the user explicitly starts.
    Visibility preserves layout/canvas geometry so Nanako can initialize without flashing. */
 body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 .app-shell{transition:opacity .18s ease;}
@@ -72,7 +83,7 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 .daily-reminder-copy{font-size:13px;line-height:1.35;color:#42506a;}
 .daily-reminder-progress{margin-top:4px;font-size:11px;color:#8290a5;font-weight:700;}
 
-/* Step 2.26.1: challenge completion overlay stays above the VRM without replacing it. */
+/* Step 2.27.0: challenge completion overlay stays above the VRM without replacing it. */
 .daily-challenge-pass-notice{position:absolute;left:50%;bottom:18px;transform:translate(-50%,10px);z-index:25;width:min(88%,520px);padding:8px 12px;border-radius:13px;background:rgba(255,255,255,.72);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);box-shadow:0 5px 20px rgba(25,42,68,.12);color:#31445b;font-size:12px;font-weight:750;line-height:1.3;text-align:center;pointer-events:none;opacity:0;transition:opacity .18s ease,transform .18s ease;}
 .daily-challenge-pass-notice[hidden]{display:none!important}.daily-challenge-pass-notice.show{opacity:1;transform:translate(-50%,0)}
 .daily-challenge-pass-notice .challenge-pass-tick{display:inline-block;margin-right:7px;color:#20a35a;font-size:17px;font-weight:900;vertical-align:-1px}
@@ -81,11 +92,14 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 </head>
 <body class="preinteraction">
 <div id="startupSplash" class="startup-splash">
-  <div class="startup-card">
-    <div class="startup-logo-circle">N</div>
-    <div class="startup-title-ja">NanaChat</div>
-    <div id="startupVersion" class="startup-version">Version 2.30.13</div>
-    <button id="startupEnterButton" class="startup-enter-button" disabled>Loading Nanako 3D…</button><div id="startupProgress" class="startup-progress"><div><span id="startupProgressText">Loading Nanako…</span> <span id="startupProgressPercent">0%</span></div><div style="height:4px;background:#ffffff44;border-radius:4px;margin-top:7px"><div id="startupProgressFill" style="width:2%;height:100%;background:#f3c66d;border-radius:4px"></div></div></div>
+  <div class="startup-card" aria-label="NanaChat Version 2.3.14">
+    <img class="startup-cover" src="./static/splash/nanachat-fullscreen-midnight.webp?v=2.3.14" width="852" height="1846" alt="NanaChat Version 2.3.14">
+    <span id="startupVersion" class="startup-version-overlay">Version 2.3.14</span>
+    <button id="startupEnterButton" class="startup-enter-button" type="button" aria-label="Enter NanaChat" disabled>Loading Nanako 3D…</button>
+  </div>
+  <div id="startupProgress" class="startup-progress" role="status" aria-live="polite">
+    <div class="startup-progress-label"><span id="startupProgressText">Loading Nanako…</span><span id="startupProgressPercent">0%</span></div>
+    <div class="startup-progress-track"><div id="startupProgressFill" class="startup-progress-fill"></div></div>
   </div>
 </div>
 <div id="learningOnboarding" class="learning-onboarding" hidden>
@@ -117,7 +131,7 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
   <div class="nanako-motion">
     <div id="nanakoAvatar" class="nanako-avatar vrm-loading" aria-label="Nanako" role="img">
       <img id="nanakoBackground" class="nanako-background" alt="" aria-hidden="true">
-      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako.glb?v=12.0.57" aria-label="Nanako 3D avatar"></canvas>
+      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_neutral_v2.3.14.vrm?v=2.3.14" aria-label="Nanako 3D avatar"></canvas>
       <div id="nanako3DStatus" class="nanako-3d-status">Loading Nanako 3D…</div>
     </div>
   </div>
@@ -189,6 +203,24 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<script src="./static/nanako-3d.js?v=12.0.57" defer></script>
-<script src="./static/app.js?v=12.0.57" defer></script>
-<script>document.getElementById("startupEnterButton").addEventListener("click",()=>{let t=["./static/music/midday-drift.mp3","./static/music/midnight-kyoto.mp3","./static/music/tokio-twilight.mp3"],i=0;function p(){let a=new Audio(t[i]);a.volume=.13;a.onended=()=>{i=(i+1)%t.length;p()};a.play().catch(()=>{})}p();let w=new Audio("./static/sfx/title_welcome_message.wav");w.volume=.55;w.play().catch(()=>{})},{once:true})</script></body></html>
+<audio id="titleWelcomeAudio" src="./static/sfx/title_welcome_message.wav?v=2.3.14" preload="auto" autoplay playsinline></audio>
+<script>
+(() => {
+  const audio=document.getElementById("titleWelcomeAudio");
+  let played=false;
+  async function playTitleWelcome(){
+    if(played||!audio)return false;
+    try{audio.currentTime=0;await audio.play();played=true;return true}catch{return false}
+  }
+  window.playNanakoTitleWelcome=playTitleWelcome;
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>void playTitleWelcome(),{once:true});
+  else void playTitleWelcome();
+  /* iOS blocks first-load audio until a gesture. Retry once on the user's
+     first splash interaction, while preserving immediate autoplay elsewhere. */
+  window.addEventListener("pointerdown",()=>void playTitleWelcome(),{capture:true});
+  window.addEventListener("keydown",()=>void playTitleWelcome(),{capture:true});
+})();
+</script>
+<script src="./static/nanako-3d.js?v=2.3.14" defer></script>
+<script src="./static/app.js?v=2.3.14" defer></script>
+</body></html>

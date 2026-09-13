@@ -1,6 +1,19 @@
 (async()=>{
 "use strict";
 
+window.nanakoStartupProgress=(percent,label="Loading Nanako…",ready=false)=>{
+  const box=document.getElementById("startupProgress");
+  const fill=document.getElementById("startupProgressFill");
+  const text=document.getElementById("startupProgressText");
+  const value=document.getElementById("startupProgressPercent");
+  const normalized=Math.max(0,Math.min(100,Math.round(Number(percent)||0)));
+  if(fill)fill.style.width=`${Math.max(2,normalized)}%`;
+  if(text)text.textContent=String(label||"Loading Nanako…");
+  if(value)value.textContent=`${normalized}%`;
+  if(box)box.classList.toggle("ready",!!ready);
+};
+window.nanakoStartupProgress(0,"Loading Nanako…");
+
 // Step 2.19 release gate is created inline by index.html, before any external
 // JavaScript is loaded. It removes an older cache-first worker exactly once.
 if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
@@ -10,7 +23,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=12.0.57",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=2.3.14",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -42,7 +55,7 @@ function currentDeviceOrientationAngle(){
   return 90;
 }
 function deviceIsActuallyLandscape(){
-  // Step 2.26.1: NEVER infer device orientation from visualViewport dimensions.
+  // Step 2.27.0: NEVER infer device orientation from visualViewport dimensions.
   // On iPhone the software keyboard can make the visible viewport shorter than
   // it is wide while the PHONE ITSELF is still portrait. The old test (vw > vh)
   // therefore rotated the entire NanaChat UI by 90 degrees as soon as text input
@@ -176,9 +189,10 @@ function syncBodyMotionForFrame(frame){
   const name=requestedBodyMotion(frame);
   pendingBodyMotion=name;
   if(!bodyAnimationsLoaded||currentBodyMotion===name)return;
+  const clipName=name==="neutral"?"standing":name;
   const loop=name==="neutral"||name==="clapping";
   const transitionSeconds=name==="thinking"?1.35:name==="clapping"?0.08:0.48;
-  if(window.nanako3DRenderer?.playBodyAnimation?.(name,{loop,hold:true,transitionSeconds})){
+  if(window.nanako3DRenderer?.playBodyAnimation?.(clipName,{loop,hold:true,transitionSeconds})){
     currentBodyMotion=name;
   }
 }
@@ -189,17 +203,17 @@ async function loadProductionBodyAnimations(){
   if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
   bodyAnimationsLoading=(async()=>{
     const result=await window.nanako3DRenderer.loadBodyAnimations({
-      neutral:"./static/animations/nanako_idle.fbx?v=12.0.30",
-      angry:"./static/animations/nanako_angry.fbx?v=12.0.30",
-      thinking:"./static/animations/nanako_thinking.fbx?v=12.0.30",
-      clapping:"./static/animations/nanako_clapping.fbx?v=12.0.30"
+      standing:"./static/animations/nanako_neutral_v2.3.14.fbx?v=2.3.14",
+      angry:"./static/animations/nanako_angry.fbx?v=2.3.14",
+      thinking:"./static/animations/nanako_thinking.fbx?v=2.3.14",
+      clapping:"./static/animations/nanako_clapping.fbx?v=2.3.14"
     });
     const loaded=new Set((result?.loaded||[]).map(item=>item.name));
-    bodyAnimationsLoaded=["neutral","angry","thinking","clapping"].every(name=>loaded.has(name));
-    if(!bodyAnimationsLoaded)throw new Error(`Only ${loaded.size}/4 Nanako body animations loaded.`);
+    bodyAnimationsLoaded=loaded.has("standing");
+    if(!bodyAnimationsLoaded)throw new Error("The neutral Nanako animation could not be loaded.");
     currentBodyMotion="";
     syncBodyMotionForFrame({body_motion:pendingBodyMotion,emotion:"neutral"});
-    console.log("[Nanako 3D] Step 2.19 body animations ready: neutral, angry, thinking, clapping");
+    console.log(`[Nanako 3D] Neutral pose ready; optional motions loaded: ${[...loaded].filter(name=>name!=="standing").join(", ")||"none"}`);
     return true;
   })().catch(err=>{bodyAnimationsLoading=null;console.error("[Nanako 3D body animation load]",err);return false});
   return bodyAnimationsLoading;
@@ -212,11 +226,15 @@ window.addEventListener("nanako3d-ready",async()=>{
   const enter=document.getElementById("startupEnterButton");
   avatar?.classList.remove("vrm-ready");avatar?.classList.add("vrm-loading");
   if(enter){enter.disabled=true;enter.textContent="Preparing Nanako…"}
+  window.nanakoStartupProgress?.(94,"Preparing Nanako…");
   const ready=await loadProductionBodyAnimations();
   if(ready){
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     avatar?.classList.remove("vrm-loading");avatar?.classList.add("vrm-ready");
     if(enter){enter.disabled=false;enter.textContent="Enter"}
+    window.nanakoStartupProgress?.(100,"Ready",true);
+  }else{
+    window.nanakoStartupProgress?.(94,"Animation loading issue");
   }
 });
 
@@ -270,17 +288,17 @@ async function loadAnimationSfxBuffer(src){
 }
 
 function preloadAnimationSfx(){
-  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=12.0.57");
-  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=12.0.57");
-  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.57");
-  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.57");
+  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=2.3.14");
+  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=2.3.14");
+  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.3.14");
+  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.3.14");
 }
 
 async function playLevelUpSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=12.0.57");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.3.14");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
   return await new Promise(resolve=>{const source=ac.createBufferSource(),gain=ac.createGain();source.buffer=buffer;gain.gain.value=.60;source.connect(gain);gain.connect(ac.destination);source.onended=()=>{try{source.disconnect()}catch{}try{gain.disconnect()}catch{}resolve(true)};source.start();});
 }
-function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.57",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
+function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=2.3.14",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
 async function celebrateLearningLevelUp(event){
   if(!event||!event.congratulation_jp)return;micCapturePaused=true;status("Level up! 🎉");stopAnimationPlan();await playLevelUpSfx();
   if(!muted)await playFishStreaming(String(event.congratulation_jp),levelUpClapPlan(),{idleEmotion:"happy",voiceStyle:"normal",sampleRate:24000,suppressResume:true});
@@ -289,9 +307,9 @@ async function celebrateLearningLevelUp(event){
 }
 let dailyChallengeNoticeQueue=[],dailyChallengeNoticeBusy=false;
 async function playDailyChallengePassSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=12.0.57");if(!buffer)return false;
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.3.14");if(!buffer)return false;
   try{if(ac.state!=="running")await ac.resume()}catch{}
-  // Step 2.26.1: daily_challenge_pass.wav was too loud on-device.
+  // Step 2.27.0: daily_challenge_pass.wav was too loud on-device.
   // Play it at 60% of its previous amplitude (40% reduction), independently
   // from the established animation-SFX master and level-up reward volumes.
   try{const src=ac.createBufferSource(),gain=ac.createGain();src.buffer=buffer;gain.gain.value=.60;src.connect(gain);gain.connect(ac.destination);src.start();return true}catch(err){console.warn("[Daily Challenge SFX]",err);return false}
@@ -526,9 +544,71 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.57",RELEASE_VERSION="2.26.1",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.64",RELEASE_VERSION="2.3.14",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const NANAKO_OUTFIT_MODELS=Object.freeze({
+  neutral:"./static/models/nanako_neutral_v2.3.14.vrm?v=2.3.14",
+  sports:"./static/models/nanako_sports.vrm?v=2.3.14",
+  casual:"./static/models/nanako_casual_tshirt_shorts.vrm?v=2.3.14",
+  swimwear:"./static/models/nanako_swimwear.vrm?v=2.3.14",
+  teacher:"./static/models/nanako_teacher.vrm?v=2.3.14",
+  kimono:"./static/models/nanako_kimono.vrm?v=2.3.14",
+  elegant:"./static/models/nanako_elegant_black_sleeveless.vrm?v=2.3.14"
+});
+const NANAKO_SCENE_ASSETS=Object.freeze({
+  beach:"beach.webp",classroom:"classroom.webp",living_room:"living_room.webp",
+  gym:"gym.webp",bar:"bar.webp",temple:"temple.webp",
+  kyoto_street_scene:"kyoto_street_scene.webp"
+});
+const NANAKO_SCENE_OUTFITS=Object.freeze({
+  beach:"swimwear",classroom:"teacher",living_room:"casual",gym:"sports",
+  bar:"elegant",temple:"kimono",kyoto_street_scene:"kimono"
+});
+const NANAKO_OUTFIT_DEFAULT_SCENES=Object.freeze({
+  sports:"gym",casual:"living_room",swimwear:"beach",teacher:"classroom",
+  kimono:"kyoto_street_scene",elegant:"bar"
+});
+let currentNanakoOutfit="neutral",pendingNanakoOutfit="";
+function normalizeNanakoOutfit(value){const key=String(value||"").trim().toLowerCase();return Object.hasOwn(NANAKO_OUTFIT_MODELS,key)?key:""}
+function applyNanakoOutfitAction(action){
+  if(!action||String(action.action||"")!=="change_outfit")return false;
+  const outfit=normalizeNanakoOutfit(action.outfit);
+  if(!outfit||outfit===currentNanakoOutfit||outfit===pendingNanakoOutfit)return false;
+  const renderer=window.nanako3DRenderer;
+  if(!renderer?.switchModel){console.warn("[Nanako Wardrobe] renderer switch API unavailable");return false}
+  pendingNanakoOutfit=outfit;
+  const requested=renderer.switchModel(NANAKO_OUTFIT_MODELS[outfit],{outfit});
+  if(!requested){pendingNanakoOutfit="";return false}
+  console.log(`[Nanako Wardrobe] loading ${outfit} • reason=${String(action.reason||"activity_intent")}`);
+  return true;
+}
+function applyNanakoSceneCostume(background,action){
+  let scene=String(background?.scene||action?.scene||"").trim().toLowerCase();
+  let outfit=normalizeNanakoOutfit(action?.outfit);
+  if(scene&&NANAKO_SCENE_OUTFITS[scene])outfit=NANAKO_SCENE_OUTFITS[scene];
+  if(!scene&&outfit)scene=NANAKO_OUTFIT_DEFAULT_SCENES[outfit]||"";
+  if(scene){
+    const asset=String(background?.asset||NANAKO_SCENE_ASSETS[scene]||"").trim();
+    if(asset)applyBackgroundDecision({scene,asset});
+  }
+  if(outfit)applyNanakoOutfitAction({
+    action:"change_outfit",outfit,scene,
+    reason:String(action?.reason||`scene_binding:${scene||"outfit_default"}`)
+  });
+}
+window.addEventListener("nanako3d-model-changed",async event=>{
+  const outfit=normalizeNanakoOutfit(event?.detail?.outfit||pendingNanakoOutfit);
+  if(outfit){currentNanakoOutfit=outfit;localStorage.setItem("nanako_current_outfit",outfit)}
+  pendingNanakoOutfit="";
+  // Every complete VRM has its own bind pose. Rebuild the FBX retargeted clips
+  // against the newly active skeleton instead of reusing the previous model's
+  // bind-pose corrections.
+  bodyAnimationsLoaded=false;bodyAnimationsLoading=null;currentBodyMotion="";
+  await loadProductionBodyAnimations();
+  syncBodyMotionForFrame(window.__nanakoPending3DFrame||{body_motion:"neutral",emotion:"neutral"});
+});
+window.addEventListener("nanako3d-model-error",()=>{pendingNanakoOutfit=""});
 const startupVersionMarker=document.getElementById("startupVersion");if(startupVersionMarker)startupVersionMarker.textContent=`Version ${RELEASE_VERSION}`;
-const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`v11 Step ${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.7-Flash + Fish Audio Streaming • JavaScript ${CLIENT_BUILD} verified`;
+const verifiedBuildMarker=document.getElementById("buildMarker");if(verifiedBuildMarker)verifiedBuildMarker.textContent=`NanaChat v${RELEASE_VERSION} • Qwen3-ASR-Flash + Qwen3.7-Flash + Fish Audio Streaming`;
 const FISH_TTS_STREAM=`${API}/api/fish-tts-stream`;
 const MIC_START=`${API}/api/mic/session/start`,MIC_FRAME=`${API}/api/mic/session/frame`,MIC_INSPECT=`${API}/api/mic/session/inspect`,MIC_RESPOND=`${API}/api/mic/session/respond`,MIC_STOP=`${API}/api/mic/session/stop`,MIC_SPEAKING=`${API}/api/mic/session/speaking`;
 const RUNTIME_CHECK=`${API}/runtime-check`;
@@ -840,8 +920,9 @@ async function enrichStandardTurn(userText,replyText,userEntry,assistantEntry){
   const needAssistant=!!assistantEntry&&containsJapaneseForUi(assistantEntry.text)&&(!assistantEntry.romaji||!assistantEntry.english);
   if(!needUser&&!needAssistant)return;
   try{
-    const response=await fetch(REALTIME_ENRICH,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client_build:CLIENT_BUILD,user_text:String(userText||""),reply_text:String(replyText||"")})});
+    const response=await fetch(REALTIME_ENRICH,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client_build:CLIENT_BUILD,user_text:String(userText||""),reply_text:String(replyText||""),current_background:currentBackground})});
     const data=await jsonResp(response);
+    applyNanakoSceneCostume(data?.background,data?.outfit_action);
     if(userEntry&&history.includes(userEntry)){
       if(!userEntry.romaji)userEntry.romaji=String(data.user_romaji||"");
       if(!userEntry.english)userEntry.english=String(data.user_english||"");
@@ -861,7 +942,7 @@ function containsJapaneseForUi(value){return /[\u3040-\u30ff\u3400-\u9fff]/.test
 function quick(){e.awareness.classList.toggle("active",awarenessActive);e.ro.classList.toggle("active",showRO);e.historyRO?.classList.toggle("active",showRO);e.roSec.hidden=!showRO;e.en.classList.toggle("active",showEN);e.historyEN?.classList.toggle("active",showEN);e.enSec.hidden=!showEN;e.mute.classList.toggle("active",muted);e.mute.textContent=muted?"🔇":"🔊";renderHistory()}
 function convButton(){e.conv.classList.toggle("active",active);e.conv.classList.remove("interrupt");e.conv.textContent=active?"⏹ End Conversation":"🎤 Start Conversation"}
 async function jsonResp(r){let d=await r.json();if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d}
-async function apply(d,user,options={}){const completedBefore=completedMissionIds(learningProfile);applyBackgroundDecision(d?.background);mergeMemoryFacts(d?.memory_facts);mergeLearnerMemory(d?.memory_updates);mergePersonalityState(d?.personality_state);const levelUpEvent=mergeLearningProfile(d?.learning_profile);announceNewChallengeCompletions(completedBefore,learningProfile);renderDailyChallengesReminder();if(speechStyle==="auto"){const inferredStyle=String(d?.effective_speech_style||d?.analysis?.estimated_speech_style||"").toLowerCase();autoEffectiveStyle=/^(?:casual|formal)$/.test(inferredStyle)?inferredStyle:"";updateStyleDisplay()}e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");setScore(Number(learningProfile?.xp)||0);let x=correction(d);showCorrection(x);const userEntry=!options.spontaneous?addHistory("user",user,x,{romaji:d?.user_romaji,english:d?.user_english}):null;const assistantEntry=addHistory("assistant",d?.reply||"",null,{romaji:d?.romaji,english:d?.english});void enrichStandardTurn(user,d?.reply||"",userEntry,assistantEntry);let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";if(levelUpEvent)await celebrateLearningLevelUp(levelUpEvent);const idleEmotion=String(d?.animation_plan?.emotion||"neutral").trim().toLowerCase()||"neutral";if(d?.tts_stream&&!muted)await playFishStreaming(String(d?.reply||""),d?.animation_plan,{idleEmotion,voiceStyle:String(d?.tts_voice_style||"normal"),sampleRate:Number(d?.tts_sample_rate||24000)});else if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else if(d?.voice_unavailable){console.warn("[Nanako Audio] Voice renderer unavailable; preserving text and resuming microphone.");stopAnimationPlan();returnToPythonIdle({emotion:idleEmotion});micCapturePaused=false;if(active){status("Listening...");setTimeout(begin,20)}}else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
+async function apply(d,user,options={}){const completedBefore=completedMissionIds(learningProfile);applyNanakoSceneCostume(d?.background,d?.outfit_action);mergeMemoryFacts(d?.memory_facts);mergeLearnerMemory(d?.memory_updates);mergePersonalityState(d?.personality_state);const levelUpEvent=mergeLearningProfile(d?.learning_profile);announceNewChallengeCompletions(completedBefore,learningProfile);renderDailyChallengesReminder();if(speechStyle==="auto"){const inferredStyle=String(d?.effective_speech_style||d?.analysis?.estimated_speech_style||"").toLowerCase();autoEffectiveStyle=/^(?:casual|formal)$/.test(inferredStyle)?inferredStyle:"";updateStyleDisplay()}e.jp.textContent=String(d?.reply||"");e.roText.textContent=String(d?.romaji||"");e.enText.textContent=String(d?.english||"");setScore(Number(learningProfile?.xp)||0);let x=correction(d);showCorrection(x);const userEntry=!options.spontaneous?addHistory("user",user,x,{romaji:d?.user_romaji,english:d?.user_english}):null;const assistantEntry=addHistory("assistant",d?.reply||"",null,{romaji:d?.romaji,english:d?.english});void enrichStandardTurn(user,d?.reply||"",userEntry,assistantEntry);let b=d?.audio_base64||d?.tts_audio_base64||d?.audio||"",m=d?.audio_mime||d?.mime_type||"audio/wav";if(levelUpEvent)await celebrateLearningLevelUp(levelUpEvent);const idleEmotion=String(d?.animation_plan?.emotion||"neutral").trim().toLowerCase()||"neutral";if(d?.tts_stream&&!muted)await playFishStreaming(String(d?.reply||""),d?.animation_plan,{idleEmotion,voiceStyle:String(d?.tts_voice_style||"normal"),sampleRate:Number(d?.tts_sample_rate||24000)});else if(b&&!muted)await play(b,m,d?.animation_plan,{idleEmotion,voiceMode:String(d?.response_mode||"talking")});else if(d?.voice_unavailable){console.warn("[Nanako Audio] Voice renderer unavailable; preserving text and resuming microphone.");stopAnimationPlan();returnToPythonIdle({emotion:idleEmotion});micCapturePaused=false;if(active){status("Listening...");setTimeout(begin,20)}}else{if(d?.animation_plan)playAnimationPlan(d.animation_plan,{onComplete:()=>finishPlanWithPostHold(d.animation_plan,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})});else{finishPlanWithPostHold(null,{idleEmotion,onDone:()=>{if(active)setTimeout(begin,20)}})}}}
 async function fetchStartupGreeting(){
   if(startupGreetingLoading)return startupGreetingLoading;
   startupGreetingLoading=(async()=>{
@@ -1002,6 +1083,7 @@ async function stopAudio(resume=false,restoreIdle=true){
 }
 
 async function playFishStreaming(text,animationPlan=null,options={}){
+  window.nanakoBackgroundMusic?.duck("nanako-speaking",true);
   if(!text||muted){if(active)setTimeout(begin,40);return false;}
   await stopAudio(false,false);
   if(fishStreamAbort){try{fishStreamAbort.abort()}catch{} fishStreamAbort=null;}
@@ -1014,7 +1096,7 @@ async function playFishStreaming(text,animationPlan=null,options={}){
   const voiceStyle=String(options?.voiceStyle||"normal");
   const idleEmotion=String(options?.idleEmotion||animationPlan?.emotion||"neutral").trim().toLowerCase()||"neutral";
   const ctrl=new AbortController();fishStreamAbort=ctrl;
-  // Step 2.26.1: anchor the animation clock to the FIRST scheduled audible PCM,
+  // Step 2.27.0: anchor the animation clock to the FIRST scheduled audible PCM,
   // not to the TTS request start. On iPhone the network TTFA can be hundreds of
   // milliseconds, which previously let the body animation run ahead of speech.
   let streamClockStart=NaN;
@@ -1147,6 +1229,7 @@ async function playFishStreaming(text,animationPlan=null,options={}){
     }
   }catch(err){if(err?.name!=="AbortError"){failed=true;console.warn("[Fish Stream]",err);error("Nanako's Fish Audio stream failed. Check the Fish API key and voice ID.");}}
   finally{
+    window.nanakoBackgroundMusic?.duck("nanako-speaking",false);
     if(fishStreamAbort===ctrl)fishStreamAbort=null;
     mediaClock.ended=true;liveStreamMouthOverride="closed";
     if(currentAudio===mediaClock)currentAudio=null;
@@ -1576,7 +1659,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.57] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.64] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1633,7 +1716,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
   if(wink){
     stopAnimationPlan();
     renderAnimationFrame({emotion:"neutral",action:"wink_prepare",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.06,scale:1,translate_y:0});
-    scheduleAnimationSfx({duration_ms:1340,sfx:{src:"./static/sfx/wink.wav?v=12.0.57",start_ms:160,stop_ms:1160,name:"wink-realtime",volume:1}});
+    scheduleAnimationSfx({duration_ms:1340,sfx:{src:"./static/sfx/wink.wav?v=2.3.14",start_ms:160,stop_ms:1160,name:"wink-realtime",volume:1}});
     realtimeGestureTimer=setTimeout(()=>{
       renderAnimationFrame({emotion:"neutral",action:"wink",eyes:wink,mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.16,scale:1,translate_y:0});
       realtimeGestureTimer=setTimeout(()=>{
@@ -1643,7 +1726,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
     },160);return;
   }
   if(realtimeBodyMotion==="clapping"){
-    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=12.0.57",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
+    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=2.3.14",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
     realtimeGestureTimer=setTimeout(()=>{realtimeGestureTimer=0;realtimeBodyMotion="neutral";returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:"neutral"})},2600);return;
   }
   returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion});
@@ -1678,8 +1761,9 @@ function stopRealtimeLipSync(){
 async function enrichRealtimeTurn(userText,replyText,userEntry,assistantEntry,turnSeq){
   if(!userText&&!replyText)return;
   try{
-    const response=await fetch(REALTIME_ENRICH,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client_build:CLIENT_BUILD,user_text:userText,reply_text:replyText})});
+    const response=await fetch(REALTIME_ENRICH,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client_build:CLIENT_BUILD,user_text:userText,reply_text:replyText,current_background:currentBackground})});
     const data=await jsonResp(response);
+    applyNanakoSceneCostume(data?.background,data?.outfit_action);
     const learnedName=cleanNameCandidate(data.user_name||detectUserNameFromText(userText));if(learnedName)persistentUserName=learnedName;
     mergeMemoryFacts(data.memory_facts);rememberDetectedUserName();
     if(userEntry){userEntry.romaji=String(data.user_romaji||"");userEntry.english=String(data.user_english||"");const x=correction(data);if(x.n){userEntry.wrong=x.o;userEntry.corrected=x.c;userEntry.correctionRomaji=x.romaji;userEntry.correctionEnglish=x.english;showCorrection(x)}}
@@ -1906,7 +1990,7 @@ async function continueOnboardingLevel(){
 }
 async function startFromDailyChallenges(){unlockAudio();hideDailyChallenges();revealInteractionSurface();await finishStartupGreeting();}
 async function enterStartupSplash(){
-  if(startupEnterDone)return;if(!window.nanako3DRenderer?.ready){const waitingButton=document.getElementById("startupEnterButton");if(waitingButton){waitingButton.disabled=true;waitingButton.textContent="Loading Nanako 3D…";}return;}startupEnterDone=true;const splash=document.getElementById("startupSplash"),enterBtn=document.getElementById("startupEnterButton");void requestPortraitOrientationLock();unlockAudio();if(enterBtn){enterBtn.disabled=true;enterBtn.textContent="Entering…";}
+  if(startupEnterDone)return;if(!window.nanako3DRenderer?.ready){const waitingButton=document.getElementById("startupEnterButton");if(waitingButton){waitingButton.disabled=true;waitingButton.textContent="Loading Nanako 3D…";}return;}startupEnterDone=true;const splash=document.getElementById("startupSplash"),enterBtn=document.getElementById("startupEnterButton");void requestPortraitOrientationLock();unlockAudio();void window.nanakoBackgroundMusic?.start();if(enterBtn){enterBtn.disabled=true;enterBtn.textContent="Entering…";}
   // Prepare the destination overlay before removing the splash. The app shell
   // remains visibility:hidden until Start with Nanako, eliminating the flash.
   if(!level){showLearningOnboarding();if(splash)splash.hidden=true;status("Choose your Japanese level");return;}
@@ -1917,6 +2001,7 @@ async function startMode(){
   if(active)return;
   try{
     void requestPortraitOrientationLock();
+    window.nanakoBackgroundMusic?.duck("microphone",true);
     active=true;convButton();
     status("Starting microphone...");
     await begin();
@@ -1934,8 +2019,8 @@ async function startMode(){
 }
 
 async function stopMode(){
-  active=false;await setServerNanakoSpeaking(false);await stopRealtimeSession();await stopMicBridge();await stopAudio(false);
-  // Step 2.26.1: ending voice conversation must never leave the text composer
+  active=false;window.nanakoBackgroundMusic?.duck("microphone",false);await setServerNanakoSpeaking(false);await stopRealtimeSession();await stopMicBridge();await stopAudio(false);
+  // Step 2.27.0: ending voice conversation must never leave the text composer
   // blocked by a stale in-flight voice flag/controller. Text chat is valid
   // with the microphone off.
   try{activeMicTurnController?.abort()}catch{}activeMicTurnController=null;busy=false;micCapturePaused=true;
@@ -2000,7 +2085,7 @@ window.addEventListener("beforeunload",()=>{
 let foregroundRecoveryBusy=false,lastForegroundRecoveryAt=0,backgroundLifecycleEpoch=0;
 
 function stopLocalSpeechForBackground(reason="background"){
-  // Step 2.26.1 iOS/PWA lifecycle hard reset. iOS can freeze WebAudio, fetch,
+  // Step 2.27.0 iOS/PWA lifecycle hard reset. iOS can freeze WebAudio, fetch,
   // requestAnimationFrame and MediaStream independently. Keeping a half-live
   // turn across that suspension is what created stuck "Nanako is speaking"
   // and frozen animation states. We intentionally cancel the interrupted turn
@@ -2107,8 +2192,47 @@ async function boot(){
   // Nanako actually speak the welcome line before the chat interaction begins.
   await fetchStartupGreeting();
   updateResourceDiagnostics();
-  console.log(`[NanaChat] v11 Step 2.26.1 QWEN3-ASR-FLASH + QWEN3.7-FLASH + FISH-AUDIO-STREAMING + FAST TURN + COMPLETE HISTORY TRANSLATIONS VERIFIED runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
+  console.log(`[NanaChat] v${RELEASE_VERSION} • QWEN3-ASR-FLASH + QWEN3.7-FLASH + FISH-AUDIO-STREAMING runtime=${CLIENT_BUILD} • learner model: ${learnerMemory.preferences.length} preferences, ${learnerMemory.language_progress.length} language patterns, ${learnerMemory.interaction_patterns.length} interaction patterns • user=${persistentUserName||"unknown"}`);
 }
 
 boot();
+})();
+
+// v2.3.14 — three-track background music carousel. HTMLAudio keeps the
+// music independent from speech playback; the gain is reduced during speech
+// and while the microphone is actively listening.
+(()=>{
+  const tracks=[
+    "./static/music/midday-drift.mp3?v=mp3-01",
+    "./static/music/midnight-in-kyoto.mp3?v=mp3-01",
+    "./static/music/tokio-twilight.mp3?v=mp3-01"
+  ];
+  let index=0,audio=null,started=false,startPromise=null,startAttemptId=0;
+  const ducks=new Set();
+  const normal=.13,quiet=.028,fadeMs=1400;
+  const target=()=>ducks.size?quiet:normal;
+  const fadeTo=(value,ms=fadeMs)=>{
+    if(!audio)return;
+    const from=Number(audio.volume)||0,start=performance.now();
+    const tick=now=>{if(!audio)return;const t=Math.min(1,(now-start)/ms);audio.volume=from+(value-from)*t;if(t<1)requestAnimationFrame(tick)};
+    requestAnimationFrame(tick);
+  };
+  const playNext=async()=>{
+    if(audio){audio.onended=null;audio.pause();audio.src="";}
+    audio=new Audio(tracks[index]);audio.preload="auto";audio.volume=0;audio.loop=false;let fadingOut=false;
+    audio.ontimeupdate=()=>{if(!fadingOut&&Number.isFinite(audio.duration)&&audio.duration-audio.currentTime<=fadeMs/1000){fadingOut=true;fadeTo(0,Math.max(120,(audio.duration-audio.currentTime)*1000));}};
+    audio.onended=()=>{index=(index+1)%tracks.length;void playNext();};
+    try{await audio.play();fadeTo(target());return true;}catch(err){console.warn("[Nanako BGM] browser blocked playback",err);return false;}
+  };
+  window.nanakoBackgroundMusic={
+    start:async(fromGesture=false)=>{if(started)return true;if(startPromise&&!fromGesture)return startPromise;const attempt=++startAttemptId,pending=(async()=>{const ok=await playNext();if(attempt===startAttemptId)started=ok;return ok})();startPromise=pending;try{return await pending}finally{if(startPromise===pending)startPromise=null}},
+    duck:(reason,on)=>{if(on)ducks.add(reason);else ducks.delete(reason);fadeTo(target(),220);},
+    stop:()=>{started=false;startAttemptId++;if(audio){audio.pause();audio.currentTime=0;}}
+  };
+  // iPhone permits audible media only from a direct gesture. This starts the
+  // playlist on the user's first touch of the splash, before Enter dismisses it.
+  document.addEventListener("pointerdown",()=>void window.nanakoBackgroundMusic.start(true),{capture:true});
+  // Try immediately on browsers that allow autoplay; a rejected iPhone attempt
+  // leaves `started` false so the first splash touch can retry it.
+  void window.nanakoBackgroundMusic.start();
 })();
