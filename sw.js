@@ -1,4 +1,4 @@
-// NanaChat v2.3.43 revision 1 network-first worker.
+// NanaChat v2.3.44 revision 1 network-first worker.
 const BUILD="nanachat-v2-3-42-rev1";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys()){if(/^(?:nanachat|nanako)/i.test(k))await caches.delete(k)}await self.clients.claim();})()));
