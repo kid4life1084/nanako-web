@@ -23,7 +23,7 @@ if(window.__NANAKO_RELEASE_GATE__)await window.__NANAKO_RELEASE_GATE__;
 async function ensureCurrentServiceWorker(){
   if(!("serviceWorker" in navigator))return;
   try{
-    const reg=await navigator.serviceWorker.register("./sw.js?v=2.4.2",{scope:"./",updateViaCache:"none"});
+    const reg=await navigator.serviceWorker.register("./sw.js?v=2.4.3",{scope:"./",updateViaCache:"none"});
     await reg.update();
   }catch(err){console.warn("NanaChat SW update failed",err);}
 }
@@ -176,6 +176,7 @@ let liveStreamMouthOverride="";
 let cachedPythonIdlePlan=null;
 let bodyAnimationsLoaded=false;
 let bodyAnimationsLoading=null;
+const loadedBodyMotions=new Set();
 let currentBodyMotion="";
 let pendingBodyMotion="neutral";
 
@@ -188,7 +189,7 @@ function requestedBodyMotion(frame){
 function syncBodyMotionForFrame(frame){
   const name=requestedBodyMotion(frame);
   pendingBodyMotion=name;
-  if(!bodyAnimationsLoaded||currentBodyMotion===name)return;
+  if(!bodyAnimationsLoaded||currentBodyMotion===name||!loadedBodyMotions.has(name))return;
   const clipName=name==="neutral"?"standing":name;
   const loop=name==="neutral"||name==="clapping";
   const transitionSeconds=name==="thinking"?1.35:name==="clapping"?0.08:0.48;
@@ -201,12 +202,16 @@ async function loadOptionalBodyAnimations(){
   const renderer=window.nanako3DRenderer;
   if(!renderer?.ready||!renderer?.loadBodyAnimations)return false;
   const result=await renderer.loadBodyAnimations({
-    angry:"./static/animations/nanako_angry.fbx?v=2.4.2",
-    thinking:"./static/animations/nanako_thinking.fbx?v=2.4.2",
-    clapping:"./static/animations/nanako_clapping.fbx?v=2.4.2"
+    angry:"./static/animations/nanako_angry.fbx?v=2.4.3",
+    thinking:"./static/animations/nanako_thinking.fbx?v=2.4.3",
+    clapping:"./static/animations/nanako_clapping.fbx?v=2.4.3"
   });
   const loaded=(result?.loaded||[]).map(item=>item.name);
+  for(const name of loaded)loadedBodyMotions.add(name);
   console.log(`[Nanako 3D] Optional motions ready: ${loaded.join(", ")||"none"}`);
+  // A gesture may be requested while its optional FBX is still loading.
+  // Apply the pending motion as soon as the clip becomes available.
+  syncBodyMotionForFrame({body_motion:pendingBodyMotion,emotion:"neutral"});
   return loaded.length>0;
 }
 
@@ -216,11 +221,12 @@ async function loadProductionBodyAnimations(){
   if(!window.nanako3DRenderer?.ready||!window.nanako3DRenderer?.loadBodyAnimations)return false;
   bodyAnimationsLoading=(async()=>{
     const result=await window.nanako3DRenderer.loadBodyAnimations({
-      standing:"./static/animations/nanako_idle_replacement.fbx?v=2.4.2"
+      standing:"./static/animations/nanako_idle_replacement.fbx?v=2.4.3"
     });
     const loaded=new Set((result?.loaded||[]).map(item=>item.name));
     bodyAnimationsLoaded=loaded.has("standing");
     if(!bodyAnimationsLoaded)throw new Error("The neutral Nanako animation could not be loaded.");
+    loadedBodyMotions.add("neutral");
     currentBodyMotion="";
     syncBodyMotionForFrame({body_motion:pendingBodyMotion,emotion:"neutral"});
     console.log("[Nanako 3D] Replacement neutral pose ready.");
@@ -231,6 +237,12 @@ async function loadProductionBodyAnimations(){
 }
 
 window.addEventListener("nanako3d-ready",async()=>{
+  // FBX clips belong to the currently loaded VRM. Reload them after an outfit
+  // model switch instead of retaining stale "loaded" flags from the old model.
+  bodyAnimationsLoaded=false;
+  bodyAnimationsLoading=null;
+  loadedBodyMotions.clear();
+  currentBodyMotion="";
   // Do not reveal the raw VRM bind pose. Load and start the neutral FBX first,
   // allow two rendered frames to settle, then reveal Nanako smoothly.
   const avatar=document.getElementById("nanakoAvatar");
@@ -299,17 +311,17 @@ async function loadAnimationSfxBuffer(src){
 }
 
 function preloadAnimationSfx(){
-  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=2.4.2");
-  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=2.4.2");
-  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.4.2");
-  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.4.2");
+  void loadAnimationSfxBuffer("./static/sfx/wink.wav?v=2.4.3");
+  void loadAnimationSfxBuffer("./static/sfx/single_clap.wav?v=2.4.3");
+  void loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.4.3");
+  void loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.4.3");
 }
 
 async function playLevelUpSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.4.2");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/level_up.mp3?v=2.4.3");if(!buffer)return false;try{if(ac.state!=="running")await ac.resume()}catch{}
   return await new Promise(resolve=>{const source=ac.createBufferSource(),gain=ac.createGain();source.buffer=buffer;gain.gain.value=.60;source.connect(gain);gain.connect(ac.destination);source.onended=()=>{try{source.disconnect()}catch{}try{gain.disconnect()}catch{}resolve(true)};source.start();});
 }
-function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=2.4.2",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
+function levelUpClapPlan(){return {source:"nanako-learning-reward",renderer_contract:"nanako-vrm-1.1-python-plan-fbx",renderer_mode:"vrm-3d-only",kind:"level-up-clapping",emotion:"happy",body_motion:"clapping",duration_ms:2600,sample_ms:100,sfx:{src:"./static/sfx/single_clap.wav?v=2.4.3",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single_clap_levelup",volume:1},frames:[{t:0,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2500,emotion:"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0},{t:2600,emotion:"happy",action:"idle",eyes:"open",mouth:"closed",body_motion:"neutral",scale:1,translate_y:0}]};}
 async function celebrateLearningLevelUp(event){
   if(!event||!event.congratulation_jp)return;micCapturePaused=true;status("Level up! 🎉");stopAnimationPlan();await playLevelUpSfx();
   if(!muted)await playFishStreaming(String(event.congratulation_jp),levelUpClapPlan(),{idleEmotion:"happy",voiceStyle:"normal",sampleRate:24000,suppressResume:true});
@@ -318,7 +330,7 @@ async function celebrateLearningLevelUp(event){
 }
 let dailyChallengeNoticeQueue=[],dailyChallengeNoticeBusy=false;
 async function playDailyChallengePassSfx(){
-  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.4.2");if(!buffer)return false;
+  const ac=animationSfxContext();if(!ac)return false;const buffer=await loadAnimationSfxBuffer("./static/sfx/daily_challenge_pass.wav?v=2.4.3");if(!buffer)return false;
   try{if(ac.state!=="running")await ac.resume()}catch{}
   // Step 2.27.0: daily_challenge_pass.wav was too loud on-device.
   // Play it at 60% of its previous amplitude (40% reduction), independently
@@ -415,7 +427,7 @@ function playAnimationPlan(plan,{loop=false,onComplete=null,mediaClock=null}={})
   // Python emits cheeky winks as a post-speech plan. Keep the visual timeline
   // immediate and schedule the sound cue half a second later.
   if(plan.kind==="post-speech-wink"&&!plan.sfx){
-    plan={...plan,duration_ms:Math.max(900,Number(plan.duration_ms)||0),sfx:{src:"./static/sfx/wink.wav?v=2.4.2",start_ms:400,stop_ms:1400,name:"wink-post-speech",volume:1}};
+    plan={...plan,duration_ms:Math.max(900,Number(plan.duration_ms)||0),sfx:{src:"./static/sfx/wink.wav?v=2.4.3",start_ms:400,stop_ms:1400,name:"wink-post-speech",volume:1}};
   }
   const token=animationToken;
   currentAnimationPlan=plan;
@@ -571,15 +583,15 @@ function useTalkingAnimation(plan,mediaClock=null){
 
 
 
-const CLIENT_BUILD="12.0.122",RELEASE_VERSION="2.4.2",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
+const CLIENT_BUILD="12.0.123",RELEASE_VERSION="2.4.3",API="https://nanako-web-pokbkohedy.ap-southeast-1.fcapp.run",CHAT=`${API}/api/chat`,VISION_IDENTIFY=`${API}/api/vision/identify`,RESET=`${API}/api/reset`,STARTUP_GREETING=`${API}/api/startup-greeting`,REALTIME_ENRICH=`${API}/api/realtime/enrich`;
 const NANAKO_OUTFIT_MODELS=Object.freeze({
-  neutral:"./static/models/nanako_avatar.vrm?v=2.4.2",
-  sports:"./static/models/nanako_sports.vrm?v=2.4.2",
-  casual:"./static/models/nanako_casual_tshirt_shorts.vrm?v=2.4.2",
-  swimwear:"./static/models/nanako_swimwear.vrm?v=2.4.2",
-  teacher:"./static/models/nanako_teacher.vrm?v=2.4.2",
-  kimono:"./static/models/nanako_kimono.vrm?v=2.4.2",
-  elegant:"./static/models/nanako_elegant_black_sleeveless.vrm?v=2.4.2"
+  neutral:"./static/models/nanako_avatar.vrm?v=2.4.3",
+  sports:"./static/models/nanako_sports.vrm?v=2.4.3",
+  casual:"./static/models/nanako_casual_tshirt_shorts.vrm?v=2.4.3",
+  swimwear:"./static/models/nanako_swimwear.vrm?v=2.4.3",
+  teacher:"./static/models/nanako_teacher.vrm?v=2.4.3",
+  kimono:"./static/models/nanako_kimono.vrm?v=2.4.3",
+  elegant:"./static/models/nanako_elegant_black_sleeveless.vrm?v=2.4.3"
 });
 const NANAKO_SCENE_ASSETS=Object.freeze({
   beach:"beach.webp",classroom:"classroom.webp",living_room:"living_room.webp",
@@ -904,7 +916,11 @@ function memoryPayload(){
 }
 async function checkPythonRuntime(){const el=document.getElementById("runtimeStatus");try{const r=await fetch(RUNTIME_CHECK,{cache:"no-store"});const d=await r.json();const matched=String(d.required_client_build||"")===CLIENT_BUILD,vrmMatched=String(d.avatar_renderer_contract||"")==="nanako-vrm-1.1-python-plan-fbx",ok=!!(matched&&vrmMatched&&d.python_running&&d.mic_engine_loaded&&d.animation_engine_loaded&&d.behavior_engine_loaded&&d.memory_engine_loaded&&d.firestore_memory_loaded&&d.personality_engine_loaded&&d.learning_engine_loaded&&d.visual_awareness_engine_loaded&&d.split_pipeline_loaded&&d.qwen_backend_configured&&d.fish_audio_configured);if(el)el.textContent=ok?`Python runtime: ONLINE • build ${CLIENT_BUILD} matched • split ASR/LLM/TTS + Firestore memory + personality + 3D + mic + animation + vision loaded`:matched&&!vrmMatched?"3D CONTRACT MISMATCH • deploy the Step 2.19 Function Compute backend":matched?"Python runtime: incomplete — check Alibaba deployment":`VERSION MISMATCH • frontend ${CLIENT_BUILD} / backend ${d.required_client_build||"unknown"}`;console.log("[Nanako v11 runtime-check]",d);}catch(err){if(el)el.textContent="Python runtime: OFFLINE / unreachable";console.warn("[Nanako v11 runtime-check failed]",err);}}
 setTimeout(checkPythonRuntime,150);
-const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200; // 200 ms transport batches only. Python decides VAD/turn boundaries.
+const MIC_TARGET_RATE=16000,MIC_BATCH_SAMPLES=3200;
+// Patient local endpointing: Japanese speakers often pause before particles,
+// clauses, or self-corrections. Streaming starts after the completed turn; it
+// does not require an aggressive silence cutoff.
+const LOCAL_VAD_END_SILENCE_MS=1500,LOCAL_VAD_MAX_TURN_MS=30000;
 const $=id=>document.getElementById(id),e={background:$("nanakoBackground"),levelBadge:$("levelBadge"),scoreFill:$("scoreFill"),scoreText:$("scoreText"),settingsScore:$("settingsScore"),settingsScoreFill:$("settingsScoreFill"),userTranscript:$("userTranscript"),userTranscriptText:$("userTranscriptText"),status:$("statusText"),awareness:$("videoAwarenessButton"),awarenessVideo:$("awarenessVideo"),visionDiagnostic:$("visionDiagnostic"),micDiagnostic:$("micDiagnostic"),music:$("musicToggleButton"),ro:$("romajiButton"),en:$("englishButton"),historyRO:$("historyRomajiButton"),historyEN:$("historyEnglishButton"),mute:$("muteButton"),jp:$("japaneseReply"),roSec:$("romajiSection"),enSec:$("englishSection"),roText:$("romajiReply"),enText:$("englishReply"),input:$("messageInput"),send:$("sendButton"),camera:$("cameraButton"),cameraModal:$("cameraModal"),cameraVideo:$("cameraVideo"),cameraStatus:$("cameraStatus"),cameraQuestion:$("cameraQuestion"),askCamera:$("askCameraButton"),closeCamera:$("closeCameraButton"),conv:$("conversationButton"),corr:$("correctionToast"),wrong:$("wrongText"),correct:$("correctText"),err:$("errorToast"),settings:$("settingsModal"),menu:$("menuButton"),closeSettings:$("closeSettingsButton"),historyBtn:$("historyButton"),dailyChallengesMenuBtn:$("dailyChallengesMenuButton"),dailyChallengesModal:$("dailyChallengesModal"),dailyChallengesReminderList:$("dailyChallengesReminderList"),closeDailyChallengesModal:$("closeDailyChallengesModalButton"),historyModal:$("historyModal"),closeHistory:$("closeHistoryButton"),historyEmpty:$("historyEmpty"),historyList:$("historyList"),levelValue:$("levelValue"),levelGrid:$("levelGrid"),settingsTier:$("settingsTier"),learningOnboarding:$("learningOnboarding"),learningContinue:$("learningContinueButton"),dailyChallengesScreen:$("dailyChallengesScreen"),dailyChallengesList:$("dailyChallengesList"),dailyChallengesStart:$("dailyChallengesStartButton"),styleValue:$("styleValue"),styleGrid:$("styleGrid"),reset:$("resetButton"),debugMic:$("debugMic"),debugRoom:$("debugRoom"),debugSpeech:$("debugSpeech"),debugTurn:$("debugTurn")};
 let level="",autoEffectiveLevel="",speechStyle="auto",autoEffectiveStyle="",settingSwitchBusy=false,score=0,showRO=false,showEN=false,muted=false,active=false,busy=false,currentAudio=null,currentAudioObjectUrl="",stream=null,ctx=null,micSource=null,micProcessor=null,micWorkletNode=null,micWorkletUsing=false,micSessionId="",micSessionGeneration=0,activeMicTurnController=null,micBatch=[],micQueue=[],micPumpBusy=false,micCapturePaused=true,userSpeechActive=false,transcriptTimer=0,correctionTimer=0,audioUnlocked=false,bargeCaptureTimer=0,startupGestureArmed=false,startupEnterDone=false,micZeroChunkCount=0,micHardwareRecoveryBusy=false,micLastHardwareRecoveryAt=0,fishStreamAbort=null,fishAudioCtx=null,fishScheduledSources=[];
 let localVadNoiseDb=-58,localVadCandidateMs=0,localVadSilenceMs=0,localVadSpeechMs=0,localVadSpeaking=false,localVadPreRoll=[],localVadTurn=[];
@@ -1526,7 +1542,11 @@ function ingestLocalVad(samples){
   if(!samples?.length||busy)return;
   let sum=0;for(let i=0;i<samples.length;i++){const v=Number(samples[i])||0;sum+=v*v}
   const db=20*Math.log10(Math.max(1e-7,Math.sqrt(sum/samples.length))),ms=samples.length*1000/MIC_TARGET_RATE;
-  const threshold=Math.max(-52,localVadNoiseDb+8),voice=db>=threshold;
+  const startThreshold=Math.max(-52,localVadNoiseDb+8);
+  // Once speech starts, keep a lower continuation threshold so quiet Japanese
+  // sentence endings are retained instead of being mistaken for silence.
+  const continueThreshold=Math.max(-58,localVadNoiseDb+4);
+  const voice=db>=(localVadSpeaking?continueThreshold:startThreshold);
   if(!localVadSpeaking){
     if(!voice)localVadNoiseDb=localVadNoiseDb*.97+db*.03;
     localVadPreRoll.push(Float32Array.from(samples));let preMs=localVadPreRoll.reduce((n,c)=>n+c.length*1000/MIC_TARGET_RATE,0);while(preMs>450&&localVadPreRoll.length){const old=localVadPreRoll.shift();preMs-=old.length*1000/MIC_TARGET_RATE}
@@ -1538,7 +1558,7 @@ function ingestLocalVad(samples){
     return;
   }
   localVadTurn.push(Float32Array.from(samples));localVadSpeechMs+=ms;localVadSilenceMs=voice?0:localVadSilenceMs+ms;
-  if(localVadSilenceMs>=900||localVadSpeechMs>=20000)finishLocalVadTurn();
+  if(localVadSilenceMs>=LOCAL_VAD_END_SILENCE_MS||localVadSpeechMs>=LOCAL_VAD_MAX_TURN_MS)finishLocalVadTurn();
 }
 
 async function ensureMicHardware(){
@@ -1770,7 +1790,7 @@ async function processPythonMicTurn(turnId){
       if(awarenessActive){
         payload.image_data_url=captureAwarenessFrame();
         if(!payload.image_data_url||payload.image_data_url.length<128)throw new Error("Nanako heard ナナコ、見て, but the camera frame was not ready. Keep the eye on and try again.");
-        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.122] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
+        payload.trigger="front_camera_request";payload.visual_target=String(inspection.visual_target||"face_or_scene");frontVisionAttached=true;console.log(`[Nanako Vision 12.0.123] one authorized CURRENT front frame attached • target=${payload.visual_target} • chars=${payload.image_data_url.length}`);status("Nanako is looking...")
       }
       else{throw new Error("Nanako heard ナナコ、見て, but the eye camera is off. Turn on the eye and try again.")}
     }
@@ -1836,7 +1856,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
   if(wink){
     stopAnimationPlan();
     renderAnimationFrame({emotion:"neutral",action:"wink_prepare",eyes:"half",mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.06,scale:1,translate_y:0});
-    scheduleAnimationSfx({duration_ms:1560,sfx:{src:"./static/sfx/wink.wav?v=2.4.2",start_ms:560,stop_ms:1560,name:"wink-realtime",volume:1}});
+    scheduleAnimationSfx({duration_ms:1560,sfx:{src:"./static/sfx/wink.wav?v=2.4.3",start_ms:560,stop_ms:1560,name:"wink-realtime",volume:1}});
     realtimeGestureTimer=setTimeout(()=>{
       renderAnimationFrame({emotion:"neutral",action:"wink",eyes:wink,mouth:"closed",body_motion:realtimeBodyMotion,head_tilt_z:0.16,scale:1,translate_y:0});
       realtimeGestureTimer=setTimeout(()=>{
@@ -1846,7 +1866,7 @@ function applyRealtimePostState({emotion="neutral",bodyMotion="neutral",eyeGestu
     },160);return;
   }
   if(realtimeBodyMotion==="clapping"){
-    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=2.4.2",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
+    stopAnimationPlan();scheduleAnimationSfx({duration_ms:2600,sfx:{src:"./static/sfx/single_clap.wav?v=2.4.3",hits_ms:[140,432,724,1016,1308,1600,1892,2184,2476],hit_volumes:[1.00,0.60,0.82,0.48,0.74,0.56,0.90,0.64,0.78],stop_ms:2600,name:"single-clap-realtime",volume:1}});renderAnimationFrame({emotion:realtimeEmotion||"happy",action:"clapping",eyes:"open",mouth:"closed",body_motion:"clapping",scale:1,translate_y:0});
     realtimeGestureTimer=setTimeout(()=>{realtimeGestureTimer=0;realtimeBodyMotion="neutral";returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:"neutral"})},2600);return;
   }
   returnToPythonIdle({emotion:realtimeEmotion,bodyMotion:realtimeBodyMotion});
@@ -1985,7 +2005,7 @@ async function stopRealtimeSession(){
 
 async function begin(){
   if(!active)return;
-  /* v2.4.2: endpoint locally, then upload one complete turn. Function Compute
+  /* v2.4.3: endpoint locally, then upload one complete turn. Function Compute
      may distribute independent HTTP requests across processes, so live VAD
      state must not depend on hundreds of process-local frame requests. */
   await ensureMicHardware();
@@ -2320,7 +2340,7 @@ async function boot(){
 boot();
 })();
 
-// v2.4.2 — One reason-based music duck controller. Voice activity and Nanako playback
+// v2.4.3 — One reason-based music duck controller. Voice activity and Nanako playback
 // hold the duck through the user turn, response thinking, and complete spoken reply.
 (()=>{
   const tracks=[
