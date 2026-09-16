@@ -1,2 +1,0 @@
-NanaChat v2.4.3 frontend
-Client contract: 12.0.123
