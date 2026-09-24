@@ -12,24 +12,24 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NanaChat">
 <title>NanaChat</title>
-<link rel="manifest" href="./manifest.webmanifest?v=2.6.2">
+<link rel="manifest" href="./manifest.webmanifest?v=2.6.3">
 <script>
 window.__NANAKO_RELEASE_GATE__=(async()=>{
-  const epoch="2.6.2",key="nanako_release_epoch";
+  const epoch="2.6.3",key="nanako_release_epoch";
   try{if(localStorage.getItem(key)!==epoch)localStorage.setItem(key,epoch)}catch{}
   try{const url=new URL(location.href);if(url.searchParams.get("nanako_release")!==epoch){url.searchParams.set("nanako_release",epoch);history.replaceState(null,"",url.href)}}catch{}
 })();
 </script>
-<link rel="stylesheet" href="./static/style.css?v=2.6.2">
-<link rel="preload" as="fetch" href="./static/models/nanako_avatar.vrm?v=2.6.2" type="model/gltf-binary" fetchpriority="high" crossorigin>
-<link rel="preload" as="image" href="./static/splash/nanachat-fullscreen-midnight-v2.3.17.jpg?v=2.6.2" fetchpriority="high">
-<link rel="preload" as="audio" href="./static/sfx/title_welcome_message.wav?v=2.6.2">
+<link rel="stylesheet" href="./static/style.css?v=2.6.3">
+<link rel="preload" as="fetch" href="./static/models/nanako_avatar.vrm?v=2.6.3" type="model/gltf-binary" fetchpriority="high" crossorigin>
+<link rel="preload" as="image" href="./static/splash/nanachat-fullscreen-midnight-v2.3.17.jpg?v=2.6.3" fetchpriority="high">
+<link rel="preload" as="audio" href="./static/sfx/title_welcome_message.wav?v=2.6.3">
 <link rel="preload" as="audio" href="./static/music/midday-drift.mp3?v=mp3-02" type="audio/mpeg">
 <style>
 html,body{background:#f2f5fa;color:#17213a;}
-html.splash-visible{background:#04122d url("./static/splash/nanachat-fullscreen-midnight-v2.3.17.jpg?v=2.6.2") center center / 100% 100% no-repeat;}
+html.splash-visible{background:#04122d url("./static/splash/nanachat-fullscreen-midnight-v2.3.17.jpg?v=2.6.3") center center / 100% 100% no-repeat;}
 html.splash-visible body{background:transparent;}
-.startup-splash{position:fixed;inset:0;width:auto;height:auto;z-index:500;overflow:hidden;padding:0;background:#04122d url("./static/splash/nanachat-fullscreen-midnight-v2.3.17.jpg?v=2.6.2") center center / 100% 100% no-repeat;isolation:isolate;}
+.startup-splash{position:fixed;inset:0;width:auto;height:auto;z-index:500;overflow:hidden;padding:0;background:#04122d url("./static/splash/nanachat-fullscreen-midnight-v2.3.17.jpg?v=2.6.3") center center / 100% 100% no-repeat;isolation:isolate;}
 .startup-splash::before,.startup-splash::after{content:none;}
 /* One artboard sizes the splash overlays to the same cover image area. */
 .startup-card{position:absolute;left:50%;top:50%;width:max(100vw,46.154dvh);height:max(100vh,216.667vw);height:max(100dvh,216.667vw);transform:translate(-50%,-50%);overflow:hidden;border:0;border-radius:0;background:transparent;box-shadow:none;}
@@ -90,8 +90,8 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 </head>
 <body class="preinteraction">
 <div id="startupSplash" class="startup-splash">
-  <div class="startup-card" aria-label="NanaChat Version 2.6.2">
-    <span id="startupVersion" class="startup-version-overlay">Version 2.6.2</span>
+  <div class="startup-card" aria-label="NanaChat Version 2.6.3">
+    <span id="startupVersion" class="startup-version-overlay">Version 2.6.3</span>
     <button id="startupEnterButton" class="startup-enter-button" type="button" aria-label="Enter NanaChat" disabled>Loading Nanako 3D…</button>
   </div>
   <div id="startupProgress" class="startup-progress" role="status" aria-live="polite">
@@ -128,7 +128,7 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
   <div class="nanako-motion">
     <div id="nanakoAvatar" class="nanako-avatar vrm-loading" aria-label="Nanako" role="img">
       <img id="nanakoBackground" class="nanako-background" alt="" aria-hidden="true">
-      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_avatar.vrm?v=2.6.2" aria-label="Nanako 3D avatar"></canvas>
+      <canvas id="nanako3DCanvas" class="nanako-3d-canvas" data-model-url="./static/models/nanako_avatar.vrm?v=2.6.3" aria-label="Nanako 3D avatar"></canvas>
       <div id="nanako3DStatus" class="nanako-3d-status">Loading Nanako 3D…</div>
     </div>
   </div>
@@ -200,7 +200,7 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
 
 <video id="awarenessVideo" class="awareness-video-sink" autoplay muted playsinline aria-hidden="true"></video>
 
-<audio id="titleWelcomeAudio" src="./static/sfx/title_welcome_message.wav?v=2.6.2" preload="auto" autoplay playsinline></audio>
+<audio id="titleWelcomeAudio" src="./static/sfx/title_welcome_message.wav?v=2.6.3" preload="auto" autoplay playsinline></audio>
 <script>
 (() => {
   const audio=document.getElementById("titleWelcomeAudio");
@@ -230,6 +230,6 @@ body.preinteraction .app-shell{visibility:hidden;opacity:0;pointer-events:none;}
   window.addEventListener("keydown",startFromSplashGesture,{capture:true});
 })();
 </script>
-<script src="./static/nanako-3d.js?v=2.6.2" defer></script>
-<script src="./static/app.js?v=2.6.2" defer></script>
+<script src="./static/nanako-3d.js?v=2.6.3" defer></script>
+<script src="./static/app.js?v=2.6.3" defer></script>
 </body></html>
