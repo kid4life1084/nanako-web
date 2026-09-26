@@ -281,3 +281,89 @@ html.app-layout .nanako-avatar{
 .level-badge{min-width:104px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .music-toggle-button{flex:0 0 44px;padding:0;border:1px solid var(--calm-border,#d9e2ef);background:var(--calm-control,#eef3f9);color:var(--calm-accent,#287de4);font-size:22px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent}.music-toggle-button.music-off{color:#8994a8}.settings-label{margin-bottom:7px;color:var(--calm-muted,#8792a6);font-size:10px;font-weight:800;letter-spacing:.04em}.settings-block{line-height:1.5;overflow-wrap:anywhere;word-break:normal}.settings-block>div{max-width:100%;overflow-wrap:anywhere}.settings-block .settings-row{gap:12px}.settings-row strong{text-align:right}
+
+/* NanaChat v2.6.9 — restored persistent light/dark appearance control. */
+.modal-header-actions{display:flex;align-items:center;gap:8px}
+.theme-toggle-button{width:42px;height:42px;display:grid;place-items:center;padding:0;border:1px solid var(--calm-border);border-radius:50%;background:var(--calm-control);color:var(--calm-text);font-size:22px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.theme-toggle-button:active{transform:scale(.96)}
+
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --calm-bg:#0b0910;
+  --calm-bg-soft:#100d16;
+  --calm-panel:#15111c;
+  --calm-control:#17111e;
+  --calm-control-pressed:#21172a;
+  --calm-border:#382d42;
+  --calm-border-soft:#2c2631;
+  --calm-text:#ffffff;
+  --calm-muted:#9b92a2;
+  --calm-muted-2:#817889;
+  --calm-accent:#d05bea;
+  --calm-accent-soft:#592568;
+  --calm-danger:#ff727c;
+  --calm-portrait-idle:#16101f;
+}
+html[data-theme="dark"],html[data-theme="dark"] body{background:#090810;color:#fff}
+html[data-theme="dark"] .app-shell{background:radial-gradient(circle at 50% 20%,rgba(109,52,136,.2),transparent 38%),#090810}
+html[data-theme="dark"] .nanako-app,
+html[data-theme="dark"].app-layout .nanako-app{background:linear-gradient(180deg,#15101d,#0b0910)}
+html[data-theme="dark"] .level-badge{border-color:#382d42;background:#17111e;color:#df71fa}
+html[data-theme="dark"] .round-button{border-color:#382d42;background:#17111e;color:#fff}
+html[data-theme="dark"] .score-track{background:#27212d}
+html[data-theme="dark"] .score-fill{background:#ce59eb}
+html[data-theme="dark"] .score-row span{color:#b8b0be}
+html[data-theme="dark"] .character-stage,
+html[data-theme="dark"].app-layout .character-stage{background:radial-gradient(ellipse at 50% 38%,rgba(142,80,177,.34),transparent 62%),#16101f!important;border-color:#2b2234!important}
+html[data-theme="dark"] .nanako-background{background:#16101f!important}
+html[data-theme="dark"] .avatar{background:#c75be4;color:#fff}
+html[data-theme="dark"] .nanako-copy strong{color:#fff}
+html[data-theme="dark"] .nanako-copy span{color:#938c9a}
+html[data-theme="dark"] .quick-button{border-color:#302839;background:#100d15;color:#aaa1ae}
+html[data-theme="dark"] .quick-button.active{border-color:#d76af0;background:#592568;color:#fff}
+html[data-theme="dark"] .reply-card{border-color:#2c2631;background:#09070c;box-shadow:none}
+html[data-theme="dark"] .helper-text{color:#cbc4d0}
+html[data-theme="dark"] .input-row input{border-color:#3b3343;background:#1b171f;color:#fff;box-shadow:none}
+html[data-theme="dark"] .input-row input::placeholder{color:#8d8592}
+html[data-theme="dark"] .send-button{background:#c75ae4;box-shadow:none}
+html[data-theme="dark"] .conversation-button{border-color:#382d42;background:#4e245d;color:#fff}
+html[data-theme="dark"] .conversation-button.active{background:#74315f;color:#fff}
+html[data-theme="dark"] .conversation-button.interrupt{background:#885428;color:#fff;border-color:#885428}
+html[data-theme="dark"] .modal-backdrop{background:rgba(0,0,0,.76)}
+html[data-theme="dark"] .modal-card{border-color:#3b3046;background:#15111c;color:#fff;box-shadow:0 18px 48px rgba(0,0,0,.35)}
+html[data-theme="dark"] .settings-nav,
+html[data-theme="dark"] .settings-block{border-color:#352b3e;background:#1b1622;color:#c0b8c5}
+html[data-theme="dark"] .level-choice{border-color:#44384d;background:#110e16;color:#d0c8d3}
+html[data-theme="dark"] .level-choice.active{border-color:#d76af0;background:#592568;color:#fff}
+html[data-theme="dark"] .settings-progress{background:#302738}
+html[data-theme="dark"] .reset-button{border-color:#5b2b3c;background:#3b1c29;color:#ff8f9c}
+html[data-theme="dark"] .history-bubble{border-color:#302936;background:#100e14;color:#fff}
+html[data-theme="dark"] .history-bubble.user{border-color:#4d305c;background:#211429}
+html[data-theme="dark"] .history-language-controls{background:#15111c;border-bottom-color:#302936;color:#aaa1ae}
+html[data-theme="dark"] .history-language-button{border-color:#44364f;background:#1a1520;color:#b9afbd}
+html[data-theme="dark"] .history-language-button.active{border-color:#c95be4;background:#69277c;color:#fff}
+html[data-theme="dark"] .correction-toast{border-color:#563d61;background:rgba(25,18,30,.97);box-shadow:none}
+html[data-theme="dark"] .error-toast{border-color:#5b2b3c;background:#391b24;color:#ff929c}
+html[data-theme="dark"] .camera-button{border-color:#3b3044;background:#211a29;color:#fff}
+html[data-theme="dark"] .camera-view{border-color:#382e41;background:#08070a}
+html[data-theme="dark"] .camera-question{border-color:#3b3044;background:#17121d;color:#fff}
+html[data-theme="dark"] .music-toggle-button{border-color:#382d42;background:#17111e;color:#d05bea}
+
+/* These onboarding/challenge styles originate in the document's critical CSS,
+   so the theme selector intentionally wins with explicit dark values. */
+html[data-theme="dark"] .learning-onboarding,
+html[data-theme="dark"] .daily-challenges{background:#090810!important}
+html[data-theme="dark"] .learning-onboarding-card,
+html[data-theme="dark"] .daily-challenges-card{border-color:#3b3046!important;background:#15111c!important;box-shadow:0 18px 54px rgba(0,0,0,.35)!important}
+html[data-theme="dark"] .learning-onboarding-card h2,
+html[data-theme="dark"] .daily-challenges-card h2{color:#fff!important}
+html[data-theme="dark"] .learning-onboarding-intro,
+html[data-theme="dark"] .daily-challenges-intro{color:#aaa1ae!important}
+html[data-theme="dark"] .learning-level-button{border-color:#44384d!important;background:#1b1622!important;color:#fff!important}
+html[data-theme="dark"] .learning-level-button.selected{border-color:#d76af0!important;background:#592568!important;color:#fff!important}
+html[data-theme="dark"] .learning-level-description{color:#a59cab!important}
+html[data-theme="dark"] .daily-challenge-item,
+html[data-theme="dark"] .daily-reminder-item{border-color:#352b3e!important;background:#1b1622!important;color:#d7d0da!important}
+html[data-theme="dark"] .daily-challenge-number,
+html[data-theme="dark"] .daily-reminder-number{background:#592568!important;color:#fff!important}
+html[data-theme="dark"] .daily-reminder-copy{color:#d7d0da!important}
